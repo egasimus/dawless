@@ -5,7 +5,12 @@ use std::io::Read;
 use binread::{BinRead, io::{Cursor, Seek, SeekFrom}};
 
 fn main() {
-    let filename = "./data/EMPTY.hfe";
+    //let filename = "flashfloppy-images/Unformatted/HFE/double_density.hfe";
+    //let filename = "flashfloppy-images/Unformatted/HFE/double_density_360rpm.hfe";
+    //let filename = "flashfloppy-images/Unformatted/HFE/high_density.hfe";
+    //let filename = "flashfloppy-images/Unformatted/HFE/high_density_360rpm.hfe";
+    //let filename = "./data/EMPTY.hfe";
+    let filename = "./data/DISK0.hfe";
     let mut f = std::fs::File::open(&filename).expect("file not found");
     let metadata = std::fs::metadata(&filename).expect("unable to read metadata");
     let mut buffer = vec![0; metadata.len() as usize];

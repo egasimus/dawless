@@ -1,0 +1,3 @@
+[submodule "flashfloppy-images"]
+	path = flashfloppy-images
+	url = https://github.com/keirf/flashfloppy-images/
