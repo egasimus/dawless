@@ -1,10 +1,11 @@
 mod hfe;
+mod bhex;
 
 use std::io::Read;
 use binread::{BinRead, io::{Cursor, Seek, SeekFrom}};
 
 fn main() {
-    let filename = "./data/DISK0.hfe";
+    let filename = "./data/EMPTY.hfe";
     let mut f = std::fs::File::open(&filename).expect("file not found");
     let metadata = std::fs::metadata(&filename).expect("unable to read metadata");
     let mut buffer = vec![0; metadata.len() as usize];
@@ -32,10 +33,9 @@ fn main() {
                 break
             }
             let block = hfe::TrackBlock::read(&mut cursor).expect("block read failed");
-            println!("{:?}", &block);
+            println!("{}", &block);
             blocks.push(block);
         }
         track_data.push(hfe::Track { info: info.clone(), blocks })
     }
-    println!("\n{:?}", &track_data);
 }

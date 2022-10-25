@@ -1,4 +1,5 @@
 use binread::BinRead;
+use crate::bhex::CHARSET;
 
 #[derive(Debug, BinRead)]
 #[br(magic = b"HXCPICFE")]
@@ -91,10 +92,38 @@ pub struct TrackInfo {
 #[allow(dead_code)]
 #[derive(Debug, BinRead)]
 pub struct TrackBlock {
-    #[br(count = 512)]
-    side_0: Vec<u8>,
-    #[br(count = 512)]
-    side_1: Vec<u8>
+    #[br(count = 256)]
+    side_0: Vec<u16>,
+    #[br(count = 256)]
+    side_1: Vec<u16>
+}
+
+impl std::fmt::Display for TrackBlock {
+    fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut bits_0 = String::new();
+        for byte in self.side_0.iter() {
+            let byte = CHARSET[mfm_decode_byte(byte) as usize];
+            bits_0.push_str(&format!("{byte}"));
+        }
+        let mut bits_1 = String::new();
+        for byte in self.side_1.iter() {
+            let byte = CHARSET[mfm_decode_byte(byte) as usize];
+            bits_1.push_str(&format!("{byte}"));
+        }
+        write!(f, "\n{}\n{}", bits_0, bits_1)
+    } 
+}
+
+pub fn mfm_decode_byte (i: &u16) -> u8 {
+    (0b00000000
+        | (0b00000001 & i)
+        | ((0b00000100 & i) >> 1)
+        | ((0b00010000 & i) >> 2)
+        | ((0b01000000 & i) >> 3)
+        | (((0b00000001 <<  8) & i) >> 4)
+        | (((0b00000001 << 10) & i) >> 5)
+        | (((0b00000001 <<  6) & i) >> 4)
+        | (((0b00000001 << 14) & i) >> 7)) as u8
 }
 
 #[derive(Debug)]
