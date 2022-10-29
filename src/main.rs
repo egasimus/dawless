@@ -1,5 +1,8 @@
+#![feature(adt_const_params)]
+
 mod hfe;
 mod bhex;
+mod s2k;
 
 use std::io::Read;
 use binread::{BinRead, io::{Cursor, Seek, SeekFrom}};
