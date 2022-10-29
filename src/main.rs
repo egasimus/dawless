@@ -14,7 +14,7 @@ fn main () {
     //let bytes = read("../s2kdie.1.1.3/file");
     //let bytes = read("../s2kdie.1.1.3/file2");
     //let bytes = read("../s2kdie.1.1.3/file3");
-    let files = s2k::akai_s3000().load(read("../s2kdie.1.1.3/file3"));
+    let files = s2k::akai_s3000().load(read("../s2kdie.1.1.3/file3")).list();
     println!("{files:?}");
 }
 

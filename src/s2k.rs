@@ -214,7 +214,7 @@ impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
         let mut fs = Self::new();
         fs.label = contents[4736..4736+12].iter().map(|c| CHARACTERS[*c as usize]).collect();
         fs.load_heads(contents);
-        fs.load_tails(contents);
+        fs.load_bodies(contents);
         fs
     }
 
@@ -249,7 +249,7 @@ impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
 
     /// Reads subsequent blocks (fragments) from the image.
     /// Corresponds to 2nd loop of s2kdie importimage()
-    fn load_tails (&mut self, contents: &[u8]) -> &mut Self {
+    fn load_bodies (&mut self, contents: &[u8]) -> &mut Self {
         let (startb, endb, _, _, _) = get_model_parameters(&M);
         // Map of fragments
         let tmap = &contents[startb..endb-startb];
@@ -267,6 +267,24 @@ impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
             }
         }
         self
+    }
+
+    pub fn list (&self) -> Vec<Sample> {
+        let mut samples = vec![];
+        for i in 0..self.head.len() {
+            let head = self.head[i];
+            let size = self.size[i];
+            let data = &self.data[i];
+            samples.push(Sample {
+                name:        head[..12].iter().map(|c| CHARACTERS[*c as usize]).collect(),
+                sample_rate: SampleRate::Hz22050,
+                loop_mode:   LoopMode::Normal,
+                tuning_semi: 0,
+                tuning_cent: 0,
+                length:      0
+            })
+        }
+        samples
     }
 
 }
@@ -302,4 +320,28 @@ pub enum DataTypes {
     Multi   = 2378,
     OS      = 99,
     Deleted = 0
+}
+
+#[derive(Debug)]
+pub struct Sample {
+    name:        Vec<char>,
+    sample_rate: SampleRate,
+    loop_mode:   LoopMode,
+    tuning_semi: u8,
+    tuning_cent: u8,
+    length:      u32
+}
+
+#[derive(Debug)]
+pub enum SampleRate {
+    Hz22050,
+    Hz44100
+}
+
+#[derive(Debug)]
+pub enum LoopMode {
+    Normal,
+    UntilRelease,
+    NoLoop,
+    PlayToEnd
 }
