@@ -1,5 +1,3 @@
-use std::fs::File;
-
 pub const CHARACTERS: [char; 41] = [
     '0','1','2','3','4','5','6','7','8','9',
     ' ',
@@ -8,6 +6,18 @@ pub const CHARACTERS: [char; 41] = [
     'U','V','W','X','Y','Z','#','+','-','.',
 ];
 
+pub fn akai_s900 () -> Device<{ DeviceModel::S900 }> {
+    Device
+}
+
+pub fn akai_s2000 () -> Device<{ DeviceModel::S2000 }> {
+    Device
+}
+
+pub fn akai_s3000 () -> Device<{ DeviceModel::S3000 }> {
+    Device
+}
+
 #[derive(PartialEq, Eq)]
 pub enum DeviceModel {
     S900,
@@ -15,55 +25,46 @@ pub enum DeviceModel {
     S3000
 }
 
-pub struct Device<const M: DeviceModel> {
-}
-
-impl<const M: DeviceModel> Device<M> {
-    fn s900 () -> Device<{ DeviceModel::S900 }> {
-        Device {}
-    }
-    fn s2000 () -> Device<{ DeviceModel::S2000 }> {
-        Device {}
-    }
-    fn s3000 () -> Device<{ DeviceModel::S3000 }> {
-        Device {}
-    }
-}
+pub struct Device<const M: DeviceModel>;
 
 pub trait DeviceDisk<const M: DeviceModel, const N: usize> {
-    fn create_blank_disk (&self) -> DiskImage<M, N>;
+    fn disk (&self) -> DiskImage<M, N>;
+
+    fn load (&self, raw: Vec<u8>) -> DiskFiles<M, N> {
+        DiskFiles::load(raw.as_slice())
+    }
 }
 
 impl DeviceDisk<{ DeviceModel::S900 }, 819200> for Device<{ DeviceModel::S900 }>  {
-    fn create_blank_disk (&self) -> DiskImage<{ DeviceModel::S900 }, 819200> {
-        let mut image = DiskImage { data: [0; 819200] };
+    fn disk (&self) -> DiskImage<{ DeviceModel::S900 }, 819200> {
+        let mut image = DiskImage { data: Vec::with_capacity(819200) };
         image.blank();
         image
     }
 }
 
 impl DeviceDisk<{ DeviceModel::S2000 }, 1638400> for Device<{ DeviceModel::S2000 }> {
-    fn create_blank_disk (&self) -> DiskImage<{ DeviceModel::S2000 }, 1638400> {
-        let mut image = DiskImage { data: [0; 1638400] };
+    fn disk (&self) -> DiskImage<{ DeviceModel::S2000 }, 1638400> {
+        let mut image = DiskImage { data: Vec::with_capacity(1638400) };
         image.blank();
         image
     }
 }
 
 impl DeviceDisk<{ DeviceModel::S3000 }, 1638400> for Device<{ DeviceModel::S3000 }> {
-    fn create_blank_disk (&self) -> DiskImage<{ DeviceModel::S3000 }, 1638400> {
-        let mut image = DiskImage { data: [0; 1638400] };
+    fn disk (&self) -> DiskImage<{ DeviceModel::S3000 }, 1638400> {
+        let mut image = DiskImage { data: Vec::with_capacity(1638400) };
         image.blank();
         image
     }
 }
 
 pub struct DiskImage<const M: DeviceModel, const N: usize> {
-    data: [u8; N]
+    data: Vec<u8>
 }
 
-pub trait DiskData<const N: usize>: Sized {
-    fn data_mut (&mut self) -> &mut [u8; N];
+pub trait DiskBlank<const N: usize>: Sized {
+    fn data_mut (&mut self) -> &mut Vec<u8>;
 
     fn put_data <const L: usize> (&mut self, index: usize, section: &[u8; L]) -> usize {
         let length = section.len();
@@ -108,8 +109,8 @@ pub trait DiskData<const N: usize>: Sized {
     }
 }
 
-impl DiskData<819200> for DiskImage<{ DeviceModel::S900 }, 819200> {
-    fn data_mut (&mut self) -> &mut [u8; 819200] {
+impl DiskBlank<819200> for DiskImage<{ DeviceModel::S900 }, 819200> {
+    fn data_mut (&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
     fn section_dp1 (&self) -> [u8; 24] {
@@ -124,8 +125,8 @@ impl DiskData<819200> for DiskImage<{ DeviceModel::S900 }, 819200> {
     }
 }
 
-impl DiskData<1638400> for DiskImage<{ DeviceModel::S2000 }, 1638400> {
-    fn data_mut (&mut self) -> &mut [u8; 1638400] {
+impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S2000 }, 1638400> {
+    fn data_mut (&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
     fn section_dp1 (&self) -> [u8; 24] {
@@ -146,8 +147,8 @@ impl DiskData<1638400> for DiskImage<{ DeviceModel::S2000 }, 1638400> {
     }
 }
 
-impl DiskData<1638400> for DiskImage<{ DeviceModel::S3000 }, 1638400> {
-    fn data_mut (&mut self) -> &mut [u8; 1638400] {
+impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S3000 }, 1638400> {
+    fn data_mut (&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
     fn section_dp1 (&self) -> [u8; 24] {
@@ -168,36 +169,46 @@ impl DiskData<1638400> for DiskImage<{ DeviceModel::S3000 }, 1638400> {
     }
 }
 
+pub trait DiskLoad<const M: DeviceModel, const N: usize, const O: usize>: Sized {
+    fn load (&self, bytes: &[u8]) -> DiskFiles<M, O> {
+        if bytes.len() < N {
+            panic!("disk image should be at least {N} bytes")
+        }
+        DiskFiles::load(bytes)
+    }
+}
+
+impl DiskLoad<{ DeviceModel::S900 }, 819200, 64> for DiskImage<{ DeviceModel::S900 }, 819200> {}
+impl DiskLoad<{ DeviceModel::S2000 }, 1638400, 512> for DiskImage<{ DeviceModel::S3000 }, 1638400> {}
+impl DiskLoad<{ DeviceModel::S3000 }, 1638400, 512> for DiskImage<{ DeviceModel::S3000 }, 1638400> {}
+
 const BLOCK_SIZE: usize = 1024;
 const MAX_BLOCKS: usize = 1536;
-const FAT_HEADER: usize = 24;
+const HEADER_LEN: usize = 24;
 
-struct DiskFiles<const N: usize> {
-    model:  DeviceModel,
-    blocks: [[u8; BLOCK_SIZE]; MAX_BLOCKS],
-    head:   [[u8; FAT_HEADER]; N],
-    size:   [u32; N],
-    data:   [Vec<u8>; N],
+#[derive(Debug)]
+pub struct DiskFiles<const M: DeviceModel, const N: usize> {
+    head:   Vec<[u8; HEADER_LEN]>,
+    size:   Vec<u32>,
+    data:   Vec<Vec<u8>>,
     free:   usize
 }
 
-impl<const N: usize> DiskFiles<N> {
+impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
 
     /** Create a filesystem. */
-    fn new (model: DeviceModel) -> Self {
+    fn new () -> Self {
         Self {
-            model:  model,
-            blocks: [[0; BLOCK_SIZE]; MAX_BLOCKS],
-            head:   [[0; FAT_HEADER]; N],
-            size:   [0; N],
-            data:   array_init::array_init(|_| vec![]),
+            head:   Vec::with_capacity(N),
+            size:   Vec::with_capacity(N),
+            data:   Vec::with_capacity(N),
             free:   0
         }
     }
 
     /** Create a filesystem and populate it with data from a disk image. */
-    fn load (model: DeviceModel, contents: &[u8]) -> Self {
-        let mut fs = Self::new(model);
+    fn load (contents: &[u8]) -> Self {
+        let mut fs = Self::new();
         fs.load_heads(contents);
         fs.load_tails(contents);
         fs
@@ -206,7 +217,7 @@ impl<const N: usize> DiskFiles<N> {
     /// Reads the metadata and 1st block of each file in the disk image.
     /// Corresponds to 1st loop of s2kdie importimage().
     fn load_heads (&mut self, contents: &[u8]) -> &mut Self {
-        let (_, _, data_offset, max_entries, max_blocks) = get_model_parameters(&self.model);
+        let (_, _, data_offset, max_entries, max_blocks) = get_model_parameters(&M);
         // Used to determine number of remaining blocks
         let mut last_block = 0;
         // Read up to `max_entries` FS records
@@ -218,11 +229,14 @@ impl<const N: usize> DiskFiles<N> {
                 break
             }
             let mut head: [u8; 24] = [0; 24];
-            head.copy_from_slice(&contents[entry_offset..24]);
-            self.head[i] = head;
-            self.size[i] = u32::from_le_bytes([head[17], head[18], head[19], 0x00]);
-            self.data[i] = self.blocks[u16::from_le_bytes([head[20], head[21]]) as usize].into();
-            last_block += self.size[i] / 1024;
+            head.copy_from_slice(&contents[entry_offset..entry_offset+24]);
+            self.head.push(head);
+            let size = u32::from_le_bytes([head[17], head[18], head[19], 0x00]);
+            self.size.push(size);
+            let block_index = u16::from_le_bytes([head[20], head[21]]);
+            let block_data  = &contents[block_index as usize..1024];
+            self.data.push(block_data.to_vec());
+            last_block += size / 1024;
             i += 1;
         }
         self.free = max_blocks - last_block as usize;
@@ -232,7 +246,7 @@ impl<const N: usize> DiskFiles<N> {
     /// Reads subsequent blocks (fragments) from the image.
     /// Corresponds to 2nd loop of s2kdie importimage()
     fn load_tails (&mut self, contents: &[u8]) -> &mut Self {
-        let (startb, endb, _, _, _) = get_model_parameters(&self.model);
+        let (startb, endb, _, _, _) = get_model_parameters(&M);
         // Map of fragments
         let tmap = &contents[startb..endb-startb];
         let mut block_count = 0;
@@ -243,8 +257,8 @@ impl<const N: usize> DiskFiles<N> {
             if (tmap[i] == 0x00 && tmap[i+1] == 0x80) || (tmap[i] == 0x00 && tmap[i+1] == 0xC0) {
                 block_count += 1;
             } else {
-                let block_index = u16::from_le_bytes([tmap[i], tmap[i+1]]);
-                let block_data  = &contents[block_index as usize..1024];
+                let block_index = u16::from_le_bytes([tmap[i], tmap[i+1]]) * 1024;
+                let block_data  = &contents[block_index as usize..block_index as usize + 1024];
                 self.data[block_count].append(&mut block_data.to_vec());
             }
         }
