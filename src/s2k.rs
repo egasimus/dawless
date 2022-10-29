@@ -185,13 +185,15 @@ impl DiskLoad<{ DeviceModel::S3000 }, 1638400, 512> for DiskImage<{ DeviceModel:
 const BLOCK_SIZE: usize = 1024;
 const MAX_BLOCKS: usize = 1536;
 const HEADER_LEN: usize = 24;
+const LABEL_SIZE: usize = 26;
 
 #[derive(Debug)]
 pub struct DiskFiles<const M: DeviceModel, const N: usize> {
-    head:   Vec<[u8; HEADER_LEN]>,
-    size:   Vec<u32>,
-    data:   Vec<Vec<u8>>,
-    free:   usize
+    label: Vec<char>,
+    head:  Vec<[u8; HEADER_LEN]>,
+    size:  Vec<u32>,
+    data:  Vec<Vec<u8>>,
+    free:  usize
 }
 
 impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
@@ -199,16 +201,18 @@ impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
     /** Create a filesystem. */
     fn new () -> Self {
         Self {
-            head:   Vec::with_capacity(N),
-            size:   Vec::with_capacity(N),
-            data:   Vec::with_capacity(N),
-            free:   0
+            label: Vec::with_capacity(LABEL_SIZE),
+            head:  Vec::with_capacity(N),
+            size:  Vec::with_capacity(N),
+            data:  Vec::with_capacity(N),
+            free:  0
         }
     }
 
     /** Create a filesystem and populate it with data from a disk image. */
     fn load (contents: &[u8]) -> Self {
         let mut fs = Self::new();
+        fs.label = contents[4736..4736+12].iter().map(|c| CHARACTERS[*c as usize]).collect();
         fs.load_heads(contents);
         fs.load_tails(contents);
         fs
@@ -267,8 +271,7 @@ impl<const M: DeviceModel, const N: usize> DiskFiles<M, N> {
 
 }
 
-fn guess_model (contents: &[u8]) -> DeviceModel {
-    let volname = &contents[4736..26];
+fn guess_model (volname: &[u8; 24]) -> DeviceModel {
     match volname[23] {
         0x00 => DeviceModel::S900,
         0x17 => DeviceModel::S2000,
