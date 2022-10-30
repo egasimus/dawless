@@ -5,7 +5,7 @@ pub trait DeviceDisk<const M: DeviceModel> {
     /** Create and format an empty disk. */
     fn blank_disk (&self) -> DiskImage<M> {
         let mut disk = DiskImage::new(
-            Vec::with_capacity(Self::disk_size()),
+            vec![0u8; Self::disk_size()],
             Self::label_start(),
             Self::header_start(),
             Self::max_entries(),
@@ -144,7 +144,7 @@ pub struct FileHeader {
     /// Size of file in bytes
     size:  u32,
     /// Address of first block
-    start: u32,
+    start: u16,
 }
 
 fn load_headers (raw: &[u8], max: usize) -> Vec<FileHeader> {
@@ -170,7 +170,7 @@ impl FileHeader {
                 name:  u8_to_string(&head[..12]),
                 kind:  file_type(head[0x10]),
                 size:  u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]),
-                start: u32::from_le_bytes([head[0x14], head[0x15], 0x00, 0x00]),
+                start: u16::from_le_bytes([head[0x14], head[0x15]]),
             })
         }
     }
@@ -250,25 +250,44 @@ impl<const M: DeviceModel> DiskImage<M> {
         println!("\nLabel: {}", self.label);
         println!("Files:");
         for (i, header) in self.headers.iter().enumerate() {
-            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x}: {:?}", i, header.name, header.size, header.start, header.kind);
-            let mut block_index = Some(header.start);
-            while block_index.is_some() {
-                let index = block_index.unwrap() as usize;
-                let dump0 = self.blocks[index][0..256].into_braille_dump();
-                let dump1 = self.blocks[index][256..512].into_braille_dump();
-                let dump2 = self.blocks[index][512..768].into_braille_dump();
-                let dump3 = self.blocks[index][768..1024].into_braille_dump();
-                println!("     0x{:04x} {: >4}", index, &dump0);
-                println!("            {: >4}", &dump1);
-                println!("            {: >4}", &dump2);
-                println!("            {: >4}", &dump3);
-                block_index = match self.table[index] {
-                    FileTableEntry::Next(index) => Some(index as u32),
-                    _ => None
-                };
-            }
+            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x} is a {:?}", i, header.name, header.size, header.start, header.kind);
+            let data = self.read_file(header.start, header.size);
+            //let mut block_index = Some(header.start);
+            //while block_index.is_some() {
+                //let index = block_index.unwrap() as usize;
+                //let dump0 = self.blocks[index][0..256].into_braille_dump();
+                //let dump1 = self.blocks[index][256..512].into_braille_dump();
+                //let dump2 = self.blocks[index][512..768].into_braille_dump();
+                //let dump3 = self.blocks[index][768..1024].into_braille_dump();
+                //println!("     0x{:04x} {: >4}", index, &dump0);
+                //println!("            {: >4}", &dump1);
+                //println!("            {: >4}", &dump2);
+                //println!("            {: >4}", &dump3);
+                //block_index = match self.table[index] {
+                    //FileTableEntry::Next(index) => Some(index as u16),
+                    //_ => None
+                //};
+            //}
         }
         self
+    }
+
+    pub fn read_file (&self, mut start: u16, size: u32) -> Vec<u8> {
+        let mut data      = vec![0u8; size as usize];
+        let mut remaining = size as usize;
+        let mut index     = 0;
+        while remaining > 0 {
+            println!("     block 0x{:04x}, remaining: {}", start, remaining);
+            let block = self.blocks[start as usize];
+            let count = put_vec(&mut data, index, &block[..usize::min(remaining, 1024)]);
+            index     += count;
+            remaining = remaining.saturating_sub(count);
+            match self.table[start as usize] {
+                FileTableEntry::Next(block) => start = block,
+                _ => break
+            }
+        }
+        data
     }
 
     pub fn add_sample (self, name: &str, data: &[u8]) -> Self {
@@ -352,7 +371,8 @@ pub trait DiskSamples {
         let (channels, sample_rate) = Self::validate_sample(data);
         let contents = &data[44..];
         let length = (contents.len() as u32).to_le_bytes();
-        let mut output: Vec<u8> = Vec::with_capacity(header_length + contents.len());
+        let max = header_length + contents.len();
+        let mut output = vec![0x00; max];
         output[0x00] = 0x03; // format (S3000)
         let channels = data[22];
         if channels != 1 {
@@ -362,7 +382,7 @@ pub trait DiskSamples {
         output[0x02] = 0x3C;     // original pitch
         // name
         let name_akai = str_to_name(name);
-        put(&mut output, 0x03, &name_akai[..12]);
+        put_vec_max(max, &mut output, 0x03, &name_akai[..12]);
         output[0x0f] = 0x80; // valid
         output[0x10] = 0x01; // loops
         output[0x11] = 0x00; // first loop
@@ -371,17 +391,17 @@ pub trait DiskSamples {
         output[0x14] = 0x00; // tune cent
         output[0x15] = 0x00; // tune semi
         // data abs. start addr. (internal?)
-        put(&mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
+        put_vec_max(max, &mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
         // set sample length
-        put(&mut output, 0x1a, &length);
+        put_vec_max(max, &mut output, 0x1a, &length);
         // set sample start
-        put(&mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
+        put_vec_max(max, &mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
         // set sample end
-        put(&mut output, 0x22, &length);
+        put_vec_max(max, &mut output, 0x22, &length);
         // set sample rate
-        put(&mut output, 0x8a, &sample_rate.to_le_bytes());
+        put_vec_max(max, &mut output, 0x8a, &sample_rate.to_le_bytes());
         // copy sample data
-        put(&mut output, header_length, &contents);
+        put_vec_max(max, &mut output, header_length, &contents);
 
         self.add_file(name_akai, &output)
     }
@@ -403,15 +423,48 @@ pub trait DiskSamples {
 }
 
 /// Fill a buffer with content starting from offset.
-fn put (buffer: &mut [u8], offset: usize, content: &[u8]) {
+#[inline]
+fn put (buffer: &mut [u8], offset: usize, content: &[u8]) -> usize {
+    let mut count = 0;
     for (index, value) in content.iter().enumerate() {
         if offset + index >= buffer.len() {
             break
         }
-        buffer[offset + index] = *value
+        count += 1;
+        buffer[offset + index] = *value;
     }
+    count
 }
 
+/// Fill a vector with content starting from offset.
+#[inline]
+fn put_vec (buffer: &mut Vec<u8>, offset: usize, content: &[u8]) -> usize {
+    let mut count = 0;
+    for (index, value) in content.iter().enumerate() {
+        if offset + index >= buffer.len() {
+            break
+        }
+        count += 1;
+        buffer[offset + index] = *value;
+    }
+    count
+}
+
+/// Fill a vector with content starting from offset.
+#[inline]
+fn put_vec_max (max: usize, buffer: &mut Vec<u8>, offset: usize, content: &[u8]) -> usize {
+    let mut count = 0;
+    for (index, value) in content.iter().enumerate() {
+        if offset + index >= max {
+            break
+        }
+        count += 1;
+        buffer[offset + index] = *value;
+    }
+    count
+}
+
+/// Split a slice into blocks of 1024 bytes
 fn as_blocks (data: &[u8]) -> Vec<[u8; 1024]> {
     let mut blocks = vec![];
     let mut pointer = 0;
