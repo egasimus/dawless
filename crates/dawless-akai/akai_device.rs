@@ -21,33 +21,9 @@ pub fn akai_s3000 () -> Device<{ DeviceModel::S3000 }> {
     Device
 }
 
-impl DeviceDisk<{ DeviceModel::S900 }, 819200> for Device<{ DeviceModel::S900 }>  {
-    fn disk (&self) -> DiskImage<{ DeviceModel::S900 }, 819200> {
-        let mut image = DiskImage { data: Vec::with_capacity(819200) };
-        image.blank();
-        image
-    }
-}
-
-impl DeviceDisk<{ DeviceModel::S2000 }, 1638400> for Device<{ DeviceModel::S2000 }> {
-    fn disk (&self) -> DiskImage<{ DeviceModel::S2000 }, 1638400> {
-        let mut image = DiskImage { data: Vec::with_capacity(1638400) };
-        image.blank();
-        image
-    }
-}
-
-impl DeviceDisk<{ DeviceModel::S3000 }, 1638400> for Device<{ DeviceModel::S3000 }> {
-    fn disk (&self) -> DiskImage<{ DeviceModel::S3000 }, 1638400> {
-        let mut image = DiskImage { data: Vec::with_capacity(1638400) };
-        image.blank();
-        image
-    }
-}
-
-impl DiskBlank<819200> for DiskImage<{ DeviceModel::S900 }, 819200> {
-    fn data_mut (&mut self) -> &mut Vec<u8> {
-        &mut self.data
+impl DeviceDisk<{ DeviceModel::S900 }> for Device<{ DeviceModel::S900 }>  {
+    fn capacity () -> usize {
+        819200
     }
     fn section1 (&self) -> [u8; 24] {
         [
@@ -57,13 +33,28 @@ impl DiskBlank<819200> for DiskImage<{ DeviceModel::S900 }, 819200> {
         ]
     }
     fn section4 (&self) -> [u8; 372] {
-        unreachable!("S900 images have no dp4 section")
+        unreachable!("S900 images have no section4")
+    }
+    fn fat_start () -> usize {
+        1536
+    }
+    fn fat_end () -> usize {
+        3136
+    }
+    fn fat_offset () -> usize {
+        0
+    }
+    fn fat_max_entries () -> usize {
+        64
+    }
+    fn fat_max_blocks () -> usize {
+        796
     }
 }
 
-impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S2000 }, 1638400> {
-    fn data_mut (&mut self) -> &mut Vec<u8> {
-        &mut self.data
+impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {
+    fn capacity () -> usize {
+        1638400
     }
     fn section1 (&self) -> [u8; 24] {
         [
@@ -81,11 +72,26 @@ impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S2000 }, 1638400> {
         data[..DP4_S2000.len()].copy_from_slice(&DP4_S2000);
         data
     }
+    fn fat_start () -> usize {
+        1570
+    }
+    fn fat_end () -> usize {
+        3166
+    }
+    fn fat_offset () -> usize {
+        5120
+    }
+    fn fat_max_entries () -> usize {
+        512
+    }
+    fn fat_max_blocks () -> usize {
+        1583
+    }
 }
 
-impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S3000 }, 1638400> {
-    fn data_mut (&mut self) -> &mut Vec<u8> {
-        &mut self.data
+impl DeviceDisk<{ DeviceModel::S3000 }> for Device<{ DeviceModel::S3000 }> {
+    fn capacity () -> usize {
+        1638400
     }
     fn section1 (&self) -> [u8; 24] {
         [
@@ -103,21 +109,21 @@ impl DiskBlank<1638400> for DiskImage<{ DeviceModel::S3000 }, 1638400> {
         data[..DP4_S3000.len()].copy_from_slice(&DP4_S3000);
         data
     }
-}
-
-pub fn get_model_parameters (model: &DeviceModel) -> (usize, usize, usize, usize, usize) {
-    // Start of header
-    let startb  = match model { DeviceModel::S900 => 1536, _ => 1570 };
-    // End of header
-    let endb    = match model { DeviceModel::S900 => 3136, _ => 3166 };
-    // Offset of file table
-    let offset  = match model { DeviceModel::S900 => 0,    _ => 5120 };
-    // Number of entries in file table
-    let entries = match model { DeviceModel::S900 => 64,   _ => 512  };
-    // Free block(s?)
-    let fb      = match model { DeviceModel::S900 => 796,  _ => 1583 };
-
-    (startb, endb, offset, entries, fb)
+    fn fat_start () -> usize {
+        1570
+    }
+    fn fat_end () -> usize {
+        3166
+    }
+    fn fat_offset () -> usize {
+        5120
+    }
+    fn fat_max_entries () -> usize {
+        512
+    }
+    fn fat_max_blocks () -> usize {
+        1583
+    }
 }
 
 pub fn guess_model (volname: &[u8; 24]) -> DeviceModel {

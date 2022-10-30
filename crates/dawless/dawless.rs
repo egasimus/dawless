@@ -6,7 +6,7 @@ use tabwriter::TabWriter;
 fn main () {
     let args  = std::env::args().collect::<Vec<String>>();
     let data  = read(&args[1]);
-    let disk  = akai_s3000().load(&data);
+    let disk  = akai_s3000().load_disk(&data);
     let files = disk.list(&data);
 
     if files.len() > 0 {
