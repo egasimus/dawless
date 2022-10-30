@@ -9,3 +9,10 @@ pub const AKAI_CHARSET: [char; 41] = [
 pub fn u8_to_string (chars: &[u8]) -> String {
     chars.iter().map(|x| AKAI_CHARSET[*x as usize]).collect()
 }
+
+pub fn str_to_name (chars: &str) -> Vec<u8> {
+    let to_akai_char = |x: char| match AKAI_CHARSET.iter().position(|&y|y==x.to_ascii_uppercase()) {
+        Some(z) => z, None => 10,
+    } as u8;
+    chars.chars().map(to_akai_char).collect()
+}

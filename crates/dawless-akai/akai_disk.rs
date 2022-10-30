@@ -52,6 +52,8 @@ pub trait DeviceDisk<const M: DeviceModel> {
         disk
     }
 
+    fn fat_max_entries () -> usize;
+
     fn fat_label_offset () -> usize {
         4736
     }
@@ -91,8 +93,6 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     fn fat_offset () -> usize;
 
-    fn fat_max_entries () -> usize;
-
     fn fat_max_blocks  () -> usize;
 
     /// Reads subsequent blocks (fragments) from the image.
@@ -124,18 +124,18 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
 #[derive(Debug)]
 pub struct DiskImage<const M: DeviceModel> {
-    raw:   Vec<u8>,
-    label: String,
-    head:  Vec<[u8; 24]>,
-    size:  Vec<u32>,
-    data:  Vec<Vec<u8>>,
-    free:  usize
+    pub(crate) raw:   Vec<u8>,
+    pub(crate) label: String,
+    pub(crate) head:  Vec<[u8; 24]>,
+    pub(crate) size:  Vec<u32>,
+    pub(crate) data:  Vec<Vec<u8>>,
+    pub(crate) free:  usize
 }
 
 impl<const M: DeviceModel> DiskImage<M> {
 
     /** Create a filesystem. */
-    fn new (raw: Vec<u8>, max_entries: usize) -> Self {
+    pub fn new (raw: Vec<u8>, max_entries: usize) -> Self {
         Self {
             raw,
             label: String::new(),
@@ -146,6 +146,7 @@ impl<const M: DeviceModel> DiskImage<M> {
         }
     }
 
+    /** List all files in the filesystem. */
     pub fn list (&self) -> Vec<Sample> {
         let mut samples = vec![];
         for i in 0..self.head.len() {
@@ -182,4 +183,81 @@ impl<const M: DeviceModel> DiskImage<M> {
         samples
     }
 
+}
+
+pub trait DiskSamples {
+
+    fn header_length () -> usize;
+
+    fn add_sample (&mut self, name: &str, data: &[u8]) -> &mut Self {
+
+        let header_length = Self::header_length();
+
+        let compression = data[20];
+        if compression != 1 {
+            panic!("uncompressed wavs only")
+        }
+
+        let samplerate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
+        if samplerate != 44100 {
+            panic!("44.1kHz wavs only")
+        }
+
+        let bitrate = data[34];
+        if bitrate != 16 {
+            panic!("16-bit wavs only")
+        }
+
+        let contents = &data[44..];
+        let mut output: Vec<u8> = Vec::with_capacity(header_length + contents.len());
+
+        output[0x00] = 0x03; // format (S3000)
+
+        let channels = data[22];
+        if channels != 1 {
+            panic!("mono wavs only")
+        }
+        output[0x01] = channels; // channels
+        output[0x02] = 0x3C;     // original pitch
+        
+        // name
+        put(&mut output, 0x03, &str_to_name(name)[..12]);
+
+        output[0x0f] = 0x80; // valid
+        output[0x10] = 0x01; // loops
+        output[0x11] = 0x00; // first loop
+        output[0x12] = 0x00; // dummy
+        output[0x13] = 0x02; // don't loop
+        output[0x14] = 0x00; // tune cent
+        output[0x15] = 0x00; // tune semi
+
+        // data abs. start addr. (internal?)
+        put(&mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
+
+        let length = (contents.len() as u32).to_le_bytes();
+
+        // set sample length
+        put(&mut output, 0x1a, &length);
+
+        // set sample start
+        put(&mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
+
+        // set sample end
+        put(&mut output, 0x22, &length);
+
+        // set sample rate
+        put(&mut output, 0x8a, &(44100 as u16).to_le_bytes());
+
+        // copy sample data
+        put(&mut output, header_length, &contents);
+
+        self
+    }
+
+}
+
+fn put (output: &mut [u8], offset: usize, data: &[u8]) {
+    for (index, value) in data.iter().enumerate() {
+        output[offset + index] = *value
+    }
 }

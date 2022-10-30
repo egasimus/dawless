@@ -5,6 +5,7 @@ pub struct Device<const M: DeviceModel>;
 #[derive(PartialEq, Eq)]
 pub enum DeviceModel {
     S900,
+    S1000,
     S2000,
     S3000
 }
@@ -132,5 +133,23 @@ pub fn guess_model (volname: &[u8; 24]) -> DeviceModel {
         0x17 => DeviceModel::S2000,
         0x16 => DeviceModel::S3000,
         _ => panic!("could not determine device model from image data")
+    }
+}
+
+impl DiskSamples for DiskImage<{ DeviceModel::S900 }> {
+    fn header_length () -> usize {
+        0x3c
+    }
+}
+
+impl DiskSamples for DiskImage<{ DeviceModel::S2000 }> {
+    fn header_length () -> usize {
+        0xbe
+    }
+}
+
+impl DiskSamples for DiskImage<{ DeviceModel::S3000 }> {
+    fn header_length () -> usize {
+        0xbe
     }
 }
