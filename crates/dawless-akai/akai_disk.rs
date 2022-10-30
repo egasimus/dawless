@@ -205,10 +205,13 @@ fn load_table (raw: &[u8], start: usize, end: usize) -> Vec<FileTableEntry> {
             }
         }
     }
+    blocks[0] = FileTableEntry::Reserved;
+    blocks[1] = FileTableEntry::Reserved;
+    blocks[2] = FileTableEntry::Reserved;
     blocks
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum FileTableEntry {
     Free,
     Reserved,
@@ -277,10 +280,10 @@ impl<const M: DeviceModel> DiskImage<M> {
         let mut remaining = size as usize;
         let mut index     = 0;
         while remaining > 0 {
-            println!("     block 0x{:04x}, remaining: {}", start, remaining);
+            //println!("     block {}, remaining: {}, next: {:?}", start, remaining, self.table[start as usize]);
             let block = self.blocks[start as usize];
             let count = put_vec(&mut data, index, &block[..usize::min(remaining, 1024)]);
-            index     += count;
+            index += count;
             remaining = remaining.saturating_sub(count);
             match self.table[start as usize] {
                 FileTableEntry::Next(block) => start = block,
@@ -291,12 +294,88 @@ impl<const M: DeviceModel> DiskImage<M> {
     }
 
     pub fn add_sample (self, name: &str, data: &[u8]) -> Self {
-        self.add_file(name, FileType::S3000Sample)
+        let header_length = 0xbe;
+        let compression = data[20];
+        if compression != 1 {
+            panic!("uncompressed wavs only")
+        }
+        let bitrate = data[34];
+        if bitrate != 16 {
+            panic!("16-bit wavs only")
+        }
+        let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
+        if sample_rate != 44100 {
+            panic!("44.1kHz wavs only")
+        }
+        let channels = data[22];
+        if channels != 1 {
+            panic!("mono wavs only")
+        }
+        let contents = &data[44..];
+        let length = (contents.len() as u32).to_le_bytes();
+        let max = header_length + contents.len();
+        let mut output = vec![0x00; max];
+        output[0x00] = 0x03; // format (S3000)
+        let channels = data[22];
+        if channels != 1 {
+            panic!("mono wavs only")
+        }
+        output[0x01] = channels; // channels
+        output[0x02] = 0x3C;     // original pitch
+        // name
+        let name_akai = str_to_name(name);
+        put_vec(&mut output, 0x03, &name_akai[..usize::min(name_akai.len(), 12)]);
+        output[0x0f] = 0x80; // valid
+        output[0x10] = 0x01; // loops
+        output[0x11] = 0x00; // first loop
+        output[0x12] = 0x00; // dummy
+        output[0x13] = 0x02; // don't loop
+        output[0x14] = 0x00; // tune cent
+        output[0x15] = 0x00; // tune semi
+        // data abs. start addr. (internal?)
+        put_vec(&mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
+        // set sample length
+        put_vec(&mut output, 0x1a, &length);
+        // set sample start
+        put_vec(&mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
+        // set sample end
+        put_vec(&mut output, 0x22, &length);
+        // set sample rate
+        put_vec(&mut output, 0x8a, &sample_rate.to_le_bytes());
+        // copy sample data
+        put_vec(&mut output, header_length, &contents);
+
+        self.add_file(name.into(), FileType::S3000Sample, &output)
     }
 
-    pub fn add_file (mut self, name: &str, kind: FileType) -> Self {
-        self.headers.push(FileHeader { name: name.into(), kind, size: 0, start: 0 });
+    pub fn add_file (mut self, name: &str, kind: FileType, data: &[u8]) -> Self {
+        let start = 0x03;
+        self.headers.push(FileHeader {
+            name: name.into(), kind, size: data.len() as u32, start
+        });
+        self.write_blocks(start, data)
+    }
+
+    fn write_blocks (mut self, mut index: u16, data: &[u8]) -> Self {
+        let mut new_blocks: std::collections::VecDeque<[u8; 1024]> = as_blocks(data).into();
+        while let Some(block) = new_blocks.pop_front() {
+            self.blocks[index as usize] = block;
+            match self.table.iter().position(|x| *x == FileTableEntry::Free) {
+                Some(found) => {
+                    println!("next block: {found}");
+                    self.table[index as usize] = FileTableEntry::Next(found as u16);
+                    index = found as u16
+                },
+                None => panic!("ran out of free blocks")
+            }
+        }
+        self.table[index as usize] = FileTableEntry::EOF;
         self
+    }
+
+    fn write_disk (self) -> Vec<u8> {
+        let data = vec![0x00; 1638400];
+        data
     }
 
     /*
