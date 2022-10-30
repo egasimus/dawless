@@ -8,7 +8,11 @@ fn main () {
     //print_files(akai.load_disk(read(&args[1])).list().iter());
     //print_files(akai.blank_disk().list().iter());
 
-    akai_s3000().load_disk(read(&args[1])).list_files();
+    akai_s3000()
+        .load_disk(read(&args[1]))
+        .list_files()
+        .add_sample("140VEC3BB1", &read(&args[2]))
+        .list_files();
 
     //let disk = akai_s3000()
         //.blank_disk()

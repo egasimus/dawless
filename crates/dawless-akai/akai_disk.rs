@@ -138,13 +138,13 @@ pub trait DeviceDisk<const M: DeviceModel> {
 #[derive(Debug)]
 pub struct FileHeader {
     /// Name of file
-    name: String,
+    name:  String,
     /// Type of file
-    kind: FileType,
+    kind:  FileType,
     /// Size of file in bytes
-    size: u32,
+    size:  u32,
     /// Address of first block
-    data: u32,
+    start: u32,
 }
 
 fn load_headers (raw: &[u8], max: usize) -> Vec<FileHeader> {
@@ -167,10 +167,10 @@ impl FileHeader {
         } else {
             let head = &raw[offset..offset+24];
             Some(Self {
-                name: u8_to_string(&head[..12]),
-                kind: file_type(head[0x10]),
-                size: u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]),
-                data: u32::from_le_bytes([head[0x14], head[0x15], 0x00, 0x00]),
+                name:  u8_to_string(&head[..12]),
+                kind:  file_type(head[0x10]),
+                size:  u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]),
+                start: u32::from_le_bytes([head[0x14], head[0x15], 0x00, 0x00]),
             })
         }
     }
@@ -244,12 +244,22 @@ impl<const M: DeviceModel> DiskImage<M> {
         }
     }
 
-    pub fn list_files (&self) {
+    pub fn list_files (self) -> Self {
         println!("Label: {}", self.label);
         println!("Files:");
         for (i, header) in self.headers.iter().enumerate() {
-            println!("{} {} {:?} {} {}", i, header.name, header.kind, header.size, header.data)
+            println!("{: >4} {:<12} 0x{:04x} {:>8} {:?}", i, header.name, header.start, header.size, header.kind)
         }
+        self
+    }
+
+    pub fn add_sample (self, name: &str, data: &[u8]) -> Self {
+        self.add_file(name, FileType::S3000Sample)
+    }
+
+    pub fn add_file (mut self, name: &str, kind: FileType) -> Self {
+        self.headers.push(FileHeader { name: name.into(), kind, size: 0, start: 0 });
+        self
     }
 
     /*
