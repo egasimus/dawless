@@ -176,30 +176,30 @@ impl FileHeader {
     }
 }
 
-fn load_blocks (raw: &[u8], start: usize, end: usize) -> Vec<FileBlock> {
+fn load_table (raw: &[u8], start: usize, end: usize) -> Vec<FileTableEntry> {
     let table = &raw[start..end];
     let mut blocks = Vec::with_capacity(table.len() / 2);
     for address in (0..table.len()).step_by(2) {
         match (table[address], table[address+1]) {
             // reserved for system
             (0x00, 0x00) => {
-                blocks.push(FileBlock::Free);
+                blocks.push(FileTableEntry::Free);
             },
             // reserved for system
             (0x00, 0x40) => {
-                blocks.push(FileBlock::Reserved);
+                blocks.push(FileTableEntry::Reserved);
             },
             // reserved for 2nd file entry
             (0x00, 0x80) => {
-                blocks.push(FileBlock::Reserved2);
+                blocks.push(FileTableEntry::Reserved2);
             },
             // end of file
             (0x00, 0xc0) => {
-                blocks.push(FileBlock::EOF);
+                blocks.push(FileTableEntry::EOF);
             },
             // file continues at
             _ => {
-                blocks.push(FileBlock::Next(
+                blocks.push(FileTableEntry::Next(
                     u16::from_le_bytes([table[address], table[address+1]])
                 ))
             }
@@ -209,7 +209,7 @@ fn load_blocks (raw: &[u8], start: usize, end: usize) -> Vec<FileBlock> {
 }
 
 #[derive(Debug)]
-pub enum FileBlock {
+pub enum FileTableEntry {
     Free,
     Reserved,
     Reserved2,
@@ -222,7 +222,8 @@ pub struct DiskImage<const M: DeviceModel> {
     pub raw:     Vec<u8>,
     pub label:   String,
     pub headers: Vec<FileHeader>,
-    pub table:   Vec<FileBlock>,
+    pub table:   Vec<FileTableEntry>,
+    pub blocks:  Vec<[u8; 1024]>
 }
 
 impl<const M: DeviceModel> DiskImage<M> {
@@ -239,16 +240,33 @@ impl<const M: DeviceModel> DiskImage<M> {
         Self {
             label:   u8_to_string(&raw[label_start..label_start+12]),
             headers: load_headers(&raw.as_slice()[header_start..], max_entries),
-            table:   load_blocks(&raw.as_slice(), fat_start, fat_end),
+            table:   load_table(&raw.as_slice(), fat_start, fat_end),
+            blocks:  as_blocks(&raw),
             raw,
         }
     }
 
     pub fn list_files (self) -> Self {
-        println!("Label: {}", self.label);
+        println!("\nLabel: {}", self.label);
         println!("Files:");
         for (i, header) in self.headers.iter().enumerate() {
-            println!("{: >4} {:<12} 0x{:04x} {:>8} {:?}", i, header.name, header.start, header.size, header.kind)
+            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x}: {:?}", i, header.name, header.start, header.size, header.kind);
+            let mut block_index = Some(header.start);
+            while block_index.is_some() {
+                let index = block_index.unwrap() as usize;
+                let dump0 = self.blocks[index][0..256].into_braille_dump();
+                let dump1 = self.blocks[index][256..512].into_braille_dump();
+                let dump2 = self.blocks[index][512..768].into_braille_dump();
+                let dump3 = self.blocks[index][768..1024].into_braille_dump();
+                println!("     0x{:04x} {: >4}", index, &dump0);
+                println!("            {: >4}", &dump1);
+                println!("            {: >4}", &dump2);
+                println!("            {: >4}", &dump3);
+                block_index = match self.table[index] {
+                    FileTableEntry::Next(index) => Some(index as u32),
+                    _ => None
+                };
+            }
         }
         self
     }
@@ -394,7 +412,7 @@ fn put (buffer: &mut [u8], offset: usize, content: &[u8]) {
     }
 }
 
-fn into_blocks (data: &[u8]) -> Vec<[u8; 1024]> {
+fn as_blocks (data: &[u8]) -> Vec<[u8; 1024]> {
     let mut blocks = vec![];
     let mut pointer = 0;
     while pointer < data.len() {
