@@ -179,7 +179,7 @@ impl<const M: DeviceModel> DiskFiles<M> {
                 println!("offset    {:02x}", data[0x8c]);
                 samples.push(Sample {
                     name:        name,
-                    size:        0,
+                    size:        size as u32,
                     data:        &[],
                     sample_rate: SampleRate::Hz22050,
                     loop_mode:   LoopMode::Normal,
