@@ -256,3 +256,13 @@ pub const CHARSET: [char; 256] = [
     '⢿', // 0xFE	
     '⣿', // 0xFF
 ];
+
+pub trait BrailleDump<'a>: std::iter::IntoIterator<Item = &'a u8> + Sized {
+    fn into_braille_dump (self) -> String {
+        self.into_iter().map(|x| CHARSET[*x as usize]).collect()
+    }
+}
+
+impl<'a> BrailleDump<'a> for &'a [u8] {}
+
+impl<'a, const N: usize> BrailleDump<'a> for &'a [u8; N] {}
