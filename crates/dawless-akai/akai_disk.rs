@@ -250,7 +250,7 @@ impl<const M: DeviceModel> DiskImage<M> {
         println!("\nLabel: {}", self.label);
         println!("Files:");
         for (i, header) in self.headers.iter().enumerate() {
-            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x}: {:?}", i, header.name, header.start, header.size, header.kind);
+            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x}: {:?}", i, header.name, header.size, header.start, header.kind);
             let mut block_index = Some(header.start);
             while block_index.is_some() {
                 let index = block_index.unwrap() as usize;
