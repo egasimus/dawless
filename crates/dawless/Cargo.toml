@@ -9,3 +9,4 @@ path = "dawless.rs"
 
 [dependencies]
 dawless-akai = { path = "../dawless-akai" }
+tabwriter = "1.2.1"
