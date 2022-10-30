@@ -1,4 +1,7 @@
 [workspace]
 members = [
-  "crates/*"
+  "crates/brailledump",
+  "crates/dawless",
+  "crates/dawless-akai",
+  "crates/hfe",
 ]

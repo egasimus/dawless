@@ -39,6 +39,9 @@ dependencies = [
 [[package]]
 name = "dawless-akai"
 version = "1.0.0"
+dependencies = [
+ "brailledump",
+]
 
 [[package]]
 name = "either"

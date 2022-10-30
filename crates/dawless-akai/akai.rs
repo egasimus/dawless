@@ -8,9 +8,8 @@ macro_rules! module {
 }
 
 module!(akai_string);
-module!(akai_devices);
+module!(akai_device);
 module!(akai_disk);
-module!(akai_disk_blank);
-module!(akai_disk_load);
-module!(akai_disk_files);
-module!(akai_sample);
+module!(akai_file);
+
+pub(crate) use brailledump::BrailleDump;

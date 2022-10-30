@@ -384,17 +384,21 @@ while (($rl != "QUIT") and ($rl != "EXIT") and ($rl != "Q")) {
 
         if (substr($rl, 0, 2) == "SD") {
 		$args = explode(" ", $rl);
-		if ($file[$args[1]][0] == chr(3)) {
-			print "\nSHNAME: " . ak2as(substr($file[$args[1]],3,12)) . "\n";
+    if ($file[$args[1]][0] == chr(3)) {
+
+      print "\nSHNAME: " . ak2as(substr($file[$args[1]],3,12)) . "\n";
+
 			print "SBANDW: ";
 			if ($file[$args[1]][1] == chr(0)) {
 				print "22050Hz";
 			}
 			if ($file[$args[1]][1] == chr(1)) {
 				print "44100Hz";
-			}
+      }
+
 			print "\n";
-			print "SPITCH: " . tonote($file[$args[1]][2]) . "\n";
+      print "SPITCH: " . tonote($file[$args[1]][2]) . "\n";
+
 			print "SPTYPE: ";
 			if  ($file[$args[1]][19] == chr(0)) {
 				print "normal looping";
@@ -407,7 +411,8 @@ while (($rl != "QUIT") and ($rl != "EXIT") and ($rl != "Q")) {
 			}
 			if  ($file[$args[1]][19] == chr(3)) {
 				print "play to sample end";
-			}
+      }
+
 			print "\n STUNO: ";
 			$pm = "+";
 			$semi = ord($file[$args[1]][21]);
@@ -420,7 +425,8 @@ while (($rl != "QUIT") and ($rl != "EXIT") and ($rl != "Q")) {
 				$cent = 256 - $cent;
 				$pm = "-";
 			}
-			print "Semi.Cent " . $pm . str_pad($semi,2,"0",STR_PAD_LEFT) . "." . str_pad($cent,2,"0",STR_PAD_LEFT) . "\n";
+      print "Semi.Cent " . $pm . str_pad($semi,2,"0",STR_PAD_LEFT) . "." . str_pad($cent,2,"0",STR_PAD_LEFT) . "\n";
+
 			$b4 = str_pad(dechex(ord($file[$args[1]][33])),2,"0",STR_PAD_LEFT);
 			$b3 = str_pad(dechex(ord($file[$args[1]][32])),2,"0",STR_PAD_LEFT);
 			$b2 = str_pad(dechex(ord($file[$args[1]][31])),2,"0",STR_PAD_LEFT);

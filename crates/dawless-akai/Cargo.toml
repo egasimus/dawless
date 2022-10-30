@@ -2,6 +2,10 @@
 name = "dawless-akai"
 version = "1.0.0"
 edition = "2021"
+description = "Support for AKAI S3000/S2000/S900 floppy disk images."
 
 [lib]
 path = "akai.rs"
+
+[dependencies]
+brailledump = { path = "../brailledump" }
