@@ -4,15 +4,14 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     /** Create and format an empty disk. */
     fn blank_disk (&self) -> DiskImage<M> {
-        let mut image = DiskImage { data: Vec::with_capacity(Self::capacity()) };
-        let index  = 0;
-        let index  = image.put_data(index, &self.section1());
-        let index  = image.put_data(index, &self.section2());
-        let index  = image.put_data(index, &self.section3());
-        let index  = image.put_data(index, &self.section4());
-        let index  = image.put_data(index, &self.section5());
-        let _index = image.put_data(index, &self.section6());
-        image
+        let mut raw = Vec::with_capacity(Self::capacity());
+        raw.extend_from_slice(&self.section1());
+        raw.extend_from_slice(&self.section2());
+        raw.extend_from_slice(&self.section3());
+        raw.extend_from_slice(&self.section4());
+        raw.extend_from_slice(&self.section5());
+        raw.extend_from_slice(&self.section6());
+        DiskImage::new(raw, Self::fat_max_entries())
     }
 
     fn capacity () -> usize;
@@ -44,12 +43,12 @@ pub trait DeviceDisk<const M: DeviceModel> {
     }
 
     /** Read the files from a disk image. */
-    fn load_disk (&self, raw: &Vec<u8>) -> DiskFiles<M> {
-        let mut disk = DiskFiles::new(Self::fat_max_entries());
+    fn load_disk (&self, raw: Vec<u8>) -> DiskImage<M> {
+        let mut disk = DiskImage::new(raw, Self::fat_max_entries());
         let label_offset = Self::fat_label_offset();
-        disk.label = u8_to_string(&raw[label_offset..label_offset+12]);
-        Self::load_disk_head(&mut disk, raw);
-        Self::load_disk_body(&mut disk, raw);
+        disk.label = u8_to_string(&disk.raw[label_offset..label_offset+12]);
+        Self::load_disk_head(&mut disk);
+        Self::load_disk_body(&mut disk);
         disk
     }
 
@@ -59,7 +58,8 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     /// Reads the metadata and 1st block of each file in the disk image.
     /// Corresponds to 1st loop of s2kdie importimage().
-    fn load_disk_head (disk: &mut DiskFiles<M>, raw: &[u8]) {
+    fn load_disk_head (disk: &mut DiskImage<M>) {
+        let raw = disk.raw.as_slice();
         let data_offset = Self::fat_offset();
         let max_entries = Self::fat_max_entries();
         let max_blocks  = Self::fat_max_blocks();
@@ -97,11 +97,11 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     /// Reads subsequent blocks (fragments) from the image.
     /// Corresponds to 2nd loop of s2kdie importimage()
-    fn load_disk_body (disk: &mut DiskFiles<M>, contents: &[u8]) {
+    fn load_disk_body (disk: &mut DiskImage<M>) {
         let startb = Self::fat_start();
         let endb   = Self::fat_end();
-        // Map of fragments
-        let tmap = &contents[startb..endb-startb];
+        let raw    = disk.raw.as_slice();
+        let tmap   = &raw[startb..endb-startb];
         let mut block_count = 0;
         for i in (0..tmap.len()).step_by(2) {
             if tmap[i] == 0x00 && tmap[i+1] == 0x00 {
@@ -111,7 +111,7 @@ pub trait DeviceDisk<const M: DeviceModel> {
                 block_count += 1;
             } else {
                 let block_index = u16::from_le_bytes([tmap[i], tmap[i+1]]) * 1024;
-                let block_data  = &contents[block_index as usize..block_index as usize + 1024];
+                let block_data  = &raw[block_index as usize..block_index as usize + 1024];
                 disk.data[block_count].append(&mut block_data.to_vec());
             }
         }
@@ -122,20 +122,9 @@ pub trait DeviceDisk<const M: DeviceModel> {
     fn fat_end () -> usize;
 }
 
-pub struct DiskImage<const M: DeviceModel> {
-    pub data: Vec<u8>
-}
-
-impl<const M: DeviceModel> DiskImage<M> {
-    fn put_data <const L: usize> (&mut self, index: usize, section: &[u8; L]) -> usize {
-        let length = section.len();
-        self.data[index..index+length].copy_from_slice(section);
-        index + length
-    }
-}
-
 #[derive(Debug)]
-pub struct DiskFiles<const M: DeviceModel> {
+pub struct DiskImage<const M: DeviceModel> {
+    raw:   Vec<u8>,
     label: String,
     head:  Vec<[u8; 24]>,
     size:  Vec<u32>,
@@ -143,20 +132,21 @@ pub struct DiskFiles<const M: DeviceModel> {
     free:  usize
 }
 
-impl<const M: DeviceModel> DiskFiles<M> {
+impl<const M: DeviceModel> DiskImage<M> {
 
     /** Create a filesystem. */
-    fn new (capacity: usize) -> Self {
+    fn new (raw: Vec<u8>, max_entries: usize) -> Self {
         Self {
+            raw,
             label: String::new(),
-            head:  Vec::with_capacity(capacity),
-            size:  Vec::with_capacity(capacity),
-            data:  Vec::with_capacity(capacity),
+            head:  Vec::with_capacity(max_entries),
+            size:  Vec::with_capacity(max_entries),
+            data:  Vec::with_capacity(max_entries),
             free:  0
         }
     }
 
-    pub fn list (&self, raw: &[u8]) -> Vec<Sample> {
+    pub fn list (&self) -> Vec<Sample> {
         let mut samples = vec![];
         for i in 0..self.head.len() {
             let head  = self.head[i];

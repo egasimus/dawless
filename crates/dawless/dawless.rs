@@ -4,14 +4,9 @@ use std::io::{Read, Write};
 use tabwriter::TabWriter;
 
 fn main () {
-    let args  = std::env::args().collect::<Vec<String>>();
-    let data  = read(&args[1]);
-    let disk  = akai_s3000().load_disk(&data);
-    let files = disk.list(&data);
-
-    if files.len() > 0 {
-        print_files(files.iter());
-    }
+    let args = std::env::args().collect::<Vec<String>>();
+    print_files(akai_s3000().load_disk(read(&args[1])).list().iter());
+    print_files(akai_s3000().blank_disk().list().iter());
 }
 
 fn print_files <'a> (files: impl Iterator<Item = &'a Sample<'a>>) {
