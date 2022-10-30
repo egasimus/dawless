@@ -7,9 +7,12 @@ fn main () {
     let args = std::env::args().collect::<Vec<String>>();
     //print_files(akai.load_disk(read(&args[1])).list().iter());
     //print_files(akai.blank_disk().list().iter());
-    let disk = akai_s3000()
-        .blank_disk()
-        .add_sample("140VEC3BB11", &read(&args[1]));
+
+    akai_s3000().load_disk(read(&args[1])).list_files();
+
+    //let disk = akai_s3000()
+        //.blank_disk()
+        //.add_sample("140VEC3BB11", &read(&args[1]));
 }
 
 fn print_files <'a> (files: impl Iterator<Item = &'a Sample<'a>>) {

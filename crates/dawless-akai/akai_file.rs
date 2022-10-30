@@ -1,4 +1,4 @@
-pub fn file_type (byte: &u8) -> FileType {
+pub fn file_type (byte: u8) -> FileType {
     match byte {
         0x00 => FileType::Deleted,
         0x63 => FileType::OS,

@@ -139,6 +139,8 @@ pub trait DeviceDisk<const M: DeviceModel> {
 pub struct FileHeader {
     /// Name of file
     name: String,
+    /// Type of file
+    kind: FileType,
     /// Size of file in bytes
     size: u32,
     /// Address of first block
@@ -146,11 +148,9 @@ pub struct FileHeader {
 }
 
 fn load_headers (raw: &[u8], max: usize) -> Vec<FileHeader> {
-    let mut last_block = 0;
-    let mut entry = 0;
-    let headers = vec![];
-    // Read up to `max_entries` FS records
-    while entry < max {
+    let mut headers = vec![];
+    // Read up to `max` FS records
+    for entry in 0..max {
         match FileHeader::read(raw, entry * 24) {
             Some(header) => headers.push(header),
             // Empty file header means we've reached the end
@@ -168,39 +168,40 @@ impl FileHeader {
             let head = &raw[offset..offset+24];
             Some(Self {
                 name: u8_to_string(&head[..12]),
-                size: u32::from_le_bytes([head[17], head[18], head[19], 0x00]),
-                data: u32::from_le_bytes([head[20], head[21], 0x00, 0x00]),
+                kind: file_type(head[0x10]),
+                size: u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]),
+                data: u32::from_le_bytes([head[0x14], head[0x15], 0x00, 0x00]),
             })
         }
     }
 }
 
 fn load_blocks (raw: &[u8], start: usize, end: usize) -> Vec<FileBlock> {
-    let table  = &raw[start..end-start];
-    let blocks = Vec::with_capacity(table.len() / 2);
-    for (index, address) in (0..table.len()).step_by(2).enumerate() {
+    let table = &raw[start..end];
+    let mut blocks = Vec::with_capacity(table.len() / 2);
+    for address in (0..table.len()).step_by(2) {
         match (table[address], table[address+1]) {
             // reserved for system
             (0x00, 0x00) => {
-                blocks[index] = FileBlock::Free;
+                blocks.push(FileBlock::Free);
             },
             // reserved for system
             (0x00, 0x40) => {
-                blocks[index] = FileBlock::Reserved;
+                blocks.push(FileBlock::Reserved);
             },
             // reserved for 2nd file entry
             (0x00, 0x80) => {
-                blocks[index] = FileBlock::Reserved2;
+                blocks.push(FileBlock::Reserved2);
             },
             // end of file
             (0x00, 0xc0) => {
-                blocks[index] = FileBlock::EOF;
+                blocks.push(FileBlock::EOF);
             },
             // file continues at
             _ => {
-                blocks[index] = FileBlock::Next(
+                blocks.push(FileBlock::Next(
                     u16::from_le_bytes([table[address], table[address+1]])
-                )
+                ))
             }
         }
     }
@@ -236,12 +237,22 @@ impl<const M: DeviceModel> DiskImage<M> {
         fat_end:      usize
     ) -> Self {
         Self {
-            raw,
             label:   u8_to_string(&raw[label_start..label_start+12]),
             headers: load_headers(&raw.as_slice()[header_start..], max_entries),
             table:   load_blocks(&raw.as_slice(), fat_start, fat_end),
+            raw,
         }
     }
+
+    pub fn list_files (&self) {
+        println!("Label: {}", self.label);
+        println!("Files:");
+        for (i, header) in self.headers.iter().enumerate() {
+            println!("{} {} {:?} {} {}", i, header.name, header.kind, header.size, header.data)
+        }
+    }
+
+    /*
 
     /** List all files in the filesystem. */
     pub fn list (&self) -> Vec<Sample> {
@@ -279,6 +290,8 @@ impl<const M: DeviceModel> DiskImage<M> {
         }
         samples
     }
+
+    */
 
 }
 
@@ -346,7 +359,7 @@ pub trait DiskSamples {
     }
 
     fn add_file (&mut self, name_akai: Vec<u8>, data: &[u8]) -> &mut Self {
-        let header = [0x00; 24];
+        let mut header = [0x00; 24];
         put(&mut header, 0x00, &name_akai[..12]);
         put(&mut header, 0x11, &data.len().to_le_bytes());
         put(&mut header, 0x11, &(0 as u32).to_le_bytes());
@@ -375,7 +388,7 @@ fn into_blocks (data: &[u8]) -> Vec<[u8; 1024]> {
     let mut blocks = vec![];
     let mut pointer = 0;
     while pointer < data.len() {
-        let block = [0; 1024];
+        let mut block = [0; 1024];
         put(&mut block, 0, &data[pointer..]);
         blocks.push(block);
         pointer += 1024;

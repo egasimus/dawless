@@ -42,13 +42,13 @@ impl DeviceDisk<{ DeviceModel::S900 }> for Device<{ DeviceModel::S900 }>  {
     fn fat_end () -> usize {
         3136
     }
-    fn fat_offset () -> usize {
+    fn header_start () -> usize {
         0
     }
-    fn fat_max_entries () -> usize {
+    fn max_entries () -> usize {
         64
     }
-    fn fat_max_blocks () -> usize {
+    fn max_blocks () -> usize {
         796
     }
 }
@@ -79,13 +79,13 @@ impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {
     fn fat_end () -> usize {
         3166
     }
-    fn fat_offset () -> usize {
+    fn header_start () -> usize {
         5120
     }
-    fn fat_max_entries () -> usize {
+    fn max_entries () -> usize {
         512
     }
-    fn fat_max_blocks () -> usize {
+    fn max_blocks () -> usize {
         1583
     }
 }
@@ -116,13 +116,13 @@ impl DeviceDisk<{ DeviceModel::S3000 }> for Device<{ DeviceModel::S3000 }> {
     fn fat_end () -> usize {
         3166
     }
-    fn fat_offset () -> usize {
+    fn header_start () -> usize {
         5120
     }
-    fn fat_max_entries () -> usize {
+    fn max_entries () -> usize {
         512
     }
-    fn fat_max_blocks () -> usize {
+    fn max_blocks () -> usize {
         1583
     }
 }
@@ -141,15 +141,15 @@ impl DiskSamples for DiskImage<{ DeviceModel::S900 }> {
         0x3c
     }
     fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
-        self.head[0] = header;
+        //self.head[0] = header;
         self
     }
     fn write_size (&mut self, size: u32) -> &mut Self {
-        self.size[0] = size;
+        //self.size[0] = size;
         self
     }
     fn write_data (&mut self, data: &[u8]) -> &mut Self {
-        self.data[0] = data;
+        //self.data[0] = data;
         self
     }
 }
@@ -159,15 +159,15 @@ impl DiskSamples for DiskImage<{ DeviceModel::S2000 }> {
         0xbe
     }
     fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
-        self.head[0] = header;
+        //self.head[0] = header;
         self
     }
     fn write_size (&mut self, size: u32) -> &mut Self {
-        self.size[0] = size;
+        //self.size[0] = size;
         self
     }
     fn write_data (&mut self, data: &[u8]) -> &mut Self {
-        self.data[0] = data;
+        //self.data[0] = data;
         self
     }
 }
@@ -177,15 +177,15 @@ impl DiskSamples for DiskImage<{ DeviceModel::S3000 }> {
         0xbe
     }
     fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
-        self.head[0] = header;
+        //self.head[0] = header;
         self
     }
     fn write_size (&mut self, size: u32) -> &mut Self {
-        self.size[0] = size;
+        //self.size[0] = size;
         self
     }
     fn write_data (&mut self, data: &[u8]) -> &mut Self {
-        self.data[0] = data;
+        //self.data[0] = data;
         self
     }
 }
