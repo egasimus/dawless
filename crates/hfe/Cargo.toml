@@ -1,0 +1,12 @@
+[package]
+name = "hfe"
+version = "0.1.0"
+edition = "2021"
+description = "Support for HFE floppy disk images."
+
+[lib]
+path = "hfe.rs"
+
+[dependencies]
+binread = "2.2.0"
+brailledump = { path = "../brailledump" }

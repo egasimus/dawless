@@ -1,5 +1,5 @@
 use binread::BinRead;
-use crate::bhex::CHARSET;
+use brailledump::CHARSET;
 
 #[derive(Debug, BinRead)]
 #[br(magic = b"HXCPICFE")]

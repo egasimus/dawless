@@ -1,0 +1,11 @@
+[package]
+name = "dawless"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "dawless"
+path = "dawless.rs"
+
+[dependencies]
+dawless-akai = { path = "../dawless-akai" }

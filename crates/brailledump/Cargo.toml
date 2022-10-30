@@ -1,0 +1,9 @@
+[package]
+name = "brailledump"
+version = "1.0.0"
+edition = "2021"
+description = "Use braille characters for more readable hex dumps."
+
+[lib]
+path = "charset.rs"
+

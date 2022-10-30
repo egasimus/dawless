@@ -1,32 +1,6 @@
-#![feature(adt_const_params)]
-
-mod hfe;
-mod bhex;
-mod s2k;
-
-pub use s2k::*;
-use s2k::DeviceDisk;
-
-use std::io::Read;
 use binread::{BinRead, io::{Cursor, Seek, SeekFrom}};
 
-fn main () {
-    //let bytes = read("../s2kdie.1.1.3/file");
-    //let bytes = read("../s2kdie.1.1.3/file2");
-    //let bytes = read("../s2kdie.1.1.3/file3");
-    let files = s2k::akai_s3000().load(read("../s2kdie.1.1.3/file3")).list();
-    println!("{files:?}");
-}
-
-fn read (filename: &str) -> Vec<u8> {
-    let mut f      = std::fs::File::open(&filename).expect("file not found");
-    let metadata   = std::fs::metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-    buffer
-}
-
-fn _main() {
+fn main() {
     //let filename = "flashfloppy-images/Unformatted/HFE/double_density.hfe";
     //let filename = "flashfloppy-images/Unformatted/HFE/double_density_360rpm.hfe";
     //let filename = "flashfloppy-images/Unformatted/HFE/high_density.hfe";
@@ -66,3 +40,4 @@ fn _main() {
         track_data.push(hfe::Track { info: info.clone(), blocks })
     }
 }
+
