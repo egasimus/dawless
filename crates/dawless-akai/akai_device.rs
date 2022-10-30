@@ -23,7 +23,7 @@ pub fn akai_s3000 () -> Device<{ DeviceModel::S3000 }> {
 }
 
 impl DeviceDisk<{ DeviceModel::S900 }> for Device<{ DeviceModel::S900 }>  {
-    fn capacity () -> usize {
+    fn disk_size () -> usize {
         819200
     }
     fn section1 (&self) -> [u8; 24] {
@@ -54,7 +54,7 @@ impl DeviceDisk<{ DeviceModel::S900 }> for Device<{ DeviceModel::S900 }>  {
 }
 
 impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {
-    fn capacity () -> usize {
+    fn disk_size () -> usize {
         1638400
     }
     fn section1 (&self) -> [u8; 24] {
@@ -91,7 +91,7 @@ impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {
 }
 
 impl DeviceDisk<{ DeviceModel::S3000 }> for Device<{ DeviceModel::S3000 }> {
-    fn capacity () -> usize {
+    fn disk_size () -> usize {
         1638400
     }
     fn section1 (&self) -> [u8; 24] {
@@ -140,16 +140,52 @@ impl DiskSamples for DiskImage<{ DeviceModel::S900 }> {
     fn header_length () -> usize {
         0x3c
     }
+    fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
+        self.head[0] = header;
+        self
+    }
+    fn write_size (&mut self, size: u32) -> &mut Self {
+        self.size[0] = size;
+        self
+    }
+    fn write_data (&mut self, data: &[u8]) -> &mut Self {
+        self.data[0] = data;
+        self
+    }
 }
 
 impl DiskSamples for DiskImage<{ DeviceModel::S2000 }> {
     fn header_length () -> usize {
         0xbe
     }
+    fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
+        self.head[0] = header;
+        self
+    }
+    fn write_size (&mut self, size: u32) -> &mut Self {
+        self.size[0] = size;
+        self
+    }
+    fn write_data (&mut self, data: &[u8]) -> &mut Self {
+        self.data[0] = data;
+        self
+    }
 }
 
 impl DiskSamples for DiskImage<{ DeviceModel::S3000 }> {
     fn header_length () -> usize {
         0xbe
+    }
+    fn write_header (&mut self, header: [u8; 24]) -> &mut Self {
+        self.head[0] = header;
+        self
+    }
+    fn write_size (&mut self, size: u32) -> &mut Self {
+        self.size[0] = size;
+        self
+    }
+    fn write_data (&mut self, data: &[u8]) -> &mut Self {
+        self.data[0] = data;
+        self
     }
 }

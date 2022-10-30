@@ -5,10 +5,10 @@ use tabwriter::TabWriter;
 
 fn main () {
     let args = std::env::args().collect::<Vec<String>>();
-    let akai = akai_s3000();
     //print_files(akai.load_disk(read(&args[1])).list().iter());
     //print_files(akai.blank_disk().list().iter());
-    let disk = akai.blank_disk()
+    let disk = akai_s3000()
+        .blank_disk()
         .add_sample("140VEC3BB11", &read(&args[1]));
 }
 
