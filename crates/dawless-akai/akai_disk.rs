@@ -4,37 +4,12 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     /** Create and format an empty disk. */
     fn blank_disk (&self) -> DiskImage<M> {
-        self.load_disk(
-            write_fixed_sections(&M, Vec::with_capacity(Self::disk_size()))
-        )
+        self.load_disk(write_fixed_sections(&M, Vec::with_capacity(disk_capacity(&M))))
     }
 
     /** Read the files from a disk image. */
     fn load_disk (&self, raw: Vec<u8>) -> DiskImage<M> {
-        DiskImage::new(
-            raw,
-            Self::label_start(),
-            Self::header_start(),
-            Self::max_entries(),
-            Self::fat_start(),
-            Self::fat_end()
-        )
-    }
-
-    fn disk_size () -> usize;
-
-    fn max_entries () -> usize;
-
-    fn header_start () -> usize;
-
-    fn max_blocks () -> usize;
-
-    fn fat_start () -> usize;
-
-    fn fat_end () -> usize;
-
-    fn label_start () -> usize {
-        4736
+        DiskImage::new(&M, raw)
     }
 
 }
@@ -51,17 +26,17 @@ impl<const M: DeviceModel> DiskImage<M> {
 
     /** Create a filesystem image. */
     pub fn new (
-        raw:          Vec<u8>,
-        label_start:  usize,
-        header_start: usize,
-        max_entries:  usize,
-        fat_start:    usize,
-        fat_end:      usize
+        model: &DeviceModel,
+        raw:   Vec<u8>,
     ) -> Self {
+        let label_start          = 0x1280;
+        let header_start         = file_headers_offset(model);
+        
+        let max_files            = max_files(model);
         Self {
             label:   u8_to_string(&raw[label_start..label_start+12]),
-            headers: load_file_headers(&raw.as_slice()[header_start..], max_entries),
-            table:   load_block_table(&raw.as_slice(), fat_start, fat_end),
+            headers: load_file_headers(&raw.as_slice()[header_start..], max_files),
+            table:   load_block_table(&model, &raw.as_slice()),
             blocks:  as_blocks(&raw),
         }
     }
@@ -111,58 +86,11 @@ impl<const M: DeviceModel> DiskImage<M> {
     }
 
     pub fn add_sample (self, name: &str, data: &[u8]) -> Self {
-        let header_length = 0xbe;
-        let compression = data[20];
-        if compression != 1 {
-            panic!("uncompressed wavs only")
-        }
-        let bitrate = data[34];
-        if bitrate != 16 {
-            panic!("16-bit wavs only")
-        }
-        let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
-        if sample_rate != 44100 {
-            panic!("44.1kHz wavs only")
-        }
-        let channels = data[22];
-        if channels != 1 {
-            panic!("mono wavs only")
-        }
-        let contents = &data[44..];
-        let length = (contents.len() as u32).to_le_bytes();
-        let max = header_length + contents.len();
-        let mut output = vec![0x00; max];
-        output[0x00] = 0x03; // format (S3000)
-        let channels = data[22];
-        if channels != 1 {
-            panic!("mono wavs only")
-        }
-        output[0x01] = channels; // channels
-        output[0x02] = 0x3C;     // original pitch
-        // name
-        let name_akai = str_to_name(name);
-        put_vec(&mut output, 0x03, &name_akai[..usize::min(name_akai.len(), 12)]);
-        output[0x0f] = 0x80; // valid
-        output[0x10] = 0x01; // loops
-        output[0x11] = 0x00; // first loop
-        output[0x12] = 0x00; // dummy
-        output[0x13] = 0x02; // don't loop
-        output[0x14] = 0x00; // tune cent
-        output[0x15] = 0x00; // tune semi
-        // data abs. start addr. (internal?)
-        put_vec(&mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
-        // set sample length
-        put_vec(&mut output, 0x1a, &length);
-        // set sample start
-        put_vec(&mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
-        // set sample end
-        put_vec(&mut output, 0x22, &length);
-        // set sample rate
-        put_vec(&mut output, 0x8a, &sample_rate.to_le_bytes());
-        // copy sample data
-        put_vec(&mut output, header_length, &contents);
-
-        self.add_file(name.into(), FileType::S3000Sample, &output)
+        self.add_file(
+            name.into(),
+            FileType::S3000Sample,
+            &Sample::serialize(name, data)
+        )
     }
 
     pub fn add_file (mut self, name: &str, kind: FileType, data: &[u8]) -> Self {
@@ -189,7 +117,8 @@ impl<const M: DeviceModel> DiskImage<M> {
     }
 
     pub fn write_disk (self) -> Vec<u8> {
-        let data = vec![0x00; 1638400];
+        let data = write_fixed_sections(&M, Vec::with_capacity(1638400));
+        let data = save_file_headers(&M, data);
         data
     }
 

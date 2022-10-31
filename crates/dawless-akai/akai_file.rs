@@ -53,6 +53,10 @@ pub fn load_file_headers (raw: &[u8], max: usize) -> Vec<FileRecord> {
     headers
 }
 
+pub fn save_file_headers (model: &DeviceModel, raw: Vec<u8>) -> Vec<u8> {
+    raw
+}
+
 impl FileRecord {
     fn read (raw: &[u8], offset: usize) -> Option<Self> {
         if raw[offset] == 0x00 {
@@ -69,7 +73,9 @@ impl FileRecord {
     }
 }
 
-pub fn load_block_table (raw: &[u8], start: usize, end: usize) -> Vec<BlockRecord> {
+pub fn load_block_table (model: &DeviceModel, raw: &[u8]) -> Vec<BlockRecord> {
+    let (start, end) = file_table_boundaries(model);
+    println!("{start} {end}");
     let table = &raw[start..end];
     let mut blocks = Vec::with_capacity(table.len() / 2);
     for address in (0..table.len()).step_by(2) {
@@ -119,30 +125,4 @@ pub fn file_type (byte: u8) -> FileType {
         0xF3 => FileType::S3000Sample,
         _ => panic!("unknown file type: 0x{byte:02X?}")
     }
-}
-
-#[derive(Debug)]
-pub struct Sample<'a> {
-    pub name:        String,
-    pub size:        u32,
-    pub data:        &'a [u8],
-    pub sample_rate: SampleRate,
-    pub loop_mode:   LoopMode,
-    pub tuning_semi: u8,
-    pub tuning_cent: u8,
-    pub length:      u32
-}
-
-#[derive(Debug)]
-pub enum SampleRate {
-    Hz22050,
-    Hz44100
-}
-
-#[derive(Debug)]
-pub enum LoopMode {
-    Normal,
-    UntilRelease,
-    NoLoop,
-    PlayToEnd
 }
