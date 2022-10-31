@@ -3,36 +3,34 @@ use crate::*;
 pub trait DeviceDisk<const M: DeviceModel> {
 
     /** Create and format an empty disk. */
-    fn blank_disk (&self) -> DiskImage<M> {
+    fn blank_disk (&self) -> Filesystem<M> {
         self.load_disk(write_fixed_sections(&M, Vec::with_capacity(disk_capacity(&M))))
     }
 
     /** Read the files from a disk image. */
-    fn load_disk (&self, raw: Vec<u8>) -> DiskImage<M> {
-        DiskImage::new(raw)
+    fn load_disk (&self, raw: Vec<u8>) -> Filesystem<M> {
+        Filesystem::new(raw)
     }
 
 }
 
 #[derive(Debug)]
-pub struct DiskImage<const M: DeviceModel> {
+pub struct Filesystem<const M: DeviceModel> {
     pub label:   String,
     pub headers: Vec<FileRecord>,
     pub table:   Vec<BlockRecord>,
     pub blocks:  Vec<BlockData>
 }
 
-impl<const M: DeviceModel> DiskImage<M> {
+impl<const M: DeviceModel> Filesystem<M> {
 
     /** Create a filesystem image. */
     pub fn new (raw: Vec<u8>) -> Self {
-        let label_start = 0x1280;
-        Self {
-            label:   u8_to_string(&raw[label_start..label_start+12]),
-            headers: FileRecord::read_all::<M>(&raw.as_slice()),
-            table:   read_block_table::<M>(&raw.as_slice()),
-            blocks:  as_blocks(&raw),
-        }
+        let label   = u8_to_string(&raw[0x1280..0x1280+12]);
+        let headers = FileRecord::read_all::<M>(&raw.as_slice());
+        let table   = read_block_table::<M>(&raw.as_slice());
+        let blocks  = as_blocks(&raw);
+        Self { label, headers, table, blocks }
     }
 
     pub fn list_files (self) -> Self {
@@ -95,7 +93,8 @@ impl<const M: DeviceModel> DiskImage<M> {
     }
 
     fn find_free_block (&self) -> BlockIndex {
-        for i in 0x03..max_blocks(&M) {
+        // start from block 17 (0x11 at addr 0x4400 - first data block in image)
+        for i in 0x11..max_blocks(&M) {
             if self.table[i] == BlockRecord::Free {
                 return i as BlockIndex
             }
@@ -123,7 +122,7 @@ impl<const M: DeviceModel> DiskImage<M> {
         let data = write_fixed_sections(&M, Vec::with_capacity(1638400));
         let data = FileRecord::write_all::<M>(data, &self.headers);
         let data = write_block_table::<M>(data, &self.table);
-        let data = write_blocks::<M>(&self.blocks);
+        let data = write_blocks::<M>(data, &self.blocks);
         data
     }
 
@@ -168,17 +167,4 @@ impl<const M: DeviceModel> DiskImage<M> {
 
     */
 
-}
-
-/// Split a slice into blocks of 1024 bytes
-fn as_blocks (data: &[u8]) -> Vec<BlockData> {
-    let mut blocks = vec![];
-    let mut pointer = 0;
-    while pointer < data.len() {
-        let mut block = [0; 1024];
-        put(&mut block, 0, &data[pointer..]);
-        blocks.push(block);
-        pointer += 1024;
-    }
-    blocks
 }

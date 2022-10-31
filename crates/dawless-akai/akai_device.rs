@@ -1,34 +1,13 @@
 use crate::*;
 
 pub struct Device<const M: DeviceModel>;
-
-#[derive(PartialEq, Eq)]
-pub enum DeviceModel {
-    S900,
-    S2000,
-    S3000
-}
-
-pub fn akai_s900 () -> Device<{ DeviceModel::S900 }> {
-    Device
-}
-
-pub fn akai_s2000 () -> Device<{ DeviceModel::S2000 }> {
-    Device
-}
-
-pub fn akai_s3000 () -> Device<{ DeviceModel::S3000 }> {
-    Device
-}
-
-impl DeviceDisk<{ DeviceModel::S900 }> for Device<{ DeviceModel::S900 }>  {
-}
-
-impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {
-}
-
-impl DeviceDisk<{ DeviceModel::S3000 }> for Device<{ DeviceModel::S3000 }> {
-}
+#[derive(PartialEq, Eq)] pub enum DeviceModel { S900, S2000, S3000 }
+pub fn akai_s900  () -> Device<{ DeviceModel::S900 }>  { Device }
+pub fn akai_s2000 () -> Device<{ DeviceModel::S2000 }> { Device }
+pub fn akai_s3000 () -> Device<{ DeviceModel::S3000 }> { Device }
+impl DeviceDisk<{ DeviceModel::S900 }>  for Device<{ DeviceModel::S900 }>  {}
+impl DeviceDisk<{ DeviceModel::S2000 }> for Device<{ DeviceModel::S2000 }> {}
+impl DeviceDisk<{ DeviceModel::S3000 }> for Device<{ DeviceModel::S3000 }> {}
 
 pub fn disk_capacity (model: &DeviceModel) -> usize {
     match model {
@@ -77,6 +56,7 @@ pub fn guess_model (volname: &[u8; 24]) -> DeviceModel {
 /// These sections are written verbatim when creating a disk image.
 pub fn write_fixed_sections (model: &DeviceModel, mut raw: Vec<u8>) -> Vec<u8> {
 
+    // 0x0000: Disk header
     let section0: &[u8; 23] = &[
         0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
         0x0A, 0x0A, 0x0A, 0x0A, 0x00, 0x00, 0x06, 0x0A,
@@ -84,7 +64,7 @@ pub fn write_fixed_sections (model: &DeviceModel, mut raw: Vec<u8>) -> Vec<u8> {
     ];
     raw.extend_from_slice(section0);
 
-    // 0x0000: Disk header
+    // 0x0017: Disk format specifier
     let section1: &[u8; 1] = &match model {
         DeviceModel::S900  => [0x00],
         DeviceModel::S2000 => [0x17],
@@ -92,7 +72,7 @@ pub fn write_fixed_sections (model: &DeviceModel, mut raw: Vec<u8>) -> Vec<u8> {
     };
     raw.extend_from_slice(section1);
 
-    // Bunch of empty space. (what does it mean?)
+    // 0x0018: Bunch of empty space. (what does it mean?)
     let section2: &[u8; 3166] = &[0x00; 3166];
     raw.extend_from_slice(section2);
 
@@ -102,35 +82,48 @@ pub fn write_fixed_sections (model: &DeviceModel, mut raw: Vec<u8>) -> Vec<u8> {
     ];
     raw.extend_from_slice(section3);
 
+    // 0x128C: what is this stuff?
     let section4: Vec<u8> = match model {
+
+        // This section is skipped on S900. Overall the S900 code path is vestigial
+        // from the S2KDIE PHP script because I have no way of testing it.
         DeviceModel::S900 => [].into(),
+
         DeviceModel::S2000 => {
             let mut data = [0; 372];
-            const DP4_S2000: [u8; 14] = [
-                0x00, 0x00, 0x00, 0x11, 0x00, 0x01, 0x01,
-                0x23, 0x00, 0x00, 0x32, 0x09, 0x0C, 0xFF
-            ];
-            data[..DP4_S2000.len()].copy_from_slice(&DP4_S2000);
+            put(&mut data, 0x00, &[
+                0x00, 0x00,
+                0x00, 0x11,
+                0x00, 0x01,
+                0x01, 0x23,
+                0x00, 0x00,
+                0x32, 0x09, 
+                0x0C, 0xFF
+            ]);
             data.into()
         },
         DeviceModel::S3000 => {
             let mut data = [0; 372];
-            const DP4_S3000: [u8; 14] = [
-                0x00, 0x00, 0x32, 0x10, 0x00, 0x01, 0x01,
-                0x00, 0x00, 0x00, 0x32, 0x09, 0x0C, 0xFF
-            ];
-            data[..DP4_S3000.len()].copy_from_slice(&DP4_S3000);
+            put(&mut data, 0x00, &[
+                0x00, 0x00,
+                0x32, 0x10,
+                0x00, 0x01,
+                0x01, 0x00,
+                0x00, 0x00,
+                0x32, 0x09,
+                0x0C, 0xFF
+            ]);
             data.into()
         }
     };
     raw.extend_from_slice(section4.as_slice());
 
-    // 512 possible directory entries. (offset 5120)
-    let section5: &[u8] = &[0; 12288];
+    // 0x1400: 512 possible directory entries
+    let section5: &[u8] = &[0; 0x3000];
     raw.extend_from_slice(section5);
 
-    // 1583 * 1024 byte sectors for data. (offset 17408?)
-    let section6: &[u8] = &[0; 1620992];
+    // 0x4400: 1583 sectors for data, 1024 bytes each
+    let section6: &[u8] = &[0; 0x18BC00];
     raw.extend_from_slice(section6);
 
     raw

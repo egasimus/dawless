@@ -178,7 +178,7 @@ pub fn write_block_table <const M: DeviceModel> (
 }
 
 /// Split a slice into blocks of 1024 bytes
-fn as_blocks (data: &[u8]) -> Vec<BlockData> {
+pub fn as_blocks (data: &[u8]) -> Vec<BlockData> {
     let mut blocks = vec![];
     let mut pointer = 0;
     while pointer < data.len() {
@@ -188,4 +188,11 @@ fn as_blocks (data: &[u8]) -> Vec<BlockData> {
         pointer += 1024;
     }
     blocks
+}
+
+pub fn write_blocks <const M: DeviceModel> (mut data: Vec<u8>, blocks: &Vec<BlockData>) -> Vec<u8> {
+    for i in 0x11..max_blocks(&M) {
+        put(&mut data, i * 1024, &blocks[i]);
+    }
+    data
 }
