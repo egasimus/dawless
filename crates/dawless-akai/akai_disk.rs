@@ -37,158 +37,14 @@ pub trait DeviceDisk<const M: DeviceModel> {
         4736
     }
 
-    // /// Reads the metadata and 1st block of each file in the disk image.
-    // /// Corresponds to 1st loop of s2kdie importimage().
-    //fn load_disk_head (disk: &mut DiskImage<M>) {
-        //let headers = load_headers(
-            //&disk.raw.as_slice()[Self::fat_offset()..],
-            //Self::fat_max_entries()
-        //);
-        //let raw = disk.raw.as_slice();
-        //let max_entries = Self::fat_max_entries();
-        //let data_offset = Self::fat_offset();
-        //let max_blocks  = Self::fat_max_blocks();
-        //// Used to determine number of remaining blocks
-        //let mut last_block = 0;
-        //// Read up to `max_entries` FS records
-        //let mut i = 0;
-        //while i < max_entries {
-            //let entry_offset = data_offset + i * 24;
-            //// If we've reached an empty entry we're past the end
-            //if raw[entry_offset] == 0x00 {
-                //break
-            //}
-            //let mut head: [u8; 24] = [0; 24];
-            //head.copy_from_slice(&raw[entry_offset..entry_offset+24]);
-            //disk.head.push(head);
-            //let size = u32::from_le_bytes([head[17], head[18], head[19], 0x00]);
-            //disk.size.push(size);
-            //let block_index = u32::from_le_bytes([head[20], head[21], 0x00, 0x00]);
-            //let block_start = (block_index * 1024) as usize;
-            //let block_end   = ((block_index + 1) * 1024) as usize;
-            //let block_data  = &raw[block_start..block_end];
-            //disk.data.push(block_data.to_vec());
-            //last_block += size / 1024;
-            //i += 1;
-        //}
-        //disk.free = max_blocks - last_block as usize;
-    //}
-
-    // /// Reads subsequent blocks (fragments) from the image.
-    // /// Corresponds to 2nd loop of s2kdie importimage()
-    //fn load_disk_body (disk: &mut DiskImage<M>) {
-        //let startb = Self::fat_start();
-        //let endb   = Self::fat_end();
-        //let raw    = disk.raw.as_slice();
-        //let tmap   = &raw[startb..endb-startb];
-        //let mut block_count = 0;
-        //for i in (0..tmap.len()).step_by(2) {
-            //if tmap[i] == 0x00 && tmap[i+1] == 0x00 {
-                //continue
-            //}
-            //if (tmap[i] == 0x00 && tmap[i+1] == 0x80) || (tmap[i] == 0x00 && tmap[i+1] == 0xC0) {
-                //block_count += 1;
-            //} else {
-                //let block_index = u16::from_le_bytes([tmap[i], tmap[i+1]]) * 1024;
-                //let block_data  = &raw[block_index as usize..block_index as usize + 1024];
-                //disk.data[block_count].append(&mut block_data.to_vec());
-            //}
-        //}
-    //}
-}
-
-#[derive(Debug)]
-pub struct FileHeader {
-    /// Name of file
-    name:  String,
-    /// Type of file
-    kind:  FileType,
-    /// Size of file in bytes
-    size:  u32,
-    /// Address of first block
-    start: u16,
-}
-
-fn load_headers (raw: &[u8], max: usize) -> Vec<FileHeader> {
-    let mut headers = vec![];
-    // Read up to `max` FS records
-    for entry in 0..max {
-        match FileHeader::read(raw, entry * 24) {
-            Some(header) => headers.push(header),
-            // Empty file header means we've reached the end
-            None => break
-        }
-    }
-    headers
-}
-
-impl FileHeader {
-    fn read (raw: &[u8], offset: usize) -> Option<Self> {
-        if raw[offset] == 0x00 {
-            return None
-        } else {
-            let head = &raw[offset..offset+24];
-            Some(Self {
-                name:  u8_to_string(&head[..12]),
-                kind:  file_type(head[0x10]),
-                size:  u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]),
-                start: u16::from_le_bytes([head[0x14], head[0x15]]),
-            })
-        }
-    }
-}
-
-fn load_table (raw: &[u8], start: usize, end: usize) -> Vec<FileTableEntry> {
-    let table = &raw[start..end];
-    let mut blocks = Vec::with_capacity(table.len() / 2);
-    for address in (0..table.len()).step_by(2) {
-        match (table[address], table[address+1]) {
-            // reserved for system
-            (0x00, 0x00) => {
-                blocks.push(FileTableEntry::Free);
-            },
-            // reserved for system
-            (0x00, 0x40) => {
-                blocks.push(FileTableEntry::Reserved);
-            },
-            // reserved for 2nd file entry
-            (0x00, 0x80) => {
-                blocks.push(FileTableEntry::Reserved2);
-            },
-            // end of file
-            (0x00, 0xc0) => {
-                blocks.push(FileTableEntry::EOF);
-            },
-            // file continues at
-            _ => {
-                blocks.push(FileTableEntry::Next(
-                    u16::from_le_bytes([table[address], table[address+1]])
-                ))
-            }
-        }
-    }
-    blocks[0] = FileTableEntry::Reserved;
-    blocks[1] = FileTableEntry::Reserved;
-    blocks[2] = FileTableEntry::Reserved;
-    blocks
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum FileTableEntry {
-    Free,
-    Reserved,
-    Reserved2,
-    EOF,
-    Next(u16)
 }
 
 #[derive(Debug)]
 pub struct DiskImage<const M: DeviceModel> {
-    pub raw:     Vec<u8>,
     pub label:   String,
-    pub headers: Vec<FileHeader>,
-    pub table:   Vec<FileTableEntry>,
-    pub blocks:  Vec<[u8; 1024]>
+    pub headers: Vec<FileRecord>,
+    pub table:   Vec<BlockRecord>,
+    pub blocks:  Vec<BlockData>
 }
 
 impl<const M: DeviceModel> DiskImage<M> {
@@ -204,10 +60,9 @@ impl<const M: DeviceModel> DiskImage<M> {
     ) -> Self {
         Self {
             label:   u8_to_string(&raw[label_start..label_start+12]),
-            headers: load_headers(&raw.as_slice()[header_start..], max_entries),
-            table:   load_table(&raw.as_slice(), fat_start, fat_end),
+            headers: load_file_headers(&raw.as_slice()[header_start..], max_entries),
+            table:   load_block_table(&raw.as_slice(), fat_start, fat_end),
             blocks:  as_blocks(&raw),
-            raw,
         }
     }
 
@@ -229,7 +84,7 @@ impl<const M: DeviceModel> DiskImage<M> {
                 //println!("            {: >4}", &dump2);
                 //println!("            {: >4}", &dump3);
                 //block_index = match self.table[index] {
-                    //FileTableEntry::Next(index) => Some(index as u16),
+                    //BlockRecord::Next(index) => Some(index as u16),
                     //_ => None
                 //};
             //}
@@ -248,7 +103,7 @@ impl<const M: DeviceModel> DiskImage<M> {
             index += count;
             remaining = remaining.saturating_sub(count);
             match self.table[start as usize] {
-                FileTableEntry::Next(block) => start = block,
+                BlockRecord::Next(block) => start = block,
                 _ => break
             }
         }
@@ -312,24 +167,24 @@ impl<const M: DeviceModel> DiskImage<M> {
 
     pub fn add_file (mut self, name: &str, kind: FileType, data: &[u8]) -> Self {
         let start = 0x03;
-        let head = FileHeader { name: name.into(), kind, size: data.len() as u32, start };
+        let head = FileRecord { name: name.into(), kind, size: data.len() as u32, start };
         self.headers.push(head);
         self.write_blocks(start, data)
     }
 
     fn write_blocks (mut self, mut index: u16, data: &[u8]) -> Self {
-        let mut new_blocks: std::collections::VecDeque<[u8; 1024]> = as_blocks(data).into();
+        let mut new_blocks: std::collections::VecDeque<BlockData> = as_blocks(data).into();
         while let Some(block) = new_blocks.pop_front() {
             self.blocks[index as usize] = block;
-            match self.table.iter().position(|x| *x == FileTableEntry::Free) {
+            match self.table.iter().position(|x| *x == BlockRecord::Free) {
                 Some(found) => {
-                    self.table[index as usize] = FileTableEntry::Next(found as u16);
+                    self.table[index as usize] = BlockRecord::Next(found as u16);
                     index = found as u16
                 },
                 None => panic!("ran out of free blocks")
             }
         }
-        self.table[index as usize] = FileTableEntry::EOF;
+        self.table[index as usize] = BlockRecord::EOF;
         self
     }
 
@@ -459,7 +314,7 @@ pub trait DiskSamples {
 }
 
 /// Split a slice into blocks of 1024 bytes
-fn as_blocks (data: &[u8]) -> Vec<[u8; 1024]> {
+fn as_blocks (data: &[u8]) -> Vec<BlockData> {
     let mut blocks = vec![];
     let mut pointer = 0;
     while pointer < data.len() {

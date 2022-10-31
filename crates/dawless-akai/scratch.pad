@@ -1,0 +1,59 @@
+
+    // /// Reads the metadata and 1st block of each file in the disk image.
+    // /// Corresponds to 1st loop of s2kdie importimage().
+    //fn load_disk_head (disk: &mut DiskImage<M>) {
+        //let headers = load_headers(
+            //&disk.raw.as_slice()[Self::fat_offset()..],
+            //Self::fat_max_entries()
+        //);
+        //let raw = disk.raw.as_slice();
+        //let max_entries = Self::fat_max_entries();
+        //let data_offset = Self::fat_offset();
+        //let max_blocks  = Self::fat_max_blocks();
+        //// Used to determine number of remaining blocks
+        //let mut last_block = 0;
+        //// Read up to `max_entries` FS records
+        //let mut i = 0;
+        //while i < max_entries {
+            //let entry_offset = data_offset + i * 24;
+            //// If we've reached an empty entry we're past the end
+            //if raw[entry_offset] == 0x00 {
+                //break
+            //}
+            //let mut head: [u8; 24] = [0; 24];
+            //head.copy_from_slice(&raw[entry_offset..entry_offset+24]);
+            //disk.head.push(head);
+            //let size = u32::from_le_bytes([head[17], head[18], head[19], 0x00]);
+            //disk.size.push(size);
+            //let block_index = u32::from_le_bytes([head[20], head[21], 0x00, 0x00]);
+            //let block_start = (block_index * 1024) as usize;
+            //let block_end   = ((block_index + 1) * 1024) as usize;
+            //let block_data  = &raw[block_start..block_end];
+            //disk.data.push(block_data.to_vec());
+            //last_block += size / 1024;
+            //i += 1;
+        //}
+        //disk.free = max_blocks - last_block as usize;
+    //}
+
+    // /// Reads subsequent blocks (fragments) from the image.
+    // /// Corresponds to 2nd loop of s2kdie importimage()
+    //fn load_disk_body (disk: &mut DiskImage<M>) {
+        //let startb = Self::fat_start();
+        //let endb   = Self::fat_end();
+        //let raw    = disk.raw.as_slice();
+        //let tmap   = &raw[startb..endb-startb];
+        //let mut block_count = 0;
+        //for i in (0..tmap.len()).step_by(2) {
+            //if tmap[i] == 0x00 && tmap[i+1] == 0x00 {
+                //continue
+            //}
+            //if (tmap[i] == 0x00 && tmap[i+1] == 0x80) || (tmap[i] == 0x00 && tmap[i+1] == 0xC0) {
+                //block_count += 1;
+            //} else {
+                //let block_index = u16::from_le_bytes([tmap[i], tmap[i+1]]) * 1024;
+                //let block_data  = &raw[block_index as usize..block_index as usize + 1024];
+                //disk.data[block_count].append(&mut block_data.to_vec());
+            //}
+        //}
+    //}
