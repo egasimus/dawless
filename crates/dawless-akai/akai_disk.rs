@@ -4,21 +4,9 @@ pub trait DeviceDisk<const M: DeviceModel> {
 
     /** Create and format an empty disk. */
     fn blank_disk (&self) -> DiskImage<M> {
-        let mut disk = DiskImage::new(
-            vec![0u8; Self::disk_size()],
-            Self::label_start(),
-            Self::header_start(),
-            Self::max_entries(),
-            Self::fat_start(),
-            Self::fat_end()
-        );
-        disk.raw.extend_from_slice(&self.section1());
-        disk.raw.extend_from_slice(&self.section2());
-        disk.raw.extend_from_slice(&self.section3());
-        disk.raw.extend_from_slice(&self.section4());
-        disk.raw.extend_from_slice(&self.section5());
-        disk.raw.extend_from_slice(&self.section6());
-        disk
+        self.load_disk(
+            write_fixed_sections(&M, Vec::with_capacity(Self::disk_size()))
+        )
     }
 
     /** Read the files from a disk image. */
@@ -34,32 +22,6 @@ pub trait DeviceDisk<const M: DeviceModel> {
     }
 
     fn disk_size () -> usize;
-
-    /** Disk header. */
-    fn section1 (&self) -> [u8; 24];
-
-    /** Bunch of empty space. (what does it mean?) */
-    fn section2 (&self) -> [u8; 3166] {
-        [0; 3166]
-    }
-
-    /** Volume name in AKAI format. (offset 4736) */
-    fn section3 (&self) -> [u8; 12] {
-        [0x18, 0x19, 0x1E, 0x0A, 0x18, 0x0B, 0x17, 0x0F, 0x0E, 0x0A, 0x0A, 0x0A]
-    }
-
-    /** Not supported on S900, different on S2000 vs S3000. (what does it mean?) */
-    fn section4 (&self) -> [u8; 372];
-
-    /** 512 possible directory entries. (offset 5120) */
-    fn section5 (&self) -> [u8; 12288] {
-        [0; 12288]
-    }
-
-    /** 1583 * 1024 byte sectors for data. (offset 17408?) */
-    fn section6 (&self) -> [u8; 1620992] {
-        [0; 1620992]
-    }
 
     fn max_entries () -> usize;
 
@@ -350,9 +312,8 @@ impl<const M: DeviceModel> DiskImage<M> {
 
     pub fn add_file (mut self, name: &str, kind: FileType, data: &[u8]) -> Self {
         let start = 0x03;
-        self.headers.push(FileHeader {
-            name: name.into(), kind, size: data.len() as u32, start
-        });
+        let head = FileHeader { name: name.into(), kind, size: data.len() as u32, start };
+        self.headers.push(head);
         self.write_blocks(start, data)
     }
 
@@ -362,7 +323,6 @@ impl<const M: DeviceModel> DiskImage<M> {
             self.blocks[index as usize] = block;
             match self.table.iter().position(|x| *x == FileTableEntry::Free) {
                 Some(found) => {
-                    println!("next block: {found}");
                     self.table[index as usize] = FileTableEntry::Next(found as u16);
                     index = found as u16
                 },
@@ -373,7 +333,7 @@ impl<const M: DeviceModel> DiskImage<M> {
         self
     }
 
-    fn write_disk (self) -> Vec<u8> {
+    pub fn write_disk (self) -> Vec<u8> {
         let data = vec![0x00; 1638400];
         data
     }
@@ -490,57 +450,12 @@ pub trait DiskSamples {
         put(&mut header, 0x00, &name_akai[..12]);
         put(&mut header, 0x11, &data.len().to_le_bytes());
         put(&mut header, 0x11, &(0 as u32).to_le_bytes());
-        self.write_header(header)
-            .write_size(data.len() as u32)
-            .write_data(data)
+        self
+        //self.write_header(header)
+            //.write_size(data.len() as u32)
+            //.write_data(data)
     }
 
-    fn write_header (&mut self, header: [u8; 24]) -> &mut Self;
-    fn write_size (&mut self, size: u32) -> &mut Self;
-    fn write_data (&mut self, data: &[u8]) -> &mut Self;
-
-}
-
-/// Fill a buffer with content starting from offset.
-#[inline]
-fn put (buffer: &mut [u8], offset: usize, content: &[u8]) -> usize {
-    let mut count = 0;
-    for (index, value) in content.iter().enumerate() {
-        if offset + index >= buffer.len() {
-            break
-        }
-        count += 1;
-        buffer[offset + index] = *value;
-    }
-    count
-}
-
-/// Fill a vector with content starting from offset.
-#[inline]
-fn put_vec (buffer: &mut Vec<u8>, offset: usize, content: &[u8]) -> usize {
-    let mut count = 0;
-    for (index, value) in content.iter().enumerate() {
-        if offset + index >= buffer.len() {
-            break
-        }
-        count += 1;
-        buffer[offset + index] = *value;
-    }
-    count
-}
-
-/// Fill a vector with content starting from offset.
-#[inline]
-fn put_vec_max (max: usize, buffer: &mut Vec<u8>, offset: usize, content: &[u8]) -> usize {
-    let mut count = 0;
-    for (index, value) in content.iter().enumerate() {
-        if offset + index >= max {
-            break
-        }
-        count += 1;
-        buffer[offset + index] = *value;
-    }
-    count
 }
 
 /// Split a slice into blocks of 1024 bytes
