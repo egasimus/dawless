@@ -1,5 +1,88 @@
 use crate::*;
 
+/// Return a buffer containing a blank filesystem.
+pub fn format <const M: DeviceModel> () -> Vec<u8> {
+
+    // The empty buffer
+    let mut raw   = vec![0x00; disk_capacity(&M)];
+
+    // The current cursor position. Incremented by writing
+    let mut index = 0x0000;
+
+    // 0x0000 - 0x0600: Blank file headers for S900 compatibility
+    for _ in 0..64 {
+        index += put_vec(&mut raw, index, &[
+            0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
+            0x0A, 0x0A, 0x0A, 0x0A, 0x00, 0x00, 0x06, 0x0A,
+            0xFF, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, match M {
+                DeviceModel::S900  => 0x00,
+                _                  => 0x11 // first real data block,
+            }
+        ]);
+    }
+
+    // 0x0600 - 0x1280: Block headers.
+    assert_eq!(index, 0x0600);
+    for _ in 0..1600 {
+        index += put_vec(&mut raw, index, if index < 0x0622 {
+            &[0x00, 0x40] // reserved for metadata
+        } else {
+            &[0x00, 0x00] // free
+        });
+    }
+
+    // 0x1280 - 0x128C: Volume name in AKAI format. (offset 4736)
+    assert_eq!(index, 0x1280);
+    put_vec(&mut raw, index, &[
+        0x18, 0x19, 0x1E, 0x0A, 0x18, 0x0B, 0x17, 0x0F, 0x0E, 0x0A, 0x0A, 0x0A
+    ]);
+
+    // 0x128C - 0x1400: filesystem metadata (probably)
+    assert_eq!(index, 0x128C);
+    match M {
+        DeviceModel::S900 => {
+            // FIXME: this section is skipped on the S900 as per s2kdie sources.
+            // so the assertions below will always fail
+        },
+        DeviceModel::S2000 => {
+            let mut data = [0; 372];
+            put(&mut data, 0x00, &[
+                0x00, 0x00,
+                0x00, 0x11,
+                0x00, 0x01,
+                0x01, 0x23,
+                0x00, 0x00,
+                0x32, 0x09,
+                0x0C, 0xFF
+            ]);
+            index += put_vec(&mut raw, index, &data);
+        },
+        DeviceModel::S3000 => {
+            let mut data = [0; 372];
+            put(&mut data, 0x00, &[
+                0x00, 0x00,
+                0x32, 0x10,
+                0x00, 0x01,
+                0x01, 0x00,
+                0x00, 0x00,
+                0x32, 0x09,
+                0x0C, 0xFF
+            ]);
+            index += put_vec(&mut raw, index, &data);
+        }
+    };
+
+    // 0x1400: 512 possible directory entries
+    assert_eq!(index, 0x1400);
+    index += put_vec(&mut raw, index, &[0; 0x3000]);
+
+    // 0x4400: 1583 sectors for data, 1024 bytes each
+    assert_eq!(index, 0x4400);
+    put_vec(&mut raw, index, &[0; 0x18C20A]);
+
+    raw
+}
+
 pub trait DeviceDisk<const M: DeviceModel> {
 
     /** Create and format an empty disk. */
@@ -171,79 +254,4 @@ impl<const M: DeviceModel> Filesystem<M> {
 
     */
 
-}
-
-/// Write a blank filesystem to a buffer.
-pub fn format <const M: DeviceModel> () -> Vec<u8> {
-
-    let mut raw   = vec![0x00; disk_capacity(&M)];
-    let mut index = 0x0000;
-
-    // 0x0000 - 0x0600: Blank file headers for S900 compatibility?
-    let mut data = [0x00; 0x0600];
-    data[0x0017] = 0x11; // first data block
-    index += put_vec(&mut raw, index, &data);
-        //0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
-        //0x0A, 0x0A, 0x0A, 0x0A, 0x00, 0x00, 0x06, 0x0A,
-        //0xFF, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, match M {
-            //DeviceModel::S900  => 0x00,
-            //_                  => 0x11,
-        //}
-    //]);
-
-    // 0x0018: Empty space (file headers?)
-    assert_eq!(index, 0x0018);
-    index += put_vec(&mut raw, index, &[0x00; 3166]);
-
-    // 0x1280: Volume name in AKAI format. (offset 4736)
-    assert_eq!(index, 0x1280);
-    put_vec(&mut raw, index, &[
-        0x18, 0x19, 0x1E, 0x0A, 0x18, 0x0B, 0x17, 0x0F, 0x0E, 0x0A, 0x0A, 0x0A
-    ]);
-
-    assert_eq!(index, 0x128C);
-
-    // 0x128C: what is this stuff?
-    match M {
-
-        // This section is skipped on S900. Overall the S900 code path is vestigial
-        // from the S2KDIE PHP script because I have no way of testing it.
-        DeviceModel::S900 => {},
-
-        DeviceModel::S2000 => {
-            let mut data = [0; 372];
-            put(&mut data, 0x00, &[
-                0x00, 0x00,
-                0x00, 0x11,
-                0x00, 0x01,
-                0x01, 0x23,
-                0x00, 0x00,
-                0x32, 0x09, 
-                0x0C, 0xFF
-            ]);
-            index += put_vec(&mut raw, index, &data);
-        },
-
-        DeviceModel::S3000 => {
-            let mut data = [0; 372];
-            put(&mut data, 0x00, &[
-                0x00, 0x00,
-                0x32, 0x10,
-                0x00, 0x01,
-                0x01, 0x00,
-                0x00, 0x00,
-                0x32, 0x09,
-                0x0C, 0xFF
-            ]);
-            index += put_vec(&mut raw, index, &data);
-        }
-    };
-
-    // 0x1400: 512 possible directory entries
-    put_vec(&mut raw, 0x1400, &[0; 0x3000]);
-
-    // 0x4400: 1583 sectors for data, 1024 bytes each
-    put_vec(&mut raw, 0x4400, &[0; 0x18C20A]);
-
-    raw
 }
