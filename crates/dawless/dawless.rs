@@ -15,6 +15,7 @@ fn main () {
         .blank_disk()
         .list_files()
         .add_sample("140VEC3BB1", &read(&args[2]))
+        .add_sample("140VEC3BB2", &read(&args[2]))
         .list_files()
         .write_disk();
 

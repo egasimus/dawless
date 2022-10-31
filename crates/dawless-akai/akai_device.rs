@@ -70,7 +70,7 @@ pub fn guess_model (volname: &[u8; 24]) -> DeviceModel {
         0x00 => DeviceModel::S900,
         0x17 => DeviceModel::S2000,
         0x16 => DeviceModel::S3000,
-        _ => panic!("could not determine device model from image data")
+        _    => panic!("could not determine device model from image data")
     }
 }
 
