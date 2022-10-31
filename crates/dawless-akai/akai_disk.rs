@@ -9,7 +9,7 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
     // The current cursor position. Incremented by writing
     let mut index = 0x0000;
 
-    // 0x0000 - 0x0600: Blank file headers for S900 compatibility
+    // 0x000000 - 0x000600: 64 file headers for S900 compatibility
     for _ in 0..64 {
         index += put_vec(&mut raw, index, &[
             0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
@@ -21,7 +21,7 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
         ]);
     }
 
-    // 0x0600 - 0x1280: Block headers.
+    // 0x000600 - 0x001280: 1600 block headers.
     assert_eq!(index, 0x0600);
     for _ in 0..1600 {
         index += put_vec(&mut raw, index, if index < 0x0622 {
@@ -31,13 +31,13 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
         });
     }
 
-    // 0x1280 - 0x128C: Volume name in AKAI format. (offset 4736)
+    // 0x001280 - 0x00128C: Volume name in AKAI format. (offset 4736)
     assert_eq!(index, 0x1280);
-    put_vec(&mut raw, index, &[
+    index += put_vec(&mut raw, index, &[
         0x18, 0x19, 0x1E, 0x0A, 0x18, 0x0B, 0x17, 0x0F, 0x0E, 0x0A, 0x0A, 0x0A
     ]);
 
-    // 0x128C - 0x1400: filesystem metadata (probably)
+    // 0x00128C - 0x001400: Filesystem metadata (probably)
     assert_eq!(index, 0x128C);
     match M {
         DeviceModel::S900 => {
@@ -72,11 +72,11 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
         }
     };
 
-    // 0x1400: 512 possible directory entries
+    // 0x001400 - 0x004400: 512 file headers
     assert_eq!(index, 0x1400);
     index += put_vec(&mut raw, index, &[0; 0x3000]);
 
-    // 0x4400: 1583 sectors for data, 1024 bytes each
+    // 0x004400 - 0x190000: 1583 sectors for data, 1024 bytes each
     assert_eq!(index, 0x4400);
     put_vec(&mut raw, index, &[0; 0x18C20A]);
 
@@ -84,132 +84,80 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
 }
 
 pub trait DeviceDisk<const M: DeviceModel> {
-
     /** Create and format an empty disk. */
     fn blank_disk (&self) -> Filesystem<M> {
         self.load_disk(&format::<M>())
     }
-
     /** Read the files from a disk image. */
     fn load_disk (&self, raw: &Vec<u8>) -> Filesystem<M> {
         Filesystem::new(raw.clone())
     }
-
 }
 
 #[derive(Debug)]
 pub struct Filesystem<const M: DeviceModel> {
-    pub label:   String,
-    pub headers: Vec<FileRecord>,
-    pub table:   Vec<BlockRecord>,
-    pub blocks:  Vec<BlockData>
+    pub label: String,
+    pub files: Vec<File>
 }
 
 impl<const M: DeviceModel> Filesystem<M> {
 
     /** Create a filesystem image. */
     pub fn new (raw: Vec<u8>) -> Self {
-        let label   = u8_to_string(&raw[0x1280..0x1280+12]);
-        let headers = FileRecord::read_all::<M>(&raw.as_slice());
-        let table   = read_block_table::<M>(&raw.as_slice());
-        let blocks  = as_blocks(&raw);
-        Self { label, headers, table, blocks }
+        Self {
+            label: u8_to_string(&raw[0x1280..0x1280+12]),
+            files: File::read_all::<M>(&raw.as_slice())
+        }
     }
 
     pub fn list_files (self) -> Self {
         println!("\nLabel: {}", self.label);
         println!("Files:");
-        for (i, header) in self.headers.iter().enumerate() {
-            println!("\n{: >4} {:<12} {:>8} bytes from block 0x{:04x} is a {:?}", i, header.name, header.size, header.start, header.kind);
-            let data = self.read_file(header.start, header.size);
-            //let mut block_index = Some(header.start);
-            //while block_index.is_some() {
-                //let index = block_index.unwrap() as usize;
-                //let dump0 = self.blocks[index][0..256].into_braille_dump();
-                //let dump1 = self.blocks[index][256..512].into_braille_dump();
-                //let dump2 = self.blocks[index][512..768].into_braille_dump();
-                //let dump3 = self.blocks[index][768..1024].into_braille_dump();
-                //println!("     0x{:04x} {: >4}", index, &dump0);
-                //println!("            {: >4}", &dump1);
-                //println!("            {: >4}", &dump2);
-                //println!("            {: >4}", &dump3);
-                //block_index = match self.table[index] {
-                    //BlockRecord::Next(index) => Some(index as u16),
-                    //_ => None
-                //};
-            //}
+        for (i, file) in self.files.iter().enumerate() {
+            println!("\n{: >4} {:<12} {:>8} bytes is a {:?}", i, file.name, file.data.len(), file.kind);
         }
         self
     }
 
-    pub fn read_file (&self, mut start: u16, size: u32) -> Vec<u8> {
-        let mut data      = vec![0u8; size as usize];
-        let mut remaining = size as usize;
-        let mut index     = 0;
-        while remaining > 0 {
-            //println!("     block {}, remaining: {}, next: {:?}", start, remaining, self.table[start as usize]);
-            let block = self.blocks[start as usize];
-            let count = put_vec(&mut data, index, &block[..usize::min(remaining, 1024)]);
-            index += count;
-            remaining = remaining.saturating_sub(count);
-            match self.table[start as usize] {
-                BlockRecord::Next(block) => start = block,
-                _ => break
-            }
-        }
-        data
-    }
-
     pub fn add_sample (self, name: &str, data: &[u8]) -> Self {
-        self.add_file(
-            name.into(),
-            FileType::S3000Sample,
-            &Sample::serialize(name, data)
-        )
+        self.add_file(name, FileType::S3000Sample, Sample::serialize(name, data))
     }
 
-    pub fn add_file (mut self, name: &str, kind: FileType, data: &[u8]) -> Self {
-        let start = self.find_free_block();
-        let head = FileRecord { name: name.into(), kind, size: data.len() as u32, start };
-        self.headers.push(head);
-        self.put_blocks(start, data)
-    }
-
-    fn find_free_block (&self) -> BlockIndex {
-        // start from block 17 (0x11 at addr 0x4400 - first data block in image)
-        for i in 0x11..max_blocks(&M) {
-            if self.table[i] == BlockRecord::Free {
-                return i as BlockIndex
-            }
-        }
-        panic!("no free block found")
-    }
-
-    fn put_blocks (mut self, mut index: BlockIndex, data: &[u8]) -> Self {
-        let mut new_blocks: std::collections::VecDeque<BlockData> = as_blocks(data).into();
-        while let Some(block) = new_blocks.pop_front() {
-            self.blocks[index as usize] = block;
-            match self.table.iter().position(|x| *x == BlockRecord::Free) {
-                Some(found) => {
-                    self.table[index as usize] = BlockRecord::Next(found as u16);
-                    index = found as u16
-                },
-                None => panic!("ran out of free blocks")
-            }
-        }
-        self.table[index as usize] = BlockRecord::EOF;
+    pub fn add_file (mut self, name: &str, kind: FileType, data: Vec<u8>) -> Self {
+        self.files.push(File { name: name.into(), kind, data });
         self
     }
 
     pub fn write_disk (self) -> Vec<u8> {
-        let data = format::<M>();
-        println!("L {}", data.len());
-        let data = FileRecord::write_all::<M>(data, &self.headers);
-        println!("L {}", data.len());
-        let data = write_block_table::<M>(data, &self.table);
-        println!("L {}", data.len());
-        let data = write_blocks::<M>(data, &self.blocks);
-        println!("L {}", data.len());
+        // Get a blank disk image
+        let mut data = format::<M>();
+        // The block before the next block
+        let mut block_id = 0x11;
+        // Write each file
+        for (file_index, file) in self.files.iter().enumerate() {
+            // Split data into blocks
+            let blocks = as_blocks(&file.data);
+            // Store id of 1st block
+            let start = block_id;
+            // Write each block to the image
+            for block in blocks.iter() {
+                // Copy data to free block
+                put_vec(&mut data, block_id * BLOCK_SIZE, block);
+                // Update block table to point to block after that
+                put_vec(&mut data, 0x0600 + block_id * 2, &(block_id + 1).to_le_bytes());
+                // Get next free block
+                block_id += 1;
+            }
+            // If we just wrote the last block of a file, mark the block as EOF in the table
+            put_vec(&mut data, 0x0600 + (block_id - 1) * 2, &[0x00, 0xC0]);
+            // Write the file header
+            put_vec(&mut data, 0x1400 + file_index * 24, &FileHeader {
+                name:  file.name.clone(),
+                kind:  file.kind.clone(),
+                size:  file.data.len() as u32,
+                start: start as u16
+            }.serialize());
+        }
         data
     }
 

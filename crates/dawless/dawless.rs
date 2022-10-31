@@ -10,21 +10,21 @@ fn main () {
         .load_disk(&read(&args[1]))
         .list_files();
 
-    //let data = akai_s3000()
-        ////.load_disk(read(&args[1]))
-        //.blank_disk()
-        //.list_files()
-        //.add_sample("140VEC3BB1", &read(&args[2]))
-        //.add_sample("140VEC3BB2", &read(&args[2]))
-        //.list_files()
-        //.write_disk();
+    let data = akai_s3000()
+        //.load_disk(read(&args[1]))
+        .blank_disk()
+        .list_files()
+        .add_sample("140VEC3BB1", &read(&args[2]))
+        .add_sample("140VEC3BB2", &read(&args[2]))
+        .list_files()
+        .write_disk();
 
-    //akai_s3000()
-        //.load_disk(&data)
-        //.list_files();
+    akai_s3000()
+        .load_disk(&data)
+        .list_files();
 
-    //let mut f = std::fs::File::create("data/TEST.IMG").unwrap();
-    //f.write_all(data.as_slice()).unwrap();
+    let mut f = std::fs::File::create("data/TEST.IMG").unwrap();
+    f.write_all(data.as_slice()).unwrap();
 
     //let disk = akai_s3000()
         //.blank_disk()

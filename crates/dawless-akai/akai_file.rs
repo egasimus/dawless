@@ -1,7 +1,49 @@
 use crate::*;
 
 #[derive(Debug)]
-pub struct FileRecord {
+pub struct File {
+    pub name: String,
+    pub kind: FileType,
+    pub data: Vec<u8>
+}
+
+impl File {
+
+    pub fn read_all <const M: DeviceModel> (raw: &[u8]) -> Vec<Self> {
+        let mut files = vec![];
+        let headers = FileHeader::read_all::<M>(&raw);
+        let table = read_block_table::<M>(&raw);
+        let blocks = as_blocks(&raw);
+        for header in headers {
+            files.push(File::read(header, &table, &blocks));
+        }
+        files
+    }
+
+    pub fn read (header: FileHeader, table: &Vec<BlockRecord>, blocks: &Vec<BlockData>) -> Self {
+        // Buffer. Contents of blocks are copied into it.
+        let mut data  = vec![0x00; header.size as usize];
+        // Buffer write pointer
+        let mut index = 0;
+        // Block id
+        let mut block = header.start;
+        // Read bytes from linked blocks up to the file size
+        while index < header.size as usize {
+            // Copy block into buffer
+            index += put_vec(&mut data, index, &blocks[block as usize]);
+            // If there's a next block, repeat
+            match table[block as usize] {
+                BlockRecord::Next(next) => block = next,
+                _ => break
+            };
+        }
+        Self { name: header.name, kind: header.kind, data }
+    }
+
+}
+
+#[derive(Debug)]
+pub struct FileHeader {
     /// Name of file
     pub name:  String,
     /// Type of file
@@ -12,7 +54,7 @@ pub struct FileRecord {
     pub start: BlockIndex,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub enum FileType {
     Deleted      = 0x00,
     OS           = 0x63,
@@ -61,13 +103,13 @@ pub type BlockData = [u8; BLOCK_SIZE];
 
 pub const BLOCK_SIZE: usize = 1024;
 
-impl FileRecord {
+impl FileHeader {
     pub fn read_all <const M: DeviceModel> (raw: &[u8]) -> Vec<Self> {
         let offset = file_headers_offset(&M);
         let mut headers = vec![];
         // Read up to `max` FS records
         for entry in 0..max_files(&M) {
-            match FileRecord::read(&raw[offset..], entry * 24) {
+            match FileHeader::read(&raw[offset..], entry * 24) {
                 Some(header) => headers.push(header),
                 // Empty file header means we've reached the end
                 None => break
@@ -98,7 +140,7 @@ impl FileRecord {
         }
         raw
     }
-    fn serialize (&self) -> [u8; 24] {
+    pub fn serialize (&self) -> [u8; 24] {
         let mut data = [0x00; 24];
         let name = str_to_name(&self.name);
         put(&mut data, 0x00, &name[..usize::min(name.len(), 12)]);
