@@ -18,6 +18,10 @@ fn main () {
         .list_files()
         .write_disk();
 
+    akai_s3000()
+        .load_disk(data)
+        .list_files();
+
     //let disk = akai_s3000()
         //.blank_disk()
         //.add_sample("140VEC3BB11", &read(&args[1]));

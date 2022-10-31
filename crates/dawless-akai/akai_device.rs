@@ -136,20 +136,9 @@ pub fn write_fixed_sections (model: &DeviceModel, mut raw: Vec<u8>) -> Vec<u8> {
     raw
 }
 
-impl DiskSamples for DiskImage<{ DeviceModel::S900 }> {
-    fn header_length () -> usize {
-        0x3c
-    }
-}
-
-impl DiskSamples for DiskImage<{ DeviceModel::S2000 }> {
-    fn header_length () -> usize {
-        0xbe
-    }
-}
-
-impl DiskSamples for DiskImage<{ DeviceModel::S3000 }> {
-    fn header_length () -> usize {
-        0xbe
+pub fn sample_header_length (model: &DeviceModel) -> usize {
+    match model {
+        DeviceModel::S900 => 0x3c, // 796 blocks
+        _                 => 0xbe, // 1583 blocks
     }
 }

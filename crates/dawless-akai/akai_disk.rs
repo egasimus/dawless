@@ -29,14 +29,11 @@ impl<const M: DeviceModel> DiskImage<M> {
         model: &DeviceModel,
         raw:   Vec<u8>,
     ) -> Self {
-        let label_start          = 0x1280;
-        let header_start         = file_headers_offset(model);
-        
-        let max_files            = max_files(model);
+        let label_start  = 0x1280;
         Self {
             label:   u8_to_string(&raw[label_start..label_start+12]),
-            headers: load_file_headers(&raw.as_slice()[header_start..], max_files),
-            table:   load_block_table(&model, &raw.as_slice()),
+            headers: FileRecord::read_all(&model, &raw.as_slice()),
+            table:   read_block_table(&model, &raw.as_slice()),
             blocks:  as_blocks(&raw),
         }
     }
@@ -118,7 +115,7 @@ impl<const M: DeviceModel> DiskImage<M> {
 
     pub fn write_disk (self) -> Vec<u8> {
         let data = write_fixed_sections(&M, Vec::with_capacity(1638400));
-        let data = save_file_headers(&M, data);
+        let data = FileRecord::write_all(&M, data, &self.headers);
         data
     }
 
@@ -162,83 +159,6 @@ impl<const M: DeviceModel> DiskImage<M> {
     }
 
     */
-
-}
-
-pub trait DiskSamples {
-
-    fn header_length () -> usize;
-
-    fn validate_sample (data: &[u8]) -> (u8, u32) {
-        let compression = data[20];
-        if compression != 1 {
-            panic!("uncompressed wavs only")
-        }
-        let bitrate = data[34];
-        if bitrate != 16 {
-            panic!("16-bit wavs only")
-        }
-        let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
-        if sample_rate != 44100 {
-            panic!("44.1kHz wavs only")
-        }
-        let channels = data[22];
-        if channels != 1 {
-            panic!("mono wavs only")
-        }
-        (channels, sample_rate)
-    }
-
-    fn add_sample (&mut self, name: &str, data: &[u8]) -> &mut Self {
-        let header_length = Self::header_length();
-        let (channels, sample_rate) = Self::validate_sample(data);
-        let contents = &data[44..];
-        let length = (contents.len() as u32).to_le_bytes();
-        let max = header_length + contents.len();
-        let mut output = vec![0x00; max];
-        output[0x00] = 0x03; // format (S3000)
-        let channels = data[22];
-        if channels != 1 {
-            panic!("mono wavs only")
-        }
-        output[0x01] = channels; // channels
-        output[0x02] = 0x3C;     // original pitch
-        // name
-        let name_akai = str_to_name(name);
-        put_vec_max(max, &mut output, 0x03, &name_akai[..12]);
-        output[0x0f] = 0x80; // valid
-        output[0x10] = 0x01; // loops
-        output[0x11] = 0x00; // first loop
-        output[0x12] = 0x00; // dummy
-        output[0x13] = 0x02; // don't loop
-        output[0x14] = 0x00; // tune cent
-        output[0x15] = 0x00; // tune semi
-        // data abs. start addr. (internal?)
-        put_vec_max(max, &mut output, 0x16, &[0x00, 0x04, 0x01, 0x00]);
-        // set sample length
-        put_vec_max(max, &mut output, 0x1a, &length);
-        // set sample start
-        put_vec_max(max, &mut output, 0x1e, &[0x00, 0x00, 0x00, 0x00]);
-        // set sample end
-        put_vec_max(max, &mut output, 0x22, &length);
-        // set sample rate
-        put_vec_max(max, &mut output, 0x8a, &sample_rate.to_le_bytes());
-        // copy sample data
-        put_vec_max(max, &mut output, header_length, &contents);
-
-        self.add_file(name_akai, &output)
-    }
-
-    fn add_file (&mut self, name_akai: Vec<u8>, data: &[u8]) -> &mut Self {
-        let mut header = [0x00; 24];
-        put(&mut header, 0x00, &name_akai[..12]);
-        put(&mut header, 0x11, &data.len().to_le_bytes());
-        put(&mut header, 0x11, &(0 as u32).to_le_bytes());
-        self
-        //self.write_header(header)
-            //.write_size(data.len() as u32)
-            //.write_data(data)
-    }
 
 }
 

@@ -7,9 +7,9 @@ pub struct FileRecord {
     /// Type of file
     pub kind:  FileType,
     /// Size of file in bytes
-    pub size:  u32,
+    pub size:  FileSize,
     /// Address of first block
-    pub start: u16,
+    pub start: BlockIndex,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -27,37 +27,37 @@ pub enum FileType {
     S3000Sample  = 0xF3,
 }
 
+pub type FileSize = u32;
+
+pub type BlockIndex = u16;
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum BlockRecord {
     Free,
     Reserved,
     Reserved2,
     EOF,
-    Next(u16)
+    Next(BlockIndex)
 }
 
 pub type BlockData = [u8; BLOCK_SIZE];
 
 pub const BLOCK_SIZE: usize = 1024;
 
-pub fn load_file_headers (raw: &[u8], max: usize) -> Vec<FileRecord> {
-    let mut headers = vec![];
-    // Read up to `max` FS records
-    for entry in 0..max {
-        match FileRecord::read(raw, entry * 24) {
-            Some(header) => headers.push(header),
-            // Empty file header means we've reached the end
-            None => break
-        }
-    }
-    headers
-}
-
-pub fn save_file_headers (model: &DeviceModel, raw: Vec<u8>) -> Vec<u8> {
-    raw
-}
-
 impl FileRecord {
+    pub fn read_all (model: &DeviceModel, raw: &[u8]) -> Vec<Self> {
+        let offset = file_headers_offset(model);
+        let mut headers = vec![];
+        // Read up to `max` FS records
+        for entry in 0..max_files(model) {
+            match FileRecord::read(&raw[offset..], entry * 24) {
+                Some(header) => headers.push(header),
+                // Empty file header means we've reached the end
+                None => break
+            }
+        }
+        headers
+    }
     fn read (raw: &[u8], offset: usize) -> Option<Self> {
         if raw[offset] == 0x00 {
             return None
@@ -71,9 +71,28 @@ impl FileRecord {
             })
         }
     }
+    pub fn write_all (model: &DeviceModel, mut raw: Vec<u8>, headers: &Vec<Self>) -> Vec<u8> {
+        let offset = file_headers_offset(model);
+        for entry in 0..max_files(model) {
+            match headers.get(entry) {
+                None => put_vec(&mut raw, offset + entry * 24, &[0x00; 24]),
+                Some(header) => put_vec(&mut raw, offset + entry * 24, &header.serialize())
+            };
+        }
+        raw
+    }
+    fn serialize (&self) -> [u8; 24] {
+        let mut data = [0x00; 24];
+        let name = str_to_name(&self.name);
+        put(&mut data, 0x00, &name[..usize::min(name.len(), 12)]);
+        data[0x10] = self.kind as u8;
+        put(&mut data, 0x11, &self.size.to_le_bytes());
+        put(&mut data, 0x14, &self.start.to_le_bytes());
+        data
+    }
 }
 
-pub fn load_block_table (model: &DeviceModel, raw: &[u8]) -> Vec<BlockRecord> {
+pub fn read_block_table (model: &DeviceModel, raw: &[u8]) -> Vec<BlockRecord> {
     let (start, end) = file_table_boundaries(model);
     println!("{start} {end}");
     let table = &raw[start..end];
