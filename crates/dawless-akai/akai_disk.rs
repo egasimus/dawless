@@ -141,6 +141,8 @@ impl<const M: DeviceModel> Filesystem<M> {
             let start = block_id;
             // Write each block to the image
             for block in blocks.iter() {
+                // Fill block with zeros to prevent noise at end of sample
+                put_vec(&mut data, block_id * BLOCK_SIZE, &[0x00; BLOCK_SIZE]);
                 // Copy data to free block
                 put_vec(&mut data, block_id * BLOCK_SIZE, block);
                 // Update block table to point to block after that
