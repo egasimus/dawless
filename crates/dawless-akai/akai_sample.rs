@@ -39,7 +39,7 @@ impl<'a> Sample<'a> {
             panic!("mono wavs only")
         }
         let contents = &data[44..];
-        let length = (contents.len() as u32).to_le_bytes();
+        let length = ((contents.len()/2) as u32).to_le_bytes();
         let max = header_length + contents.len();
         let mut output = vec![0x00; max];
         output[0x00] = 0x03; // format (S3000)

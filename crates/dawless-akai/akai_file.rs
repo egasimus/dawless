@@ -143,9 +143,15 @@ impl FileHeader {
     pub fn serialize (&self) -> [u8; 24] {
         let mut data = [0x00; 24];
         let name = str_to_name(&self.name);
+        // Fill first 16 bytes (filename) with spaces
+        put(&mut data, 0x00, &[0x10; 16]);
+        // Write filename (is it 12 or 16 chars after all?)
         put(&mut data, 0x00, &name[..usize::min(name.len(), 12)]);
+        // Set file type
         data[0x10] = self.kind as u8;
+        // Set file size (4 bytes)
         put(&mut data, 0x11, &self.size.to_le_bytes());
+        // Set file start (2 bytes)
         put(&mut data, 0x14, &self.start.to_le_bytes());
         data
     }
