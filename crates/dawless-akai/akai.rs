@@ -12,9 +12,6 @@ module!(akai_sample);
 use std::io::{Read, Write};
 
 #[cfg(feature = "cli")]
-pub(crate) use brailledump::BrailleDump;
-
-#[cfg(feature = "cli")]
 #[derive(clap::Subcommand)]
 pub enum AKAI {
     /// Tools for the AKAI S3000
