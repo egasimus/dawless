@@ -8,5 +8,6 @@ name = "dawless"
 path = "dawless.rs"
 
 [dependencies]
-dawless-akai = { path = "../dawless-akai" }
-tabwriter = "1.2.1"
+clap         = { version = "4.0.18", features = ["derive"] }
+dawless-akai = { path = "../dawless-akai", features = ["cli"] }
+dawless-korg = { path = "../dawless-korg", features = ["cli"] }

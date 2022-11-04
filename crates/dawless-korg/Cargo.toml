@@ -1,11 +1,11 @@
 [package]
-name = "dawless-akai"
+name = "dawless-korg"
 version = "1.0.0"
 edition = "2021"
-description = "Support for AKAI S3000/S2000/S900 floppy disk images."
+description = "Support for Korg Electribe and Korg Triton Rack data."
 
 [lib]
-path = "akai.rs"
+path = "korg.rs"
 
 [dependencies]
 brailledump = { optional = true, path = "../brailledump" }

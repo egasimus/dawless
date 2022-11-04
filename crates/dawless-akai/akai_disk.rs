@@ -83,17 +83,6 @@ pub fn format <const M: DeviceModel> () -> Vec<u8> {
     raw
 }
 
-pub trait DeviceDisk<const M: DeviceModel> {
-    /** Create and format an empty disk. */
-    fn blank_disk (&self) -> Filesystem<M> {
-        self.load_disk(&format::<M>())
-    }
-    /** Read the files from a disk image. */
-    fn load_disk (&self, raw: &Vec<u8>) -> Filesystem<M> {
-        Filesystem::new(raw.clone())
-    }
-}
-
 #[derive(Debug)]
 pub struct Filesystem<const M: DeviceModel> {
     pub label: String,
