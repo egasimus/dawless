@@ -3,7 +3,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::ops::Deref;
 use clap::{Parser, Subcommand};
-use dawless_akai::AKAI;
 
 #[derive(Parser)]
 struct Cli {
@@ -16,7 +15,12 @@ enum Brand {
     /// Tools for AKAI devices
     AKAI {
         #[command(subcommand)]
-        model: AKAI,
+        model: dawless_akai::AKAI,
+    },
+    /// Tools for Korg devices
+    Korg {
+        #[command(subcommand)]
+        model: dawless_korg::Korg,
     },
 }
 
@@ -24,38 +28,8 @@ fn main () {
     let cli = Cli::parse();
 
     match &cli.brand {
-        Brand::AKAI { model } => match model {
-            AKAI::S3000 { import, sample, export, .. } => {
-                let mut disk = dawless_akai::akai_s3000().blank_disk();
-                for path in import {
-                    println!("Importing {path:?}");
-                    // fixme: allow multiple disks to be imported into one
-                    disk = dawless_akai::akai_s3000().load_disk(&read(&path));
-                    disk = disk.list_files();
-                }
-                for path in sample {
-                    if let Some(stem) = path.file_stem() {
-                        let stem = stem.to_string_lossy();
-                        let akai = dawless_akai::str_to_name(&stem);
-                        let name = dawless_akai::u8_to_string(&akai);
-                        println!("Importing {path:?} as {}", &name);
-                        disk = disk.add_sample(&name, &read(path));
-                        disk = disk.list_files();
-                    } else {
-                        println!("Ignoring file.")
-                    }
-                }
-                if let Some(path) = export {
-                    File::create(path)
-                        .unwrap()
-                        .write_all(disk.write_disk().as_slice())
-                        .unwrap();
-                    println!("Wrote {path:?}");
-                } else {
-                    println!("No --export <PATH> specified, not writing.");
-                }
-            },
-        },
+        Brand::AKAI { model } => dawless_akai::cli(model),
+        Brand::Korg { model } => dawless_korg::cli(model),
     };
 
     //let args = std::env::args().collect::<Vec<String>>();

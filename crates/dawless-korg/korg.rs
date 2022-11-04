@@ -17,3 +17,8 @@ pub enum Korg {
     },
 
 }
+
+#[cfg(feature = "cli")]
+pub fn cli (model: &Korg) {
+    unimplemented!()
+}
