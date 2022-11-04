@@ -99,6 +99,7 @@ impl<const M: DeviceModel> Filesystem<M> {
         }
     }
 
+    #[cfg(feature = "cli")]
     pub fn list_files (self) -> Self {
         println!("\nLabel: {}", self.label);
         println!("Files:");
@@ -149,46 +150,5 @@ impl<const M: DeviceModel> Filesystem<M> {
         }
         data
     }
-
-    /*
-
-    /** List all files in the filesystem. */
-    pub fn list (&self) -> Vec<Sample> {
-        let mut samples = vec![];
-        for i in 0..self.head.len() {
-            let head  = self.head[i];
-            let name  = u8_to_string(&head[..0x0b+1]);
-            let kind  = file_type(&head[0x10]);
-            let size  = u32::from_le_bytes([head[0x11], head[0x12], head[0x13], 0x00]) as usize;
-            let start = 0x1000 * u16::from_le_bytes([head[0x14], head[0x15]]) as usize;
-            println!("\n{name} {kind:?} @{start:?} +{size:?}");
-            let data  = &self.data[i];
-            if kind == FileType::S3000Sample {
-                println!("header id {:02x}", data[0x00]);
-                println!("bandwidth {:02x}", data[0x01]);
-                println!("pitch     {:02x}", data[0x02]);
-                println!("valid     {:02x}", data[0x0f]);
-                println!("loops     {:02x}", data[0x10]);
-                println!("1st loop  {:02x}", data[0x11]);
-                println!("play type {:02x}", data[0x13]);
-                println!("tune cent {:02x}", data[0x14]);
-                println!("tune semi {:02x}", data[0x15]);
-                println!("offset    {:02x}", data[0x8c]);
-                samples.push(Sample {
-                    name:        name,
-                    size:        size as u32,
-                    data:        &[],
-                    sample_rate: SampleRate::Hz22050,
-                    loop_mode:   LoopMode::Normal,
-                    tuning_semi: 0,
-                    tuning_cent: 0,
-                    length:      0
-                })
-            }
-        }
-        samples
-    }
-
-    */
 
 }
