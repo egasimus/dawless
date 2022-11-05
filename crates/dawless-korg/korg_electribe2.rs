@@ -37,7 +37,9 @@ pub(crate) fn cli (command: &Electribe2) {
             if let Some(import) = import {
                 let data = read(import);
                 let patterns = Electribe2AllPatterns::read(&data);
-                println!("{patterns:?}");
+                for pattern in patterns.patterns.iter() {
+                    println!("{}", pattern);
+                }
             }
         },
 
@@ -73,7 +75,7 @@ const PART_SIZE:       usize = 0x0330;
 
 const STEPS_OFFSET:    usize = 0x001e;
 
-const STEP_SIZE:       usize = 0x000a;
+const STEP_SIZE:       usize = 0x000c;
 
 #[derive(Debug)]
 pub struct Electribe2AllPatterns {
@@ -275,5 +277,43 @@ impl Electribe2Step {
         step.note_3   = raw[0x06];
         step.note_4   = raw[0x07];
         step
+    }
+}
+
+#[cfg(feature = "cli")]
+impl std::fmt::Display for Electribe2Pattern {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:<30}", self.name)?;
+        for part in self.parts.iter() {
+            write!(f, "\n  {}", part)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "cli")]
+impl std::fmt::Display for Electribe2Part {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.sample);
+        for step in self.steps.iter() {
+            write!(f, "\n    {}", step)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "cli")]
+impl std::fmt::Display for Electribe2Step {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[{} {} {} {} {} {} {} {}]",
+            self.empty,
+            self.gate,
+            self.velocity,
+            self.chord,
+            self.note_1,
+            self.note_2,
+            self.note_3,
+            self.note_4
+        )
     }
 }
