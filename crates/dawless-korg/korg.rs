@@ -1,24 +1,31 @@
+macro_rules! module { ($name:ident) => { mod $name; pub use $name::*; }; }
+
+module!(korg_electribe2);
+module!(korg_triton);
+
 #[cfg(feature = "cli")]
 #[derive(clap::Subcommand)]
 pub enum Korg {
 
     /// Tools for the Korg Electribe 2
     Electribe2 {
-        /// Import an existing disk image
-        #[clap(long)]
-        import:  Vec<std::path::PathBuf>,
+        #[command(subcommand)]
+        command: Electribe2,
     },
 
-    /// Tools for the Korg Triton Rack
-    TritonRack {
-        /// Import an existing disk image
-        #[clap(long)]
-        import:  Vec<std::path::PathBuf>,
-    },
+    ///// Tools for the Korg Triton
+    //Triton {
+        ///// Import an existing disk image
+        //#[clap(long)]
+        //command: Triton,
+    //},
 
 }
 
 #[cfg(feature = "cli")]
 pub fn cli (model: &Korg) {
-    unimplemented!()
+    match model {
+        Korg::Electribe2 { command } => korg_electribe2::cli(command),
+        //Korg::Triton{ command } => korg_triton::cli(command),
+    }
 }
