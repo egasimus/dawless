@@ -37,7 +37,7 @@ pub(crate) fn cli (command: &Electribe2) {
             if let Some(import) = import {
                 let data = read(import);
                 let patterns = Electribe2AllPatterns::read(&data);
-                println!("{patterns:#?}");
+                println!("{patterns:?}");
             }
         },
 
@@ -75,7 +75,7 @@ impl Electribe2AllPatterns {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Electribe2Pattern {
     /// 0x0010..0x0020 - name
     pub name:      String,
@@ -104,7 +104,7 @@ pub struct Electribe2Pattern {
     /// 0x0035 - alt 15/16
     pub alt_15_16: u8,
     /// 0x0800..0x0b30 - one track (816 bytes)
-    pub tracks:    Vec<Electribe2Track>
+    pub parts:    Vec<Electribe2Part>
 }
 
 /// Pattern start tag
@@ -118,27 +118,101 @@ impl Electribe2Pattern {
         assert_eq!(&raw[0x0000..0x0004], &PTST);
         let name = String::from_utf8(raw[0x0010..0x0020].into())
             .expect("invalid pattern name");
-        let mut tracks = Vec::with_capacity(16);
+        let mut parts = Vec::with_capacity(16);
         for i in 0..16 {
             let start = 0x800 + i * 0x330;
             let end = start + 0x330;
-            tracks.push(Electribe2Track::read(&raw[start..end]))
+            parts.push(Electribe2Part::read(&raw[start..end]))
         }
         assert_eq!(&raw[0x3BFC..0x3C00], &PTED);
-        Self { name, tracks }
+        Self { name, parts, ..Default::default() }
     }
 }
 
-#[derive(Debug)]
-pub struct Electribe2Track {
-    /// 0x0018 - volume
-    pub volume: u8,
-    /// 0x0b38 - sample
-    pub sample: u16
+#[derive(Debug, Default)]
+pub struct Electribe2Part {
+    /// 0x0000 - last step
+    pub last_step:        u8,
+    /// 0x0002 - voice assign
+    pub voice_assign:     u8,
+    /// 0x0003 - part priority
+    pub priority:         u8,
+    /// 0x0004 - motion sequence enable
+    pub motion_seq:       u8,
+    /// 0x0005 - velocity curve
+    pub trigger_vel:      u8,
+    /// 0x0006 - scale mode
+    pub scale:            u8,
+    /// 0x0008..0x0009 - oscilator/sample number
+    pub sample:           u8,
+    /// 0x000b - osc edit
+    pub osc:              u8,
+    /// 0x000c - filter type
+    pub filter_type:      u8,
+    /// 0x000d - filter cutoff
+    pub filter_cutoff:    u8,
+    /// 0x000e - filter resonance
+    pub filter_resonance: u8,
+    /// 0x000f - filter envelope
+    pub filter_envelope:  u8,
+    /// 0x0010 - modulation type
+    pub modulation_type:  u8,
+    /// 0x0011 - modulation speed
+    pub modulation_speed: u8,
+    /// 0x0012 - modulation depth
+    pub modulation_depth: u8,
+    /// 0x0014
+    pub attack:           u8,
+    /// 0x0015
+    pub decay:            u8,
+    /// 0x0018
+    pub level:            u8,
+    /// 0x0019
+    pub pan:              u8,
+    /// 0x001a
+    pub amp_eg:           u8,
+    /// 0x001b
+    pub mfx:              u8,
+    /// 0x001c
+    pub groove_type:      u8,
+    /// 0x001d
+    pub groove_depth:     u8,
+    /// 0x0020
+    pub ifx_type:         u8,
+    /// 0x0021
+    pub mfx_on:           u8,
+    /// 0x0022
+    pub ifx_amount:       u8,
+    /// 0x0024
+    pub pitch:            u8,
+    /// 0x0025
+    pub glide:            u8,
+    /// 64 steps of 12 bytes each
+    pub steps:            Vec<Electribe2Step>
 }
 
-impl Electribe2Track {
+impl Electribe2Part {
     pub fn read (raw: &[u8]) -> Self {
-        Self { volume: 0, sample: 0 }
+        Default::default()
     }
+}
+
+#[derive(Debug, Default)]
+pub struct Electribe2Step {
+    /// 0x0000
+    pub empty:    u8,
+    /// 0x0001
+    pub gate:     u8,
+    /// 0x0002
+    pub velocity: u8,
+    /// 0x0003
+    pub chord:    u8,
+    /// 0x0004
+    pub note_1:   u8,
+    /// 0x0005
+    pub note_2:   u8,
+    /// 0x0006
+    pub note_3:   u8,
+    /// 0x0008
+    pub note_4:   u8
 }
