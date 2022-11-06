@@ -67,6 +67,7 @@ impl<'a, B: Backend> DawlessTUI<'a, B> {
                     KeyCode::Char('q') => return true,
                     KeyCode::Down => { self.devices.next() },
                     KeyCode::Up   => { self.devices.prev() },
+                    KeyCode::F(n) => { self.devices.command(n) }
                     _ => {}
                 }
             }
@@ -166,6 +167,16 @@ impl<'a> DeviceList<'a> {
 
     fn prev (&mut self) {
         self.state.select(Some(prev(self.items.len(), self.state.selected())));
+    }
+
+    fn command (&mut self, n: u8) {
+        if let Some(selected) = self.state.selected() {
+            for command in DEVICES[selected].1.iter() {
+                if command.0 == KeyCode::F(n) {
+                    panic!("{}", command.1)
+                }
+            }
+        }
     }
 }
 
