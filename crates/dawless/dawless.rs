@@ -1,13 +1,16 @@
 use clap::{Parser, Subcommand};
+mod tui;
 
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]
-    brand: Brand,
+    command: Command,
 }
 
 #[derive(Subcommand)]
-enum Brand {
+enum Command {
+    /// Launch the interactive interface
+    TUI,
     /// Tools for AKAI devices
     AKAI {
         #[command(subcommand)]
@@ -21,8 +24,9 @@ enum Brand {
 }
 
 fn main () {
-    match &Cli::parse().brand {
-        Brand::AKAI { model } => dawless_akai::cli(model),
-        Brand::Korg { model } => dawless_korg::cli(model),
+    match &Cli::parse().command {
+        Command::TUI => tui::main().unwrap(),
+        Command::AKAI { model } => dawless_akai::cli(model),
+        Command::Korg { model } => dawless_korg::cli(model),
     };
 }

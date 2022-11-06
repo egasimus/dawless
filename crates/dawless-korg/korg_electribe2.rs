@@ -1,64 +1,3 @@
-#[cfg(feature = "cli")]
-use std::io::{Read, Write};
-use std::path::PathBuf;
-
-#[cfg(feature = "cli")]
-#[derive(clap::Subcommand)]
-pub enum Electribe2 {
-
-    /// Manage pattern files
-    Patterns {
-        /// Import an existing e2sSample.all pattern bundle.
-        #[clap(long)]
-        import: Option<PathBuf>,
-        /// Add a pattern
-        #[clap(long)]
-        add: Vec<PathBuf>,
-    },
-
-    /// Manage sample files
-    Samples {
-        /// Import an existing e2sSample.all sample bundle.
-        #[clap(long)]
-        import: Option<String>,
-        /// Add a sample
-        #[clap(long)]
-        add: Vec<PathBuf>,
-    }
-
-}
-
-#[cfg(feature = "cli")]
-pub(crate) fn cli (command: &Electribe2) {
-
-    match command {
-
-        Electribe2::Patterns { import, add } => {
-            if let Some(import) = import {
-                let data = read(import);
-                let patterns = Electribe2AllPatterns::read(&data);
-                for pattern in patterns.patterns.iter() {
-                    println!("{}", pattern);
-                }
-            }
-        },
-
-        Electribe2::Samples { import, add } => {
-        }
-
-    }
-
-}
-
-#[cfg(feature = "cli")]
-fn read (filename: &std::path::Path) -> Vec<u8> {
-    let mut f      = std::fs::File::open(&filename).expect("file not found");
-    let metadata   = std::fs::metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-    buffer
-}
-
 /// Pattern start tag
 const PTST: [u8; 4] = [80, 84, 83, 84];
 
@@ -83,6 +22,11 @@ pub struct Electribe2AllPatterns {
 }
 
 impl Electribe2AllPatterns {
+    /// Create an empty pattern bundle
+    pub fn empty () -> Self {
+        Self { patterns: Vec::with_capacity(250) }
+    }
+    /// Read a pattern bundle
     pub fn read (raw: &[u8]) -> Self {
         let mut patterns = vec![];
         for index in 0..250 {
@@ -95,7 +39,7 @@ impl Electribe2AllPatterns {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Electribe2Pattern {
     /// 0x0010..0x0020 - name
     pub name:      String,
@@ -143,7 +87,7 @@ impl Electribe2Pattern {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Electribe2Part {
     /// 0x0000 - last step
     pub last_step:        u8,
@@ -245,7 +189,7 @@ impl Electribe2Part {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Electribe2Step {
     /// 0x00
     pub empty:    u8,
@@ -280,40 +224,116 @@ impl Electribe2Step {
     }
 }
 
-#[cfg(feature = "cli")]
-impl std::fmt::Display for Electribe2Pattern {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:<30}", self.name)?;
-        for part in self.parts.iter() {
-            write!(f, "\n  {}", part)?;
-        }
-        Ok(())
-    }
-}
+#[cfg(feature = "cli")] pub use cli::*;
+#[cfg(feature = "cli")] mod cli {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::path::PathBuf;
 
-#[cfg(feature = "cli")]
-impl std::fmt::Display for Electribe2Part {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.sample);
-        for step in self.steps.iter() {
-            write!(f, "\n    {}", step)?;
-        }
-        Ok(())
-    }
-}
+    #[derive(clap::Subcommand)]
+    pub enum Electribe2 {
 
-#[cfg(feature = "cli")]
-impl std::fmt::Display for Electribe2Step {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[{} {} {} {} {} {} {} {}]",
-            self.empty,
-            self.gate,
-            self.velocity,
-            self.chord,
-            self.note_1,
-            self.note_2,
-            self.note_3,
-            self.note_4
-        )
+        /// Manage pattern files
+        Patterns {
+            /// Import an existing e2sSample.all pattern bundle.
+            #[clap(long)]
+            import: Option<PathBuf>,
+            /// Add a pattern
+            #[clap(long)]
+            add:    Vec<PathBuf>,
+            /// Pick a pattern by number and append it to a new pattern bundle.
+            #[clap(long)]
+            pick:   Option<Vec<usize>>,
+        },
+
+        /// Manage sample files
+        Samples {
+            /// Import an existing e2sSample.all sample bundle.
+            #[clap(long)]
+            import: Option<String>,
+            /// Add a sample
+            #[clap(long)]
+            add: Vec<PathBuf>,
+        }
+
+    }
+
+    pub(crate) fn cli (command: &Electribe2) {
+
+        match command {
+
+            Electribe2::Patterns { import, add, pick } => {
+
+                if let Some(import) = import {
+                    let data = read(import);
+                    let mut bundle = Electribe2AllPatterns::read(&data);
+                    for (index, pattern) in bundle.patterns.iter().enumerate() {
+                        println!("{:>3} {}", index+1, pattern.name);
+                    }
+
+                    if let Some(pick) = pick {
+                        let mut new_bundle = Electribe2AllPatterns::empty();
+                        for index in pick {
+                            new_bundle.patterns.push(
+                                bundle.patterns.get(*index-1).unwrap().clone()
+                            );
+                        }
+                        println!("");
+                        for (index, pattern) in new_bundle.patterns.iter().enumerate() {
+                            println!("{:>3} {}", index+1, pattern.name);
+                        }
+                    }
+                }
+
+            },
+
+            Electribe2::Samples { import, add } => {
+            }
+
+        }
+
+    }
+
+    fn read (filename: &std::path::Path) -> Vec<u8> {
+        let mut f      = std::fs::File::open(&filename).expect("file not found");
+        let metadata   = std::fs::metadata(&filename).expect("unable to read metadata");
+        let mut buffer = vec![0; metadata.len() as usize];
+        f.read(&mut buffer).expect("buffer overflow");
+        buffer
+    }
+
+    impl std::fmt::Display for Electribe2Pattern {
+        fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "{:<30}", self.name)?;
+            for part in self.parts.iter() {
+                write!(f, "\n  {}", part)?;
+            }
+            Ok(())
+        }
+    }
+
+    impl std::fmt::Display for Electribe2Part {
+        fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "{}", self.sample);
+            for step in self.steps.iter() {
+                write!(f, "\n    {}", step)?;
+            }
+            Ok(())
+        }
+    }
+
+    impl std::fmt::Display for Electribe2Step {
+        fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "[{} {} {} {} {} {} {} {}]",
+                self.empty,
+                self.gate,
+                self.velocity,
+                self.chord,
+                self.note_1,
+                self.note_2,
+                self.note_3,
+                self.note_4
+            )
+        }
     }
 }
