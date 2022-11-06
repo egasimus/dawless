@@ -10,7 +10,7 @@ pub enum Korg {
     /// Tools for the Korg Electribe 2
     Electribe2 {
         #[command(subcommand)]
-        command: Electribe2,
+        command: Electribe2CLI,
     },
 
     ///// Tools for the Korg Triton

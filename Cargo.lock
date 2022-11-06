@@ -143,8 +143,14 @@ version = "1.0.0"
 dependencies = [
  "brailledump",
  "clap",
+ "crossterm",
+ "lazy_static",
  "tabwriter",
 ]
+
+[[package]]
+name = "dawless-common"
+version = "0.1.0"
 
 [[package]]
 name = "dawless-korg"
@@ -153,6 +159,7 @@ dependencies = [
  "brailledump",
  "clap",
  "crossterm",
+ "dawless-common",
  "lazy_static",
  "tabwriter",
 ]

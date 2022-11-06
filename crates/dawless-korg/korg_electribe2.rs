@@ -17,11 +17,11 @@ const STEPS_OFFSET:    usize = 0x001e;
 const STEP_SIZE:       usize = 0x000c;
 
 #[derive(Debug)]
-pub struct Electribe2AllPatterns {
+pub struct Electribe2PatternBank {
     pub patterns: Vec<Electribe2Pattern>
 }
 
-impl Electribe2AllPatterns {
+impl Electribe2PatternBank {
     /// Create an empty pattern bundle
     pub fn empty () -> Self {
         Self { patterns: Vec::with_capacity(250) }
@@ -224,20 +224,10 @@ impl Electribe2Step {
     }
 }
 
-macro_rules! ui {
-    ($feature:literal $module:ident { $($body:item)* }) => {
-        #[cfg(feature = $feature)] mod $module { $($body)* }
-        #[cfg(feature = $feature)] pub use $module::*;
-    };
-}
-
-ui!("cli" cli {
-    use super::*;
-    use std::io::{Read, Write};
-    use std::path::PathBuf;
+dawless_common::cli! {
 
     #[derive(clap::Subcommand)]
-    pub enum Electribe2 {
+    pub enum Electribe2CLI {
 
         /// Manage pattern files
         Patterns {
@@ -264,21 +254,21 @@ ui!("cli" cli {
 
     }
 
-    pub(crate) fn cli (command: &Electribe2) {
+    pub(crate) fn cli (command: &Electribe2CLI) {
 
         match command {
 
-            Electribe2::Patterns { import, add, pick } => {
+            Electribe2CLI::Patterns { import, add, pick } => {
 
                 if let Some(import) = import {
                     let data = read(import);
-                    let mut bundle = Electribe2AllPatterns::read(&data);
+                    let mut bundle = Electribe2PatternBank::read(&data);
                     for (index, pattern) in bundle.patterns.iter().enumerate() {
                         println!("{:>3} {}", index+1, pattern.name);
                     }
 
                     if let Some(pick) = pick {
-                        let mut new_bundle = Electribe2AllPatterns::empty();
+                        let mut new_bundle = Electribe2PatternBank::empty();
                         for index in pick {
                             new_bundle.patterns.push(
                                 bundle.patterns.get(*index-1).unwrap().clone()
@@ -293,19 +283,11 @@ ui!("cli" cli {
 
             },
 
-            Electribe2::Samples { import, add } => {
+            Electribe2CLI::Samples { import, add } => {
             }
 
         }
 
-    }
-
-    fn read (filename: &std::path::Path) -> Vec<u8> {
-        let mut f      = std::fs::File::open(&filename).expect("file not found");
-        let metadata   = std::fs::metadata(&filename).expect("unable to read metadata");
-        let mut buffer = vec![0; metadata.len() as usize];
-        f.read(&mut buffer).expect("buffer overflow");
-        buffer
     }
 
     impl std::fmt::Display for Electribe2Pattern {
@@ -342,12 +324,11 @@ ui!("cli" cli {
             )
         }
     }
-});
+}
 
-ui!("tui" tui {
+dawless_common::tui! {
 
     use super::*;
-    use crossterm::event::KeyCode;
 
     lazy_static::lazy_static! {
 
@@ -365,10 +346,19 @@ ui!("tui" tui {
 
     }
 
-    fn import_pattern_bank () {}
+    struct Electribe2TUI {
+        pattern_bank: Option<Electribe2PatternBank>
+    }
 
-    fn import_sample_bank () {}
+    fn import_pattern_bank () {
+    }
 
-    fn import_pattern () {}
+    fn import_sample_bank () {
+        unimplemented!()
+    }
 
-});
+    fn import_pattern () {
+        unimplemented!()
+    }
+
+}

@@ -1,7 +1,9 @@
 [workspace]
 members = [
-  "crates/brailledump",
+  "crates/common",
   "crates/dawless",
   "crates/dawless-akai",
+  "crates/dawless-korg",
+  "crates/brailledump",
   "crates/hfe",
 ]

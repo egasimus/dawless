@@ -12,5 +12,5 @@ clap         = { version = "4.0.18", features = ["derive"] }
 tui          = { version = "0.19" }
 crossterm    = { version = "0.25" }
 lazy_static  = { version = "1.4" }
-dawless-akai = { path = "../dawless-akai", features = ["cli"] }
+dawless-akai = { path = "../dawless-akai", features = ["cli", "tui"] }
 dawless-korg = { path = "../dawless-korg", features = ["cli", "tui"] }

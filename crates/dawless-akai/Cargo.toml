@@ -11,6 +11,9 @@ path = "akai.rs"
 brailledump = { optional = true, path = "../brailledump" }
 clap        = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter   = { optional = true, version = "1.2.1" }
+crossterm   = { optional = true, version = "0.25" }
+lazy_static = { optional = true, version = "1.4" }
 
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
+tui = [ "crossterm", "lazy_static" ]
