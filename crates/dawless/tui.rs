@@ -101,23 +101,19 @@ impl<'a, B: Backend> DawlessTUI<'a, B> {
 }
 
 lazy_static::lazy_static! {
-    static ref DEVICES: Vec<(&'static str, Vec<(KeyCode, &'static str)>)> = {
+    static ref DEVICES: Vec<(&'static str, Vec<(KeyCode, &'static str, Option<fn()>)>)> = {
         let mut devices = vec![];
         devices.push(("AKAI S3000XL",   vec![
-            (KeyCode::F(1), "Import disk"),
-            (KeyCode::F(2), "Import sample"),
-            (KeyCode::F(3), "Import program"),
-            (KeyCode::F(4), "Import multi"),
+            (KeyCode::F(1), "Import disk", None),
+            (KeyCode::F(2), "Add sample",  None),
+            (KeyCode::F(3), "Add program", None),
+            (KeyCode::F(4), "Add multi",   None),
         ]));
-        devices.push(("Korg Electribe", vec![
-            (KeyCode::F(1), "Import sample bank"),
-            (KeyCode::F(2), "Import pattern bank"),
-            (KeyCode::F(3), "Import pattern"),
-        ]));
+        devices.push((dawless_korg::ELECTRIBE_2_TUI.0, (*dawless_korg::ELECTRIBE_2_TUI.1).to_vec()));
         devices.push(("Korg Triton",    vec![
-            (KeyCode::F(1), "Import program"),
-            (KeyCode::F(2), "Import combi"),
-            (KeyCode::F(3), "Import multi"),
+            (KeyCode::F(1), "Import program", None),
+            (KeyCode::F(2), "Import combi",   None),
+            (KeyCode::F(3), "Import multi",   None),
         ]));
         devices
     };

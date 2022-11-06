@@ -152,6 +152,8 @@ version = "1.0.0"
 dependencies = [
  "brailledump",
  "clap",
+ "crossterm",
+ "lazy_static",
  "tabwriter",
 ]
 

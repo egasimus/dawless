@@ -224,8 +224,14 @@ impl Electribe2Step {
     }
 }
 
-#[cfg(feature = "cli")] pub use cli::*;
-#[cfg(feature = "cli")] mod cli {
+macro_rules! ui {
+    ($feature:literal $module:ident { $($body:item)* }) => {
+        #[cfg(feature = $feature)] mod $module { $($body)* }
+        #[cfg(feature = $feature)] pub use $module::*;
+    };
+}
+
+ui!("cli" cli {
     use super::*;
     use std::io::{Read, Write};
     use std::path::PathBuf;
@@ -336,4 +342,33 @@ impl Electribe2Step {
             )
         }
     }
-}
+});
+
+ui!("tui" tui {
+
+    use super::*;
+    use crossterm::event::KeyCode;
+
+    lazy_static::lazy_static! {
+
+        pub static ref ELECTRIBE_2_TUI: (
+            &'static str,
+            Vec<(KeyCode, &'static str, Option<fn()>)>
+        ) = (
+            "Korg Electribe 2",
+            vec![
+                (KeyCode::F(1), "Import sample bank",  Some(import_sample_bank  as fn())),
+                (KeyCode::F(2), "Import pattern bank", Some(import_pattern_bank as fn())),
+                (KeyCode::F(3), "Import pattern",      Some(import_pattern      as fn())),
+            ]
+        );
+
+    }
+
+    fn import_pattern_bank () {}
+
+    fn import_sample_bank () {}
+
+    fn import_pattern () {}
+
+});
