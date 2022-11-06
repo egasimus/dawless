@@ -1,5 +1,5 @@
 #![feature(adt_const_params)]
-
+#[macro_use] extern crate dawless_common;
 macro_rules! module { ($name:ident) => { mod $name; pub use $name::*; }; }
 
 module!(akai_string);
@@ -42,74 +42,58 @@ pub enum AKAI {
     }
 }
 
-#[cfg(feature = "cli")]
-pub fn cli (model: &AKAI) {
-    match model {
-        AKAI::S3000 { import, sample, export, .. } => {
-            let mut disk = akai_s3000().blank_disk();
-            for path in import {
-                println!("Importing {path:?}");
-                // fixme: allow multiple disks to be imported into one
-                disk = akai_s3000().load_disk(&read(&path));
-                disk = disk.list_files();
-            }
-            for path in sample {
-                if let Some(stem) = path.file_stem() {
-                    let stem = stem.to_string_lossy();
-                    let akai = str_to_name(&stem);
-                    let name = u8_to_string(&akai);
-                    println!("Importing {path:?} as {}", &name);
-                    disk = disk.add_sample(&name, &read(path));
+cli! {
+
+    pub fn cli (model: &AKAI) {
+        match model {
+            AKAI::S3000 { import, sample, export, .. } => {
+                let mut disk = akai_s3000().blank_disk();
+                for path in import {
+                    println!("Importing {path:?}");
+                    // fixme: allow multiple disks to be imported into one
+                    disk = akai_s3000().load_disk(&read(&path));
                     disk = disk.list_files();
-                } else {
-                    println!("Ignoring file.")
                 }
-            }
-            if let Some(path) = export {
-                std::fs::File::create(path)
-                    .unwrap()
-                    .write_all(disk.write_disk().as_slice())
-                    .unwrap();
-                println!("Wrote {path:?}");
-            } else {
-                println!("No --export <PATH> specified, not writing.");
-            }
-        },
+                for path in sample {
+                    if let Some(stem) = path.file_stem() {
+                        let stem = stem.to_string_lossy();
+                        let akai = str_to_name(&stem);
+                        let name = u8_to_string(&akai);
+                        println!("Importing {path:?} as {}", &name);
+                        disk = disk.add_sample(&name, &read(path));
+                        disk = disk.list_files();
+                    } else {
+                        println!("Ignoring file.")
+                    }
+                }
+                if let Some(path) = export {
+                    std::fs::File::create(path)
+                        .unwrap()
+                        .write_all(disk.write_disk().as_slice())
+                        .unwrap();
+                    println!("Wrote {path:?}");
+                } else {
+                    println!("No --export <PATH> specified, not writing.");
+                }
+            },
+        }
     }
+
 }
 
-#[cfg(feature = "cli")]
-fn read (filename: &std::path::Path) -> Vec<u8> {
-    let mut f      = std::fs::File::open(&filename).expect("file not found");
-    let metadata   = std::fs::metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-    buffer
-}
-
-macro_rules! ui {
-    ($feature:literal $module:ident { $($body:item)* }) => {
-        #[cfg(feature = $feature)] mod $module { $($body)* }
-        #[cfg(feature = $feature)] pub use $module::*;
-    };
-}
-
-ui!("tui" tui {
-
-    use super::*;
-    use crossterm::event::KeyCode;
+tui! {
 
     lazy_static::lazy_static! {
 
-        pub static ref AKAI_S3000XL_TUI: (
-            &'static str,
-            Vec<(KeyCode, &'static str, Option<fn()>)>
-        ) = ("AKAI S3000XL",   vec![
-            (KeyCode::F(1), "Import disk", Some(import_disk as fn())),
-            (KeyCode::F(2), "Add sample",  Some(add_sample  as fn())),
-            (KeyCode::F(3), "Add program", Some(add_program as fn())),
-            (KeyCode::F(4), "Add multi",   Some(add_multi   as fn())),
-        ]);
+        //pub static ref AKAI_S3000XL_TUI: (
+            //&'static str,
+            //Vec<(KeyCode, &'static str, Option<fn()>)>
+        //) = ("AKAI S3000XL",   vec![
+            //(KeyCode::F(1), "Import disk", Some(import_disk as fn())),
+            //(KeyCode::F(2), "Add sample",  Some(add_sample  as fn())),
+            //(KeyCode::F(3), "Add program", Some(add_program as fn())),
+            //(KeyCode::F(4), "Add multi",   Some(add_multi   as fn())),
+        //]);
 
     }
 
@@ -121,4 +105,4 @@ ui!("tui" tui {
 
     fn add_multi () {}
 
-});
+}

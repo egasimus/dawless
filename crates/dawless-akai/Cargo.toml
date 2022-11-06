@@ -8,12 +8,13 @@ description = "Support for AKAI S3000/S2000/S900 floppy disk images."
 path = "akai.rs"
 
 [dependencies]
-brailledump = { optional = true, path = "../brailledump" }
-clap        = { optional = true, version = "4.0.18", features = ["derive"] }
-tabwriter   = { optional = true, version = "1.2.1" }
-crossterm   = { optional = true, version = "0.25" }
-lazy_static = { optional = true, version = "1.4" }
+dawless-common = { path = "../common" }
+cursive        = { optional = true, version = "0.20" }
+brailledump    = { optional = true, path = "../brailledump" }
+clap           = { optional = true, version = "4.0.18", features = ["derive"] }
+tabwriter      = { optional = true, version = "1.2.1" }
+lazy_static    = { optional = true, version = "1.4" }
 
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "crossterm", "lazy_static" ]
+tui = [ "cursive", "lazy_static" ]
