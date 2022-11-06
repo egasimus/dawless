@@ -13,7 +13,7 @@ use tui::{
     layout::{Constraint, Corner, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
 
@@ -66,7 +66,7 @@ impl<'a, B: Backend> DawlessTUI<'a, B> {
                 match key.code {
                     KeyCode::Char('q') => return true,
                     KeyCode::Down => { self.devices.next() },
-                    KeyCode::Up   => { self.devices.previous() },
+                    KeyCode::Up   => { self.devices.prev() },
                     _ => {}
                 }
             }
@@ -76,13 +76,15 @@ impl<'a, B: Backend> DawlessTUI<'a, B> {
 
     fn render (&mut self) {
         self.terminal.draw(|f| {
-            let chunks = Self::layout(&f);
-            self.devices.render(f, chunks[0]);
+            let (panels, commands) = Self::layout(&f);
+            self.devices.render(f, panels[0], commands);
         }).unwrap();
     }
 
-    fn layout (f: &Frame<B>) -> Vec<Rect> {
-        Layout::default()
+    fn layout (f: &Frame<B>) -> (Vec<Rect>, Rect) {
+        let mut size = f.size().clone();
+        size.height -= 2;
+        let panels = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
                 Constraint::Percentage(10),
@@ -90,69 +92,105 @@ impl<'a, B: Backend> DawlessTUI<'a, B> {
                 Constraint::Percentage(40),
                 Constraint::Percentage(40)
             ].as_ref())
-            .split(f.size())
+            .split(size);
+        let commands = Rect { x: size.x, y: size.height, width: size.width, height: 2 };
+        (panels, commands)
     }
 
+}
+
+lazy_static::lazy_static! {
+    static ref DEVICES: Vec<(&'static str, Vec<(KeyCode, &'static str)>)> = {
+        let mut devices = vec![];
+        devices.push(("AKAI S3000XL",   vec![
+            (KeyCode::F(1), "Import disk"),
+            (KeyCode::F(2), "Import sample"),
+            (KeyCode::F(3), "Import program"),
+            (KeyCode::F(4), "Import multi"),
+        ]));
+        devices.push(("Korg Electribe", vec![
+            (KeyCode::F(1), "Import sample bank"),
+            (KeyCode::F(2), "Import pattern bank"),
+            (KeyCode::F(3), "Import pattern"),
+        ]));
+        devices.push(("Korg Triton",    vec![
+            (KeyCode::F(1), "Import program"),
+            (KeyCode::F(2), "Import combi"),
+            (KeyCode::F(3), "Import multi"),
+        ]));
+        devices
+    };
 }
 
 #[derive(Default)]
 struct DeviceList<'a> {
-    state: ListState,
-    items: Vec<ListItem<'a>>
+    state:    ListState,
+    items:    Vec<ListItem<'a>>,
+    commands: Vec<(KeyCode, &'static str)>
 }
 
 impl<'a> DeviceList<'a> {
     fn new () -> Self {
-        let mut devices = Self::default();
-        devices.items.push(ListItem::new(vec![Spans::from("Korg Electribe")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Samples")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Patterns")]));
-        devices.items.push(ListItem::new(vec![Spans::from("AKAI S3000XL")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Samples")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Programs")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Multis")]));
-        devices.items.push(ListItem::new(vec![Spans::from("Korg Triton")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Programs")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Combis")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Multis")]));
-        devices.items.push(ListItem::new(vec![Spans::from("iConnectivity mioXL")]));
-        devices.items.push(ListItem::new(vec![Spans::from("  Presets")]));
-        devices
+        let mut this = Self::default();
+        for (index, (name, commands)) in DEVICES.iter().enumerate() {
+            this.items.push(ListItem::new(vec![Spans::from(*name)]));
+        }
+        this
     }
 
-    pub fn render <B: Backend> (&mut self, f: &mut Frame<B>, rect: Rect) {
+    pub fn render <B: Backend> (&mut self, f: &mut Frame<B>, panel_area: Rect, command_area: Rect) {
         let items = List::new(self.items.clone())
             .block(Block::default().borders(Borders::RIGHT).title("Devices"))
             .highlight_style(Style::default().fg(Color::LightGreen).add_modifier(Modifier::BOLD))
             .highlight_symbol(">> ");
-        f.render_stateful_widget(items, rect, &mut self.state);
+        f.render_stateful_widget(items, panel_area, &mut self.state);
+        if let Some(selected) = self.state.selected() {
+            let mut commands = String::from("");
+            for command in DEVICES[selected].1.iter() {
+                match command.0 {
+                    KeyCode::F(n) => commands.push_str(&format!("F{n} ")),
+                    _ => {}
+                };
+                commands.push_str(command.1);
+                commands.push_str("  ")
+            };
+            let commands = Paragraph::new(commands)
+                .block(Block::default().borders(Borders::TOP).title("Commands"));
+            f.render_widget(commands, command_area);
+        }
     }
 
-        fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= self.items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
+    fn next (&mut self) {
+        self.state.select(Some(next(self.items.len(), self.state.selected())));
     }
 
-    fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.items.len() - 1
-                } else {
-                    i - 1
-                }
+    fn prev (&mut self) {
+        self.state.select(Some(prev(self.items.len(), self.state.selected())));
+    }
+}
+
+fn next (len: usize, selected: Option<usize>) -> usize {
+    match selected {
+        Some(i) => {
+            if i >= len - 1 {
+                0
+            } else {
+                i + 1
             }
-            None => 0,
-        };
-        self.state.select(Some(i));
+        }
+        None => 0,
+    }
+}
+
+fn prev (len: usize, selected: Option<usize>) -> usize {
+    match selected {
+        Some(i) => {
+            if i == 0 {
+                len - 1
+            } else {
+                i - 1
+            }
+        }
+        None => 0,
     }
 }
