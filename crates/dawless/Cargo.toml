@@ -9,7 +9,7 @@ path = "dawless.rs"
 
 [dependencies]
 clap           = { version = "4.0.18", features = ["derive"] }
-cursive        = "0.20"
+crossterm      = "0.25.0"
 lazy_static    = { version = "1.4" }
 dawless-akai   = { path = "../dawless-akai", features = ["cli", "tui"] }
 dawless-korg   = { path = "../dawless-korg", features = ["cli", "tui"] }
