@@ -424,26 +424,46 @@ impl TUI for KorgElectribe2TUI {
         self.render_sample_list(&mut out, col1 + 25, row1)?;
         self.render_pattern_list(&mut out, col1 + 56, row1)?;
 
+        let bg = Color::AnsiValue(232);
+        draw_box(&mut out,
+            111, 0, 66, 32,
+            bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
+        )?;
+
         queue!(out,
-            SetBackgroundColor(Color::AnsiValue(232)),
+            SetBackgroundColor(Color::AnsiValue(234)),
             SetForegroundColor(Color::AnsiValue(255)),
-            MoveTo(130, 10), Print("██                                     "),
-            MoveTo(130, 11), Print("▄█                                     "),
-            MoveTo(130, 12), Print("▄█                                     "),
-            MoveTo(130, 13), Print("▀█                                     "),
-            MoveTo(130, 14), Print("▀█                                     "),
-            MoveTo(130, 15), Print("▀█                                     "),
-            MoveTo(130, 16), Print("██                                     "),
-            MoveTo(130, 17), Print("▄█                                     "),
-            MoveTo(130, 18), Print("▄█                                     "),
-            MoveTo(130, 19), Print("▀█                                     "),
-            MoveTo(130, 20), Print("▀█                                     "),
-            MoveTo(130, 21), Print("▀█                                     "),
-            MoveTo(130, 22), Print("██                                     "),
+            MoveTo(110, 10), Print("██ "),
+            MoveTo(110, 11), Print("▄█ "),
+            MoveTo(110, 12), Print("▄█ "),
+            MoveTo(110, 13), Print("▀█ "),
+            MoveTo(110, 14), Print("▀█ "),
+            MoveTo(110, 15), Print("▀█ "),
+            MoveTo(110, 16), Print("██ "),
+            MoveTo(110, 17), Print("▄█ "),
+            MoveTo(110, 18), Print("▄█ "),
+            MoveTo(110, 19), Print("▀█ "),
+            MoveTo(110, 20), Print("▀█ "),
+            MoveTo(110, 21), Print("▀█ "),
+            MoveTo(110, 22), Print("██ "),
+            SetForegroundColor(Color::AnsiValue(233)),
+            MoveTo(113, 10), Print("█               █               █               █               "),
+            MoveTo(113, 11), Print("█               █               █               █               "),
+            MoveTo(113, 12), Print("█               █               █               █               "),
+            MoveTo(113, 13), Print("█               █               █               █               "),
+            MoveTo(113, 14), Print("█               █               █               █               "),
+            MoveTo(113, 15), Print("█               █               █               █               "),
+            MoveTo(113, 16), Print("█               █               █               █               "),
+            MoveTo(113, 17), Print("█               █               █               █               "),
+            MoveTo(113, 18), Print("█               █               █               █               "),
+            MoveTo(113, 19), Print("█               █               █               █               "),
+            MoveTo(113, 20), Print("█               █               █               █               "),
+            MoveTo(113, 21), Print("█               █               █               █               "),
+            MoveTo(113, 22), Print("█               █               █               █               "),
             SetForegroundColor(Color::AnsiValue(200)),
-            MoveTo(145, 16), Print("▀ ▄▄"),
-            MoveTo(149, 17), Print("▀▀▀  "),
-            MoveTo(155, 18), Print("▀▀▀  ")
+            MoveTo(125, 16), Print("▀ ▄▄"),
+            MoveTo(129, 17), Print("▄▄  ▄▄"),
+            MoveTo(135, 18), Print("▄▄▄▄  ")
         )?;
 
         Ok(())
@@ -473,7 +493,7 @@ impl KorgElectribe2TUI {
         let bg = Color::AnsiValue(232);
         draw_box(out,
             col1, row1, 30, 32,
-            bg, Some((bg, Color::Yellow, "Korg Electribe 2: Patterns"))
+            bg, Some((bg, Color::Yellow, "Patterns"))
         )?;
         for i in 1..24 {
             queue!(out,
@@ -490,7 +510,7 @@ impl KorgElectribe2TUI {
         let bg = Color::AnsiValue(232);
         draw_box(out,
             col1, row1, 30, 32,
-            bg, Some((bg, Color::Yellow, "Korg Electribe 2: Samples"))
+            bg, Some((bg, Color::Yellow, "Samples"))
         )?;
         for i in 1..24 {
             queue!(out,
