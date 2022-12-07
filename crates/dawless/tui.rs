@@ -1,49 +1,40 @@
-use std::io::Result;
+use std::io::{Result, Write};
+use crossterm::{queue, style::{Print, Color, ResetColor}, cursor::MoveTo};
 
-fn fill <W: std::io::Write> (
-    out: &mut W, color: crossterm::style::Color, col1: u16, row1: u16, cols: u16, rows: u16
+fn draw_box <W: Write> (
+    out:   &mut W,
+    col1:  u16,
+    row1:  u16,
+    cols:  u16,
+    rows:  u16,
+    bg:    Color,
+    title: Option<(Color, &str)>
 ) -> Result<()> {
-    use crossterm::queue;
-    use crossterm::style::{Print, SetBackgroundColor};
-    use crossterm::cursor::MoveTo;
-    queue!(out, SetBackgroundColor(color))?;
-    for row in row1..row1+rows {
-        for col in col1..col1+cols {
-            queue!(out, MoveTo(col, row), Print(" "))?;
-        }
-    }
-    Ok(())
-}
+    use crossterm::style::{SetForegroundColor, SetBackgroundColor};
 
-fn frame <W: std::io::Write> (
-    out: &mut W, col1: u16, row1: u16, cols: u16, rows: u16
-) -> Result<()> {
-    use crossterm::queue;
-    use crossterm::style::Print;
-    use crossterm::cursor::MoveTo;
-    queue!(out, MoveTo(col1, row1),               Print("▄"))?;
-    queue!(out, MoveTo(col1 + cols, row1),        Print("▄"))?;
-    queue!(out, MoveTo(col1, row1 + rows),        Print("▀"))?;
-    queue!(out, MoveTo(col1 + cols, row1 + rows), Print("▀"))?;
-    for i in col1+1..col1+cols {
-        queue!(out, MoveTo(i, row1),              Print("▄"))?;
-        queue!(out, MoveTo(i, row1 + rows),       Print("▀"))?;
-    }
-    for i in row1+1..row1+rows {
-        queue!(out, MoveTo(col1,        i),       Print("█"))?;
-        queue!(out, MoveTo(col1 + cols, i),       Print("█"))?;
-    }
-    Ok(())
-}
+    queue!(out, ResetColor, SetForegroundColor(bg))?;
 
-fn frame_bg <W: std::io::Write> (
-    out: &mut W, color: crossterm::style::Color, col1: u16, row1: u16, cols: u16, rows: u16
-) -> Result<()> {
-    use crossterm::queue;
-    use crossterm::style::ResetColor;
-    queue!(out, ResetColor);
-    frame(out, col1, row1, cols, rows)?;
-    fill(out, color, col1 + 1, row1 + 1, cols - 1, rows - 1)?;
+    let border = "▄".repeat(cols as usize);
+    queue!(out, MoveTo(col1, row1), Print(&border))?;
+
+    let border = "▀".repeat(cols as usize);
+    queue!(out, MoveTo(col1, row1 + rows - 1), Print(&border))?;
+
+    let background = " ".repeat(cols as usize);
+    queue!(out, ResetColor, SetBackgroundColor(bg))?;
+    for row in row1+1..row1+rows-1 {
+        queue!(out, MoveTo(col1, row), Print(&background))?;
+    }
+
+    if let Some((color, text)) = title {
+        queue!(out,
+            SetBackgroundColor(bg),
+            SetForegroundColor(color),
+            MoveTo(col1, row1),
+            Print(format!(" {text} "))
+        )?;
+    }
+
     Ok(())
 }
 
@@ -58,7 +49,7 @@ trait TUI: Sync {
         }
         Ok(())
     }
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()> {
         Ok(())
     }
     fn update (&self) -> Result<bool> {
@@ -81,16 +72,20 @@ impl <'a> RootTUI <'a> {
 }
 
 impl <'a> TUI for RootTUI <'a> {
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        use crossterm::{queue};
-        use crossterm::style::{ResetColor, Color, Print};
-        use crossterm::cursor::{Hide, MoveTo, MoveToNextLine};
+    fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
+        use crossterm::cursor::{Hide, MoveTo};
         use crossterm::terminal::{Clear, ClearType};
         let mut out = std::io::stdout();
         queue!(out, ResetColor, Clear(ClearType::All), Hide)?;
-        queue!(out, MoveTo(col1, row1))?;
-        frame_bg(&mut out, Color::AnsiValue(17), col1 + 1, row1, 20, 40)?;
-        frame_bg(&mut out, Color::AnsiValue(16), col1 + 23, row1, 40, 10)?;
+        draw_box(&mut out,
+            col1 + 1, row1, 20, 20,
+            Color::AnsiValue(232), Some((Color::White, "Devices"))
+        )?;
+        out.flush()?;
+        //fill(&mut out,  Color::AnsiValue(232), col1 + 1, row1 + 1, 18, 40)?;
+        //frame(&mut out, Color::AnsiValue(11), col1, row1, 20, 40)?;
+        //fill(&mut out,  Color::AnsiValue(12), col1 + 23, row1, 40, 10)?;
+        //frame(&mut out, Color::AnsiValue(13), col1 + 23, row1, 40, 10)?;
         //for _ in 0..cols {
             //queue!(out, Print("|"), MoveToNextLine(1))?;
         //}
