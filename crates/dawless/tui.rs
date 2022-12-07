@@ -1,21 +1,66 @@
 use std::io::{Result, Write};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
 use dawless_common::{TUI, draw_box};
 use dawless_korg::KorgElectribe2TUI;
 use crossterm::{
-    queue,
+    execute, queue,
+    event::{poll, read, Event, KeyEvent, KeyCode},
     style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
-    cursor::MoveTo
+    cursor::{Show, MoveTo},
+    terminal::{
+        size, enable_raw_mode, disable_raw_mode,
+        EnterAlternateScreen, LeaveAlternateScreen
+    }
 };
 
+pub(crate) fn main() -> Result<()> {
+
+    let (tx, rx) = channel::<Event>();
+    let exit = Arc::new(AtomicBool::new(false));
+    let exit_thread = Arc::clone(&exit);
+
+    std::thread::spawn(move || {
+        let mut out = std::io::stdout();
+        execute!(out, EnterAlternateScreen)?;
+        enable_raw_mode()?;
+        let mut tui = RootTUI::new(exit_thread.clone());
+        loop {
+            if exit_thread.fetch_and(true, Ordering::Relaxed) == true {
+                break
+            }
+            let (cols, rows) = size()?;
+            tui.render(0, 0, cols, rows)?;
+            tui.update(rx.recv().unwrap())?;
+        }
+        execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
+        disable_raw_mode()
+    });
+
+    loop {
+        if exit.fetch_and(true, Ordering::Relaxed) == true {
+            break
+        }
+        if poll(std::time::Duration::from_millis(100))? {
+            if let Err(_) = tx.send(read()?) {
+                break
+            }
+        }
+    }
+
+    Ok(())
+
+}
 
 struct RootTUI <'a> {
+    exited:  Arc<AtomicBool>,
     devices: Vec<(&'static str, Box<&'a dyn TUI>)>,
     device:  usize
 }
 
 impl <'a> RootTUI <'a> {
-    fn new () -> Self {
+    fn new (exited: Arc<AtomicBool>) -> Self {
         RootTUI {
+            exited,
             devices: vec![
                 ("Korg Electribe",      Box::new(&KorgElectribe2TUI {})),
                 ("Korg Triton",         Box::new(&KorgElectribe2TUI {})),
@@ -51,49 +96,15 @@ impl <'a> TUI for RootTUI <'a> {
         out.flush()?;
         Ok(())
     }
-}
-
-struct AkaiMPCTUI {}
-
-impl TUI for AkaiMPCTUI {}
-
-pub(crate) fn main() -> Result<()> {
-
-    use crossterm::cursor::{Show};
-    use crossterm::event::{read, Event, KeyEvent, KeyCode};
-    use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
-
-    let (tx, rx) = std::sync::mpsc::channel::<crossterm::event::Event>();
-
-    std::thread::spawn(move || {
-        let mut out = std::io::stdout();
-        crossterm::execute!(out, EnterAlternateScreen)?;
-        crossterm::terminal::enable_raw_mode()?;
-        let tui = RootTUI::new();
-        loop {
-            let (cols, rows) = crossterm::terminal::size()?;
-            tui.render(0, 0, cols, rows)?;
-            match rx.recv() {
-                Ok(Event::Key(KeyEvent { code: KeyCode::Char('q'), .. })) => {
-                    break
-                },
-                _ => {}
-            }
+    fn update (&mut self, event: Event) -> Result<()> {
+        match event {
+            Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) => {
+                self.exited.store(true, Ordering::Relaxed);
+            },
+            _ => {}
         }
-        crossterm::execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
-        crossterm::terminal::disable_raw_mode()
-    });
-
-    loop {
-        if crossterm::event::poll(std::time::Duration::from_millis(500))? {
-            if let Err(_) = tx.send(read()?) {
-                break
-            }
-        }
+        Ok(())
     }
-
-    Ok(())
-
 }
 
 //use std::{error::Error, io};

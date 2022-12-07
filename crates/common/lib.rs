@@ -11,7 +11,8 @@ use crossterm::{
         Color, ResetColor, SetForegroundColor, SetBackgroundColor,
         Attribute, SetAttribute
     },
-    cursor::MoveTo
+    cursor::MoveTo,
+    event::Event
 };
 
 pub fn draw_box <W: Write> (
@@ -52,11 +53,9 @@ pub fn draw_box <W: Write> (
 }
 
 pub trait TUI: Sync {
-    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()> {
+    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()>;
+    fn update (&mut self, _event: Event) -> Result<()> {
         Ok(())
-    }
-    fn update (&self) -> Result<bool> {
-        Ok(true)
     }
 }
 
