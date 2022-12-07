@@ -1,3 +1,6 @@
+use std::io::Result;
+use dawless_common::{TUI, draw_box};
+
 /// Pattern start tag
 const PTST: [u8; 4] = [80, 84, 83, 84];
 
@@ -406,3 +409,54 @@ dawless_common::cli! {
     //}
 
 //}
+
+pub struct KorgElectribe2TUI {}
+
+impl TUI for KorgElectribe2TUI {
+    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        use crossterm::{
+            queue,
+            style::{Color, SetBackgroundColor, SetForegroundColor, Print},
+            cursor::MoveTo
+        };
+        let mut out = std::io::stdout();
+        let bg = Color::AnsiValue(232);
+        draw_box(&mut out,
+            col1, row1, 24, 6,
+            bg, Some((Color::Yellow, "Korg Electribe 2"))
+        )?;
+        queue!(out,
+            SetBackgroundColor(bg),
+            SetForegroundColor(Color::White),
+            MoveTo(col1 + 1, row1 + 2),
+            Print("Import pattern bank..."),
+            MoveTo(col1 + 1, row1 + 3),
+            Print("Import sample bank...")
+        )?;
+        draw_box(&mut out,
+            col1 + 25, row1, 40, 32,
+            bg, Some((Color::Yellow, "Korg Electribe 2: Patterns"))
+        )?;
+        for i in 1..24 {
+            queue!(out,
+                SetBackgroundColor(bg),
+                SetForegroundColor(Color::White),
+                MoveTo(col1 + 26, row1 + 1 + i),
+                Print(format!("{:>3} Init Pattern", i))
+            )?;
+        }
+        draw_box(&mut out,
+            col1 + 66, row1, 40, 32,
+            bg, Some((Color::Yellow, "Korg Electribe 2: Samples"))
+        )?;
+        for i in 1..24 {
+            queue!(out,
+                SetBackgroundColor(bg),
+                SetForegroundColor(Color::White),
+                MoveTo(col1 + 67, row1 + 1 + i),
+                Print(format!("{:>3} Sample", i))
+            )?;
+        }
+        Ok(())
+    }
+}

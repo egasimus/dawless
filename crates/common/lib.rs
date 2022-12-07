@@ -24,8 +24,8 @@ pub fn draw_box <W: Write> (
     let border = "▄".repeat(cols as usize);
     queue!(out, MoveTo(col1, row1), Print(&border))?;
 
-    let border = "▀".repeat(cols as usize);
-    queue!(out, MoveTo(col1, row1 + rows - 1), Print(&border))?;
+    //let border = "▀".repeat(cols as usize);
+    //queue!(out, MoveTo(col1, row1 + rows - 1), Print(&border))?;
 
     let background = " ".repeat(cols as usize);
     queue!(out, ResetColor, SetBackgroundColor(bg))?;

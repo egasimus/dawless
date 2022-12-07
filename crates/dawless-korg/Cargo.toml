@@ -9,7 +9,7 @@ path = "korg.rs"
 
 [dependencies]
 dawless-common = { path = "../common" }
-cursive        = { optional = true, version = "0.20" }
+crossterm      = { optional = true, version = "0.25" }
 brailledump    = { optional = true, path = "../brailledump" }
 clap           = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter      = { optional = true, version = "1.2.1" }
@@ -17,4 +17,4 @@ lazy_static    = { optional = true, version = "1.4" }
 
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "lazy_static", "cursive" ]
+tui = [ "lazy_static", "crossterm" ]

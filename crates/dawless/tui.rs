@@ -1,10 +1,12 @@
 use std::io::{Result, Write};
 use dawless_common::{TUI, draw_box};
+use dawless_korg::KorgElectribe2TUI;
 use crossterm::{
     queue,
     style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
     cursor::MoveTo
 };
+
 
 struct RootTUI <'a> {
     devices: Vec<(&'static str, Box<&'a dyn TUI>)>,
@@ -15,11 +17,11 @@ impl <'a> RootTUI <'a> {
     fn new () -> Self {
         RootTUI {
             devices: vec![
-                ("Korg Electribe",      Box::new(&KorgElectribeTUI {})),
-                ("Korg Triton",         Box::new(&KorgElectribeTUI {})),
-                ("AKAI S3000XL",        Box::new(&KorgElectribeTUI {})),
-                ("AKAI MPC2000",        Box::new(&KorgElectribeTUI {})),
-                ("iConnectivity mioXL", Box::new(&KorgElectribeTUI {}))
+                ("Korg Electribe",      Box::new(&KorgElectribe2TUI {})),
+                ("Korg Triton",         Box::new(&KorgElectribe2TUI {})),
+                ("AKAI S3000XL",        Box::new(&KorgElectribe2TUI {})),
+                ("AKAI MPC2000",        Box::new(&KorgElectribe2TUI {})),
+                ("iConnectivity mioXL", Box::new(&KorgElectribe2TUI {}))
             ],
             device: 0
         }
@@ -37,20 +39,16 @@ impl <'a> TUI for RootTUI <'a> {
         draw_box(&mut out, col1 + 1, row1, 21, 9, bg, Some((hi, "Devices")))?;
         for (index, device) in self.devices.iter().enumerate() {
             queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(if index == self.device { hi } else { fg }),
+                SetBackgroundColor(if index == self.device { hi } else { bg }),
+                SetForegroundColor(if index == self.device { bg } else { fg }),
                 MoveTo(col1 + 1, row1 + 2 + (index as u16)),
-                Print(format!(" {} ", device.0))
+                Print(format!(" {:<19} ", device.0))
             )?;
+            if index == self.device {
+                device.1.render(col1 + 23, row1, 50, 30)?;
+            }
         }
         out.flush()?;
-        //fill(&mut out,  Color::AnsiValue(232), col1 + 1, row1 + 1, 18, 40)?;
-        //frame(&mut out, Color::AnsiValue(11), col1, row1, 20, 40)?;
-        //fill(&mut out,  Color::AnsiValue(12), col1 + 23, row1, 40, 10)?;
-        //frame(&mut out, Color::AnsiValue(13), col1 + 23, row1, 40, 10)?;
-        //for _ in 0..cols {
-            //queue!(out, Print("|"), MoveToNextLine(1))?;
-        //}
         Ok(())
     }
     fn update (&self) -> Result<bool> {
@@ -64,16 +62,11 @@ impl <'a> TUI for RootTUI <'a> {
     }
 }
 
-struct KorgElectribeTUI {}
-
-impl TUI for KorgElectribeTUI {}
-
 struct AkaiMPCTUI {}
 
 impl TUI for AkaiMPCTUI {}
 
 pub(crate) fn main() -> Result<()> {
-    use crossterm::style::{ResetColor};
     use crossterm::cursor::{Show};
     use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
     let mut out = std::io::stdout();
