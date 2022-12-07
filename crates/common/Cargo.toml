@@ -7,6 +7,5 @@ edition = "2021"
 path = "lib.rs"
 
 [dependencies]
-cursive           = "0.20"
-cursive_tree_view = "0.8"
-pathdiff          = "0.2"
+crossterm = "0.25"
+pathdiff  = "0.2"

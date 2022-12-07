@@ -1,86 +1,48 @@
 use std::io::{Result, Write};
-use crossterm::{queue, style::{Print, Color, ResetColor}, cursor::MoveTo};
-
-fn draw_box <W: Write> (
-    out:   &mut W,
-    col1:  u16,
-    row1:  u16,
-    cols:  u16,
-    rows:  u16,
-    bg:    Color,
-    title: Option<(Color, &str)>
-) -> Result<()> {
-    use crossterm::style::{SetForegroundColor, SetBackgroundColor};
-
-    queue!(out, ResetColor, SetForegroundColor(bg))?;
-
-    let border = "▄".repeat(cols as usize);
-    queue!(out, MoveTo(col1, row1), Print(&border))?;
-
-    let border = "▀".repeat(cols as usize);
-    queue!(out, MoveTo(col1, row1 + rows - 1), Print(&border))?;
-
-    let background = " ".repeat(cols as usize);
-    queue!(out, ResetColor, SetBackgroundColor(bg))?;
-    for row in row1+1..row1+rows-1 {
-        queue!(out, MoveTo(col1, row), Print(&background))?;
-    }
-
-    if let Some((color, text)) = title {
-        queue!(out,
-            SetBackgroundColor(bg),
-            SetForegroundColor(color),
-            MoveTo(col1, row1),
-            Print(format!(" {text} "))
-        )?;
-    }
-
-    Ok(())
-}
-
-trait TUI: Sync {
-    fn run (&self, col: u16, row: u16) -> Result<()> {
-        loop {
-            let (cols, rows) = crossterm::terminal::size()?;
-            self.render(col, row, cols - col, rows - row)?;
-            if self.update()? {
-                break
-            };
-        }
-        Ok(())
-    }
-    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()> {
-        Ok(())
-    }
-    fn update (&self) -> Result<bool> {
-        Ok(true)
-    }
-}
+use dawless_common::{TUI, draw_box};
+use crossterm::{
+    queue,
+    style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
+    cursor::MoveTo
+};
 
 struct RootTUI <'a> {
-    devices: Vec<(&'static str, Box<&'a dyn TUI>)>
+    devices: Vec<(&'static str, Box<&'a dyn TUI>)>,
+    device:  usize
 }
 
 impl <'a> RootTUI <'a> {
     fn new () -> Self {
         RootTUI {
             devices: vec![
-                ("Korg Electribe", Box::new(&KorgElectribeTUI {}))
-            ]
+                ("Korg Electribe",      Box::new(&KorgElectribeTUI {})),
+                ("Korg Triton",         Box::new(&KorgElectribeTUI {})),
+                ("AKAI S3000XL",        Box::new(&KorgElectribeTUI {})),
+                ("AKAI MPC2000",        Box::new(&KorgElectribeTUI {})),
+                ("iConnectivity mioXL", Box::new(&KorgElectribeTUI {}))
+            ],
+            device: 0
         }
     }
 }
 
 impl <'a> TUI for RootTUI <'a> {
     fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
-        use crossterm::cursor::{Hide, MoveTo};
-        use crossterm::terminal::{Clear, ClearType};
+        use crossterm::{cursor::{Hide}, terminal::{Clear, ClearType}};
         let mut out = std::io::stdout();
         queue!(out, ResetColor, Clear(ClearType::All), Hide)?;
-        draw_box(&mut out,
-            col1 + 1, row1, 20, 20,
-            Color::AnsiValue(232), Some((Color::White, "Devices"))
-        )?;
+        let bg = Color::AnsiValue(232);
+        let fg = Color::White;
+        let hi = Color::Yellow;
+        draw_box(&mut out, col1 + 1, row1, 21, 9, bg, Some((hi, "Devices")))?;
+        for (index, device) in self.devices.iter().enumerate() {
+            queue!(out,
+                SetBackgroundColor(bg),
+                SetForegroundColor(if index == self.device { hi } else { fg }),
+                MoveTo(col1 + 1, row1 + 2 + (index as u16)),
+                Print(format!(" {} ", device.0))
+            )?;
+        }
         out.flush()?;
         //fill(&mut out,  Color::AnsiValue(232), col1 + 1, row1 + 1, 18, 40)?;
         //frame(&mut out, Color::AnsiValue(11), col1, row1, 20, 40)?;

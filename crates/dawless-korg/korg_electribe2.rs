@@ -326,83 +326,83 @@ dawless_common::cli! {
     }
 }
 
-dawless_common::tui! {
+//dawless_common::tui! {
 
-    use super::*;
-    use cursive::views::*;
-
-    lazy_static::lazy_static! {
-        static ref TUI_STATE: Electribe2PatternBank = Electribe2PatternBank::default();
-    }
-
-    pub fn electribe_2_tui (siv: &mut Cursive) {
-        let buttons = LinearLayout::vertical()
-            .child(Button::new("Import sample bank",  import_sample_bank))
-            .child(Button::new("Import pattern bank", import_pattern_bank))
-            .child(Button::new("Import pattern",      import_pattern))
-            .child(DummyView)
-            .child(Button::new("Back", |siv| { siv.pop_layer(); }));
-        let dialog = Dialog::around(buttons)
-            .title("Korg Electribe 2");
-        siv.add_layer(dialog);
-    }
-
-    pub struct Electribe2PatternView {
-        loaded_file: Option<String>,
-        dialog:      Dialog
-    }
-
-    impl Electribe2PatternView {
-        pub fn new () -> Self {
-            let dialog = Dialog::new().title("Pattern view");
-            Self {
-                loaded_file: None,
-                dialog
-            }
-        }
-    }
-
-    impl cursive::View for Electribe2PatternView {
-        fn draw (&self, printer: &cursive::Printer<'_, '_>) {
-            self.dialog.draw(printer);
-        }
-    }
-
-    impl dawless_common::FileView for Electribe2PatternView {
-        fn set_file (&mut self, name: String) {
-            self.dialog.set_title(name);
-        }
-    }
+    //use super::*;
+    //use cursive::views::*;
 
     //lazy_static::lazy_static! {
-
-        //pub static ref ELECTRIBE_2_TUI: (
-            //&'static str,
-            //Vec<(KeyCode, &'static str, Option<Box<(dyn Fn() + Sync)>>)>
-        //) = (
-            //"Korg Electribe 2",
-            //vec![
-                //(KeyCode::F(1), "Import sample bank",  Some(Box::new(import_sample_bank))),
-                //(KeyCode::F(2), "Import pattern bank", Some(Box::new(import_pattern_bank))),
-                //(KeyCode::F(3), "Import pattern",      Some(Box::new(import_pattern)))
-            //]
-        //);
-
+        //static ref TUI_STATE: Electribe2PatternBank = Electribe2PatternBank::default();
     //}
 
-    fn import_sample_bank (siv: &mut Cursive) {
-        unimplemented!()
-    }
+    //pub fn electribe_2_tui (siv: &mut Cursive) {
+        //let buttons = LinearLayout::vertical()
+            //.child(Button::new("Import sample bank",  import_sample_bank))
+            //.child(Button::new("Import pattern bank", import_pattern_bank))
+            //.child(Button::new("Import pattern",      import_pattern))
+            //.child(DummyView)
+            //.child(Button::new("Back", |siv| { siv.pop_layer(); }));
+        //let dialog = Dialog::around(buttons)
+            //.title("Korg Electribe 2");
+        //siv.add_layer(dialog);
+    //}
+
+    //pub struct Electribe2PatternView {
+        //loaded_file: Option<String>,
+        //dialog:      Dialog
+    //}
+
+    //impl Electribe2PatternView {
+        //pub fn new () -> Self {
+            //let dialog = Dialog::new().title("Pattern view");
+            //Self {
+                //loaded_file: None,
+                //dialog
+            //}
+        //}
+    //}
+
+    //impl cursive::View for Electribe2PatternView {
+        //fn draw (&self, printer: &cursive::Printer<'_, '_>) {
+            //self.dialog.draw(printer);
+        //}
+    //}
+
+    //impl dawless_common::FileView for Electribe2PatternView {
+        //fn set_file (&mut self, name: String) {
+            //self.dialog.set_title(name);
+        //}
+    //}
+
+    ////lazy_static::lazy_static! {
+
+        ////pub static ref ELECTRIBE_2_TUI: (
+            ////&'static str,
+            ////Vec<(KeyCode, &'static str, Option<Box<(dyn Fn() + Sync)>>)>
+        ////) = (
+            ////"Korg Electribe 2",
+            ////vec![
+                ////(KeyCode::F(1), "Import sample bank",  Some(Box::new(import_sample_bank))),
+                ////(KeyCode::F(2), "Import pattern bank", Some(Box::new(import_pattern_bank))),
+                ////(KeyCode::F(3), "Import pattern",      Some(Box::new(import_pattern)))
+            ////]
+        ////);
+
+    ////}
+
+    //fn import_sample_bank (siv: &mut Cursive) {
+        //unimplemented!()
+    //}
 
 
-    fn import_pattern_bank (siv: &mut Cursive) {
-        let pattern_editor = Electribe2PatternView::new();
-        siv.add_layer(pattern_editor);
-        dawless_common::pick_file::<Electribe2PatternView>(siv, "electribe_2_pattern_view");
-    }
+    //fn import_pattern_bank (siv: &mut Cursive) {
+        //let pattern_editor = Electribe2PatternView::new();
+        //siv.add_layer(pattern_editor);
+        //dawless_common::pick_file::<Electribe2PatternView>(siv, "electribe_2_pattern_view");
+    //}
 
-    fn import_pattern (siv: &mut Cursive) {
-        unimplemented!()
-    }
+    //fn import_pattern (siv: &mut Cursive) {
+        //unimplemented!()
+    //}
 
-}
+//}
