@@ -1,5 +1,10 @@
-use std::io::Result;
+use std::io::{Result, Write};
 use dawless_common::{TUI, draw_box};
+use crossterm::{
+    queue,
+    style::{Color, SetBackgroundColor, SetForegroundColor, Print},
+    cursor::MoveTo
+};
 
 /// Pattern start tag
 const PTST: [u8; 4] = [80, 84, 83, 84];
@@ -414,14 +419,19 @@ pub struct KorgElectribe2TUI {}
 
 impl TUI for KorgElectribe2TUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        use crossterm::{
-            queue,
-            style::{Color, SetBackgroundColor, SetForegroundColor, Print},
-            cursor::MoveTo
-        };
         let mut out = std::io::stdout();
+        self.render_menu(&mut out, col1, row1)?;
+        self.render_sample_list(&mut out, col1 + 25, row1)?;
+        self.render_pattern_list(&mut out, col1 + 56, row1)?;
+        Ok(())
+    }
+}
+
+impl KorgElectribe2TUI {
+
+    fn render_menu <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
-        draw_box(&mut out,
+        draw_box(out,
             col1, row1, 24, 6,
             bg, Some((Color::Yellow, bg, "Korg Electribe 2"))
         )?;
@@ -433,30 +443,41 @@ impl TUI for KorgElectribe2TUI {
             MoveTo(col1 + 1, row1 + 3),
             Print("Import sample bank...")
         )?;
-        draw_box(&mut out,
-            col1 + 25, row1, 40, 32,
+        Ok(())
+    }
+
+    fn render_pattern_list <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+        let bg = Color::AnsiValue(232);
+        draw_box(out,
+            col1, row1, 30, 32,
             bg, Some((bg, Color::Yellow, "Korg Electribe 2: Patterns"))
         )?;
         for i in 1..24 {
             queue!(out,
                 SetBackgroundColor(bg),
                 SetForegroundColor(Color::White),
-                MoveTo(col1 + 26, row1 + 1 + i),
+                MoveTo(col1 + 1, row1 + 1 + i),
                 Print(format!("{:>3} Init Pattern", i))
             )?;
         }
-        draw_box(&mut out,
-            col1 + 66, row1, 40, 32,
+        Ok(())
+    }
+
+    fn render_sample_list <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+        let bg = Color::AnsiValue(232);
+        draw_box(out,
+            col1, row1, 30, 32,
             bg, Some((bg, Color::Yellow, "Korg Electribe 2: Samples"))
         )?;
         for i in 1..24 {
             queue!(out,
                 SetBackgroundColor(bg),
                 SetForegroundColor(Color::White),
-                MoveTo(col1 + 67, row1 + 1 + i),
+                MoveTo(col1 + 1, row1 + 1 + i),
                 Print(format!("{:>3} Sample", i))
             )?;
         }
         Ok(())
     }
+
 }
