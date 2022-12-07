@@ -36,11 +36,11 @@ impl <'a> TUI for RootTUI <'a> {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(&mut out, col1 + 1, row1, 21, 9, bg, Some((hi, "Devices")))?;
+        draw_box(&mut out, col1 + 1, row1, 21, 9, bg, Some((bg, fg, "Devices")))?;
         for (index, device) in self.devices.iter().enumerate() {
             queue!(out,
-                SetBackgroundColor(if index == self.device { hi } else { bg }),
-                SetForegroundColor(if index == self.device { bg } else { fg }),
+                SetBackgroundColor(bg),
+                SetForegroundColor(if index == self.device { hi } else { fg }),
                 MoveTo(col1 + 1, row1 + 2 + (index as u16)),
                 Print(format!(" {:<19} ", device.0))
             )?;
@@ -51,15 +51,6 @@ impl <'a> TUI for RootTUI <'a> {
         out.flush()?;
         Ok(())
     }
-    fn update (&self) -> Result<bool> {
-        match read_char()? {
-            'q' => {
-                return Ok(true)
-            },
-            _ => {}
-        };
-        Ok(false)
-    }
 }
 
 struct AkaiMPCTUI {}
@@ -67,23 +58,42 @@ struct AkaiMPCTUI {}
 impl TUI for AkaiMPCTUI {}
 
 pub(crate) fn main() -> Result<()> {
-    use crossterm::cursor::{Show};
-    use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
-    let mut out = std::io::stdout();
-    crossterm::execute!(out, EnterAlternateScreen)?;
-    crossterm::terminal::enable_raw_mode()?;
-    RootTUI::new().run(0, 0)?;
-    crossterm::execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
-    crossterm::terminal::disable_raw_mode()
-}
 
-fn read_char() -> Result<char> {
+    use crossterm::cursor::{Show};
     use crossterm::event::{read, Event, KeyEvent, KeyCode};
+    use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
+
+    let (tx, rx) = std::sync::mpsc::channel::<crossterm::event::Event>();
+
+    std::thread::spawn(move || {
+        let mut out = std::io::stdout();
+        crossterm::execute!(out, EnterAlternateScreen)?;
+        crossterm::terminal::enable_raw_mode()?;
+        let tui = RootTUI::new();
+        loop {
+            let (cols, rows) = crossterm::terminal::size()?;
+            tui.render(0, 0, cols, rows)?;
+            match rx.recv() {
+                Ok(Event::Key(KeyEvent { code: KeyCode::Char('q'), .. })) => {
+                    break
+                },
+                _ => {}
+            }
+        }
+        crossterm::execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
+        crossterm::terminal::disable_raw_mode()
+    });
+
     loop {
-        if let Ok(Event::Key(KeyEvent { code: KeyCode::Char(c), .. })) = read() {
-            return Ok(c);
+        if crossterm::event::poll(std::time::Duration::from_millis(500))? {
+            if let Err(_) = tx.send(read()?) {
+                break
+            }
         }
     }
+
+    Ok(())
+
 }
 
 //use std::{error::Error, io};

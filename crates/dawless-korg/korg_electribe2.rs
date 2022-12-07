@@ -423,7 +423,7 @@ impl TUI for KorgElectribe2TUI {
         let bg = Color::AnsiValue(232);
         draw_box(&mut out,
             col1, row1, 24, 6,
-            bg, Some((Color::Yellow, "Korg Electribe 2"))
+            bg, Some((Color::Yellow, bg, "Korg Electribe 2"))
         )?;
         queue!(out,
             SetBackgroundColor(bg),
@@ -435,7 +435,7 @@ impl TUI for KorgElectribe2TUI {
         )?;
         draw_box(&mut out,
             col1 + 25, row1, 40, 32,
-            bg, Some((Color::Yellow, "Korg Electribe 2: Patterns"))
+            bg, Some((bg, Color::Yellow, "Korg Electribe 2: Patterns"))
         )?;
         for i in 1..24 {
             queue!(out,
@@ -447,7 +447,7 @@ impl TUI for KorgElectribe2TUI {
         }
         draw_box(&mut out,
             col1 + 66, row1, 40, 32,
-            bg, Some((Color::Yellow, "Korg Electribe 2: Samples"))
+            bg, Some((bg, Color::Yellow, "Korg Electribe 2: Samples"))
         )?;
         for i in 1..24 {
             queue!(out,

@@ -6,7 +6,11 @@ use pathdiff::diff_paths;
 
 use crossterm::{
     queue,
-    style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
+    style::{
+        Print,
+        Color, ResetColor, SetForegroundColor, SetBackgroundColor,
+        Attribute, SetAttribute
+    },
     cursor::MoveTo
 };
 
@@ -17,7 +21,7 @@ pub fn draw_box <W: Write> (
     cols:  u16,
     rows:  u16,
     bg:    Color,
-    title: Option<(Color, &str)>
+    title: Option<(Color, Color, &str)>
 ) -> Result<()> {
     queue!(out, ResetColor, SetForegroundColor(bg))?;
 
@@ -33,12 +37,14 @@ pub fn draw_box <W: Write> (
         queue!(out, MoveTo(col1, row), Print(&background))?;
     }
 
-    if let Some((color, text)) = title {
+    if let Some((bg, fg, text)) = title {
         queue!(out,
-            SetBackgroundColor(color),
-            SetForegroundColor(bg),
+            SetBackgroundColor(bg),
+            SetForegroundColor(fg),
             MoveTo(col1, row1),
-            Print(format!(" {text} "))
+            SetAttribute(Attribute::Bold),
+            Print(format!(" {text} ")),
+            SetAttribute(Attribute::Reset)
         )?;
     }
 
@@ -46,16 +52,6 @@ pub fn draw_box <W: Write> (
 }
 
 pub trait TUI: Sync {
-    fn run (&self, col: u16, row: u16) -> Result<()> {
-        loop {
-            let (cols, rows) = crossterm::terminal::size()?;
-            self.render(col, row, cols - col, rows - row)?;
-            if self.update()? {
-                break
-            };
-        }
-        Ok(())
-    }
     fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()> {
         Ok(())
     }
