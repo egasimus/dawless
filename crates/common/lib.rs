@@ -12,7 +12,7 @@ use crossterm::{
         Attribute, SetAttribute
     },
     cursor::MoveTo,
-    event::Event
+    event::{Event, KeyEvent, KeyCode}
 };
 
 pub fn draw_box <W: Write> (
@@ -63,6 +63,31 @@ pub trait TUI: Sync {
     fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()>;
     fn handle (&mut self, _event: &Event) -> Result<bool> {
         Ok(false)
+    }
+    fn focus (&mut self, _focus: bool) -> bool {
+        false
+    }
+}
+
+pub fn handle_menu (event: &Event, items: usize, index: &mut usize) -> Result<bool> {
+    match event {
+        Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+            *index = if *index == 0 {
+                items - 1
+            } else {
+                *index - 1
+            };
+            Ok(true)
+        },
+        Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+            *index = if *index >= items - 1 {
+                0
+            } else {
+                *index + 1
+            };
+            Ok(true)
+        },
+        _ => Ok(false)
     }
 }
 

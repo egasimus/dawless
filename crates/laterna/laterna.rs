@@ -1,0 +1,40 @@
+use std::io::{Write, Result};
+use crossterm::{queue, cursor::*, style::*};
+
+pub fn demo <W: Write> (out: &mut W, col1: u16) -> Result<()> {
+    queue!(out,
+        SetBackgroundColor(Color::AnsiValue(234)),
+        SetForegroundColor(Color::AnsiValue(255)),
+        MoveTo(col1, 10), Print("██ "),
+        MoveTo(col1, 11), Print("▄█ "),
+        MoveTo(col1, 12), Print("▄█ "),
+        MoveTo(col1, 13), Print("▀█ "),
+        MoveTo(col1, 14), Print("▀█ "),
+        MoveTo(col1, 15), Print("▀█ "),
+        MoveTo(col1, 16), Print("██ "),
+        MoveTo(col1, 17), Print("▄█ "),
+        MoveTo(col1, 18), Print("▄█ "),
+        MoveTo(col1, 19), Print("▀█ "),
+        MoveTo(col1, 20), Print("▀█ "),
+        MoveTo(col1, 21), Print("▀█ "),
+        MoveTo(col1, 22), Print("██ "),
+        SetForegroundColor(Color::AnsiValue(233)),
+        MoveTo(col1 + 3, 10), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 11), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 12), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 13), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 14), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 15), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 16), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 17), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 18), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 19), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 20), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 21), Print("█               █               █               █               "),
+        MoveTo(col1 + 3, 22), Print("█               █               █               █               "),
+        SetForegroundColor(Color::AnsiValue(200)),
+        MoveTo(col1 + 15, 16), Print("▀ ▄▄"),
+        MoveTo(col1 + 19, 17), Print("▄▄  ▄▄"),
+        MoveTo(col1 + 25, 18), Print("▄▄▄▄  ")
+    )
+}

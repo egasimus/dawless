@@ -1,6 +1,6 @@
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
-use dawless_common::{TUI, draw_box};
+use dawless_common::{TUI, draw_box, handle_menu};
 use dawless_korg::KorgElectribe2TUI;
 use crossterm::{
     execute, queue,
@@ -63,17 +63,17 @@ struct RootTUI {
     exited:  Arc<AtomicBool>,
     devices: Vec<(&'static str, Box<dyn TUI>)>,
     device:  usize,
-    focus:   bool
+    focused: bool
 }
 
 impl RootTUI {
     fn new (exited: Arc<AtomicBool>) -> Self {
         RootTUI {
             exited,
-            focus: true,
+            focused: true,
             device: 0,
             devices: vec![
-                ("Korg Electribe",      Box::new(KorgElectribe2TUI {})),
+                ("Korg Electribe",      Box::new(KorgElectribe2TUI::new())),
                 ("Korg Triton",         Box::new(EmptyTUI {})),
                 ("AKAI S3000XL",        Box::new(EmptyTUI {})),
                 ("AKAI MPC2000",        Box::new(EmptyTUI {})),
@@ -100,8 +100,8 @@ impl TUI for RootTUI {
         let fg = Color::White;
         let hi = Color::Yellow;
         draw_box(&mut out, col1 + 1, row1, 23, 9, bg, Some((
-            if self.focus { hi } else { bg },
-            if self.focus { bg } else { hi },
+            if self.focused { hi } else { bg },
+            if self.focused { bg } else { hi },
             "Devices"
         )))?;
         for (index, device) in self.devices.iter().enumerate() {
@@ -119,51 +119,47 @@ impl TUI for RootTUI {
         Ok(())
     }
 
+    fn focus (&mut self, focus: bool) -> bool {
+        self.focused = focus;
+        true
+    }
+
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
             self.exit();
             return Ok(true)
         }
-        if !self.focus {
+        if !self.focused {
             if self.device().handle(&event)? {
                 return Ok(true)
             }
         }
+        if handle_menu(event, self.devices.len(), &mut self.device)? {
+            return Ok(true)
+        }
         match event {
-            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
-                self.device = if self.device == 0 {
-                    self.devices.len() - 1
-                } else {
-                    self.device - 1
-                };
-                Ok(true)
-            },
-            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
-                self.device = if self.device >= self.devices.len() - 1 {
-                    0
-                } else {
-                    self.device + 1
-                };
-                Ok(true)
-            },
             Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
-                self.focus = true;
+                if self.device().focus(false) {
+                    self.focus(true);
+                }
                 Ok(true)
             },
             Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
-                self.focus = false;
+                if self.device().focus(true) {
+                    self.focus(false);
+                }
                 Ok(true)
             },
             Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
-                self.focus = true;
+                if self.device().focus(false) {
+                    self.focus(true);
+                }
                 Ok(true)
             },
             Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-                self.focus = false;
-                Ok(true)
-            },
-            Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) => {
-                self.exit();
+                if self.device().focus(true) {
+                    self.focus(false);
+                }
                 Ok(true)
             },
             _ => {

@@ -1,0 +1,15 @@
+[package]
+name = "laterna"
+version = "0.1.0"
+edition = "2021"
+description = "Render piano rolls to the terminal using block characters."
+
+[[bin]]
+name = "laterna"
+path = "laterna-cli.rs"
+
+[lib]
+path = "laterna.rs"
+
+[dependencies]
+crossterm = "0.25.0"

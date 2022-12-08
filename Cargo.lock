@@ -277,6 +277,7 @@ dependencies = [
  "clap",
  "crossterm",
  "dawless-common",
+ "laterna",
  "lazy_static",
  "tabwriter",
 ]

@@ -5,5 +5,6 @@ members = [
   "crates/dawless-akai",
   "crates/dawless-korg",
   "crates/brailledump",
-  "crates/hfe",
+  "crates/hfedisk",
+  "crates/laterna",
 ]

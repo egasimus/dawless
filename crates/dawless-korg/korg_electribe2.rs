@@ -1,8 +1,10 @@
 use std::io::{Result, Write};
-use dawless_common::{TUI, draw_box};
+use dawless_common::{TUI, draw_box, handle_menu};
+use laterna;
 use crossterm::{
     queue,
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor, Print},
+    event::{Event, KeyEvent, KeyCode},
     cursor::MoveTo
 };
 
@@ -415,76 +417,71 @@ dawless_common::cli! {
 
 //}
 
-pub struct KorgElectribe2TUI {}
+pub struct KorgElectribe2TUI {
+    focused:    bool,
+    menu_item:  usize,
+    menu_items: Vec<&'static str>
+}
+
+impl KorgElectribe2TUI {
+    pub fn new () -> Self {
+        Self {
+            focused: false,
+            menu_item: 0,
+            menu_items: vec![
+                "Patterns",
+                "Samples"
+            ]
+        }
+    }
+}
 
 impl TUI for KorgElectribe2TUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let mut out = std::io::stdout();
-        self.render_menu(&mut out, col1, row1)?;
-        //self.render_sample_list(&mut out, col1 + 21, row1)?;
-        self.render_pattern_list(&mut out, col1 + 16, row1)?;
-
         let bg = Color::AnsiValue(232);
-        draw_box(&mut out,
-            111, 0, 66, 32,
-            bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
+        let fg = Color::White;
+        let hi = Color::Yellow;
+        draw_box(&mut out, col1, row1, 16, 6, bg, Some((
+            if self.focused { hi } else { bg },
+            if self.focused { bg } else { hi },
+            "Electribe 2"
+        )))?;
+        queue!(&mut out,
+            SetBackgroundColor(bg),
+            SetForegroundColor(Color::White)
         )?;
+        for (index, menu_item) in self.menu_items.iter().enumerate() {
+            queue!(out,
+                SetBackgroundColor(bg),
+                SetForegroundColor(if index == self.menu_item { hi } else { fg }),
+                MoveTo(col1, row1 + 2 + (index as u16)),
+                Print(format!(" {:<12} ▶ ", menu_item))
+            )?;
+        }
+        match self.menu_item {
+            0 => self.render_pattern_list(&mut out, col1 + 17, row1),
+            1 => self.render_sample_list(&mut out, col1 + 17, row1),
+            _ => Ok(())
+        }
+        //self.render_pattern(&mut out, col1 + 48, row1)?;
+    }
 
-        queue!(out,
-            SetBackgroundColor(Color::AnsiValue(234)),
-            SetForegroundColor(Color::AnsiValue(255)),
-            MoveTo(110, 10), Print("██ "),
-            MoveTo(110, 11), Print("▄█ "),
-            MoveTo(110, 12), Print("▄█ "),
-            MoveTo(110, 13), Print("▀█ "),
-            MoveTo(110, 14), Print("▀█ "),
-            MoveTo(110, 15), Print("▀█ "),
-            MoveTo(110, 16), Print("██ "),
-            MoveTo(110, 17), Print("▄█ "),
-            MoveTo(110, 18), Print("▄█ "),
-            MoveTo(110, 19), Print("▀█ "),
-            MoveTo(110, 20), Print("▀█ "),
-            MoveTo(110, 21), Print("▀█ "),
-            MoveTo(110, 22), Print("██ "),
-            SetForegroundColor(Color::AnsiValue(233)),
-            MoveTo(113, 10), Print("█               █               █               █               "),
-            MoveTo(113, 11), Print("█               █               █               █               "),
-            MoveTo(113, 12), Print("█               █               █               █               "),
-            MoveTo(113, 13), Print("█               █               █               █               "),
-            MoveTo(113, 14), Print("█               █               █               █               "),
-            MoveTo(113, 15), Print("█               █               █               █               "),
-            MoveTo(113, 16), Print("█               █               █               █               "),
-            MoveTo(113, 17), Print("█               █               █               █               "),
-            MoveTo(113, 18), Print("█               █               █               █               "),
-            MoveTo(113, 19), Print("█               █               █               █               "),
-            MoveTo(113, 20), Print("█               █               █               █               "),
-            MoveTo(113, 21), Print("█               █               █               █               "),
-            MoveTo(113, 22), Print("█               █               █               █               "),
-            SetForegroundColor(Color::AnsiValue(200)),
-            MoveTo(125, 16), Print("▀ ▄▄"),
-            MoveTo(129, 17), Print("▄▄  ▄▄"),
-            MoveTo(135, 18), Print("▄▄▄▄  ")
-        )?;
+    fn focus (&mut self, focus: bool) -> bool {
+        self.focused = focus;
+        true
+    }
 
-        Ok(())
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        if handle_menu(event, self.menu_items.len(), &mut self.menu_item)? {
+            return Ok(true)
+        }
+        Ok(false)
     }
 }
 
-impl KorgElectribe2TUI {
 
-    fn render_menu <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
-        let bg = Color::AnsiValue(232);
-        draw_box(out,col1, row1, 15, 6, bg, Some((Color::Yellow, bg, "Electribe 2")))?;
-        queue!(out,
-            SetBackgroundColor(bg),
-            SetForegroundColor(Color::White),
-            MoveTo(col1 + 1, row1 + 2),
-            Print("Patterns"),
-            MoveTo(col1 + 1, row1 + 3),
-            Print("Samples")
-        )?;
-        Ok(())
-    }
+impl KorgElectribe2TUI {
 
     fn render_pattern_list <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
@@ -517,6 +514,16 @@ impl KorgElectribe2TUI {
                 Print(format!("{:>3} Sample", i))
             )?;
         }
+        Ok(())
+    }
+
+    fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+        let bg = Color::AnsiValue(232);
+        draw_box(out,
+            col1+1, row1, 66, 32,
+            bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
+        )?;
+        laterna::demo(out, col1)?;
         Ok(())
     }
 

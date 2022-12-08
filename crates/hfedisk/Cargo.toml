@@ -1,5 +1,5 @@
 [package]
-name = "hfe"
+name = "hfedisk"
 version = "0.1.0"
 edition = "2021"
 description = "Support for HFE floppy disk images."
