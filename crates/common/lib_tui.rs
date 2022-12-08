@@ -62,13 +62,13 @@ pub trait TUI: Sync {
     }
 }
 
-pub struct Menu <'a, T> {
+pub struct Menu <T> {
     pub index: usize,
-    pub items: Vec<(&'a str, T)>
+    pub items: Vec<(String, T)>
 }
 
-impl <'a, T> Menu <'a, T> {
-    pub fn new (items: Vec<(&'a str, T)>) -> Self {
+impl <T> Menu <T> {
+    pub fn new (items: Vec<(String, T)>) -> Self {
         Self {
             index: 0,
             items
@@ -82,7 +82,7 @@ impl <'a, T> Menu <'a, T> {
     }
 }
 
-impl <'a, T: Sync> TUI for Menu <'a, T> {
+impl <T: Sync> TUI for Menu <T> {
     fn render (&self, col1: u16, row1: u16, cols: u16, _rows: u16) -> Result<()> {
         let mut out = std::io::stdout();
         let bg = Color::AnsiValue(232);

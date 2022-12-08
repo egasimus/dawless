@@ -61,7 +61,7 @@ impl TUI for EmptyTUI {
 
 struct RootTUI {
     exited:  Arc<AtomicBool>,
-    devices: Menu<'static, Box<dyn TUI>>,
+    devices: Menu<Box<dyn TUI>>,
     focused: bool
 }
 
@@ -71,11 +71,11 @@ impl RootTUI {
             exited,
             focused: true,
             devices: Menu::new(vec![
-                ("Korg Electribe",      Box::new(Electribe2TUI::new()) as Box<dyn TUI>),
-                ("Korg Triton",         Box::new(EmptyTUI {})),
-                ("AKAI S3000XL",        Box::new(EmptyTUI {})),
-                ("AKAI MPC2000",        Box::new(EmptyTUI {})),
-                ("iConnectivity mioXL", Box::new(EmptyTUI {}))
+                ("Korg Electribe".into(),      Box::new(Electribe2TUI::new()) as Box<dyn TUI>),
+                ("Korg Triton".into(),         Box::new(EmptyTUI {})),
+                ("AKAI S3000XL".into(),        Box::new(EmptyTUI {})),
+                ("AKAI MPC2000".into(),        Box::new(EmptyTUI {})),
+                ("iConnectivity mioXL".into(), Box::new(EmptyTUI {}))
             ])
         }
     }

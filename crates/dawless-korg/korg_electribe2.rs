@@ -423,7 +423,7 @@ dawless_common::cli! {
 
 pub struct Electribe2TUI {
     focused:  bool,
-    features: Menu<'static, Box<dyn TUI>>,
+    features: Menu<Box<dyn TUI>>,
 }
 
 impl Electribe2TUI {
@@ -431,8 +431,8 @@ impl Electribe2TUI {
         Self {
             focused: false,
             features: Menu::new(vec![
-                ("Edit pattern bank", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
-                ("Edit sample bank",  Box::new(Electribe2SamplesTUI::new())),
+                ("Edit pattern bank".into(), Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
+                ("Edit sample bank".into(),  Box::new(Electribe2SamplesTUI::new())),
             ])
         }
     }
@@ -482,26 +482,32 @@ impl TUI for Electribe2TUI {
     }
 }
 
-struct Electribe2PatternsTUI <'a> {
+struct Electribe2PatternsTUI {
     focused:  bool,
     bank:     Option<Electribe2PatternBank>,
-    patterns: Menu<'a, String>,
+    entries:  Menu<(String, bool)>,
+    patterns: Menu<String>,
+    max_len:  u16
 }
 
-impl <'a> Electribe2PatternsTUI <'a> {
+impl Electribe2PatternsTUI {
     pub fn new () -> Self {
-        Self {
+        let mut this = Self {
             focused:  false,
             bank:     None,
+            entries:  Menu::new(vec![]),
             patterns: Menu::new(vec![]),
-        }
+            max_len:  20
+        };
+        this.update_listing();
+        return this
     }
-    pub fn import (&'a mut self, bank: &std::path::Path) {
+    pub fn import (&mut self, bank: &std::path::Path) {
         let data = dawless_common::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        let patterns: Vec<(&'a str, String)> = self.bank.as_ref().unwrap().patterns.iter()
-            .map(|pattern|(pattern.name.as_str(), pattern.name.clone()))
+        let patterns: Vec<(String, String)> = self.bank.as_ref().unwrap().patterns.iter()
+            .map(|pattern|(pattern.name.clone(), pattern.name.clone()))
             .collect();
         self.patterns = Menu::new(patterns);
     }
@@ -515,9 +521,40 @@ impl <'a> Electribe2PatternsTUI <'a> {
         laterna::demo(out, col1)?;
         Ok(())
     }
+    fn update_listing (&mut self) {
+        use std::env::current_dir;
+        use std::fs::{read_dir, metadata};
+        let cwd = current_dir().unwrap();
+        let parent = cwd.parent().unwrap().to_path_buf();
+        let mut dirs: Vec<String> = vec!["..".into()];
+        let mut files: Vec<String> = vec![];
+        let mut max_len: u16 = 32;
+        for file in read_dir(cwd).unwrap() {
+            let file = file.unwrap();
+            let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
+            max_len = u16::max(max_len, name.len() as u16);
+            if metadata(file.path()).unwrap().is_dir() {
+                dirs.push(name)
+            } else {
+                files.push(name)
+            }
+        }
+        dirs.sort();
+        files.sort();
+
+        let mut entries = vec![];
+        for dir in dirs.iter() {
+            entries.push((dir.clone(), (dir.clone(), true)))
+        }
+        for file in files.iter() {
+            entries.push((file.clone(), (file.clone(), false)))
+        }
+        self.entries = Menu::new(entries);
+        self.max_len = max_len as u16;
+    }
 }
 
-impl <'a> TUI for Electribe2PatternsTUI <'a> {
+impl TUI for Electribe2PatternsTUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
@@ -526,66 +563,45 @@ impl <'a> TUI for Electribe2PatternsTUI <'a> {
         if let Some(bank) = &self.bank {
             draw_box(out,
                 col1, row1, 30, 32,
-                bg, Some((bg, Color::Yellow, "Patterns"))
+                bg, Some((
+                    if self.focused { hi } else { bg },
+                    if self.focused { bg } else { hi },
+                    "Patterns"
+                ))
             )?;
             for i in 1..24 {
                 queue!(out,
                     SetBackgroundColor(bg),
                     SetForegroundColor(Color::White),
                     MoveTo(col1 + 1, row1 + 1 + i),
-                    Print(format!("{:>3} Init Pattern", i))
+                    Print(format!("{:>3} {}", i, bank.patterns.get(i as usize).unwrap().name))
                 )?;
             }
         } else {
-            use std::env::current_dir;
-            use std::fs::{read_dir, metadata};
-            let cwd = current_dir().unwrap();
-            let parent = cwd.parent().unwrap().to_path_buf();
-            let mut dirs: Vec<String> = vec!["..".into()];
-            let mut files: Vec<String> = vec![];
-            let mut max_len: u16 = 32;
-            for file in read_dir(cwd).unwrap() {
-                let file = file.unwrap();
-                let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
-                max_len = u16::max(max_len, name.len() as u16);
-                if metadata(file.path()).unwrap().is_dir() {
-                    dirs.push(name)
-                } else {
-                    files.push(name)
-                }
-            }
-            dirs.sort();
-            files.sort();
+
             draw_box(out,
-                col1, row1, 4 + max_len, 4 + files.len() as u16 + dirs.len() as u16,
+                col1, row1, 4 + self.max_len, 4 + self.entries.items.len() as u16,
                 bg, Some((
                     if self.focused { hi } else { bg },
                     if self.focused { bg } else { hi },
                     "Select ALLPAT file:"
                 ))
             )?;
-            queue!(out,
-                SetAttribute(Attribute::Bold),
-                SetBackgroundColor(Color::AnsiValue(232)),
-                SetForegroundColor(Color::White),
-            )?;
-            for (index, path) in dirs.iter().enumerate() {
+
+            for (index, (_, (path, is_dir))) in self.entries.items.iter().enumerate() {
                 queue!(out,
+                    SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }),
+                    SetBackgroundColor(Color::AnsiValue(232)),
+                    SetForegroundColor(if self.entries.index == index { hi } else { fg }),
                     MoveTo(col1 + 1, row1 + 2 + index as u16),
-                    Print(format!("■ {:<0width$}", path, width = max_len as usize)),
+                    Print(format!("{} {:<0width$}",
+                        if *is_dir { "■" } else { " " },
+                        path,
+                        width = self.max_len as usize
+                    )),
                 )?;
             }
-            queue!(out,
-                SetAttribute(Attribute::Reset),
-                SetBackgroundColor(Color::AnsiValue(232)),
-                SetForegroundColor(Color::White),
-            )?;
-            for (index, path) in files.iter().enumerate() {
-                queue!(out,
-                    MoveTo(col1 + 1, row1 + 2 + dirs.len() as u16 + index as u16),
-                    Print(format!("  {:<0width$}", path, width = max_len as usize)),
-                )?;
-            }
+
         }
         Ok(())
     }
@@ -593,6 +609,26 @@ impl <'a> TUI for Electribe2PatternsTUI <'a> {
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
+    }
+
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        if let Some(bank) = &self.bank {
+            self.patterns.handle(event)
+        } else {
+            if let Event::Key(KeyEvent { code: KeyCode::Enter, .. }) = event {
+                let (path, is_dir) = &self.entries.items.get(self.entries.index).unwrap().1;
+                if *is_dir {
+                    std::env::set_current_dir(path)?;
+                    self.update_listing();
+                } else {
+                    let path = std::path::PathBuf::from(path);
+                    self.import(&path);
+                }
+                Ok(true)
+            } else {
+                self.entries.handle(event)
+            }
+        }
     }
 }
 
