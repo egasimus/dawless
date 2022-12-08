@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
-use dawless_common::{TUI, draw_box, Menu};
-use dawless_korg::KorgElectribe2TUI;
+use dawless_common::{TUI, draw_box, Menu, handle_menu_focus};
+use dawless_korg::Electribe2TUI;
 use crossterm::{
     execute, queue,
     event::{poll, read, Event, KeyEvent, KeyCode},
@@ -71,7 +71,7 @@ impl RootTUI {
             exited,
             focused: true,
             devices: Menu::new(vec![
-                ("Korg Electribe",      Box::new(KorgElectribe2TUI::new()) as Box<dyn TUI>),
+                ("Korg Electribe",      Box::new(Electribe2TUI::new()) as Box<dyn TUI>),
                 ("Korg Triton",         Box::new(EmptyTUI {})),
                 ("AKAI S3000XL",        Box::new(EmptyTUI {})),
                 ("AKAI MPC2000",        Box::new(EmptyTUI {})),
@@ -127,35 +127,7 @@ impl TUI for RootTUI {
         if self.devices.handle(event)? {
             return Ok(true)
         }
-        match event {
-            Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
-                if self.device().focus(false) {
-                    self.focus(true);
-                }
-                Ok(true)
-            },
-            Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
-                if self.device().focus(true) {
-                    self.focus(false);
-                }
-                Ok(true)
-            },
-            Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
-                if self.device().focus(false) {
-                    self.focus(true);
-                }
-                Ok(true)
-            },
-            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-                if self.device().focus(true) {
-                    self.focus(false);
-                }
-                Ok(true)
-            },
-            _ => {
-                Ok(false)
-            }
-        }
+        handle_menu_focus!(event, self, self.device(), self.focused)
     }
 
 }

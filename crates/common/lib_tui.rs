@@ -99,24 +99,72 @@ impl <'a, T: Sync> TUI for Menu <'a, T> {
         Ok(())
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        match event {
-            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
-                self.index = if self.index == 0 {
-                    self.items.len() - 1
+        Ok(
+            handle_menu_list(event, self.items.len(), &mut self.index)?
+        )
+    }
+}
+
+pub fn handle_menu_list (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
+    Ok(match event {
+        Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+            *index = if *index == 0 {
+                length - 1
+            } else {
+                *index - 1
+            };
+            true
+        },
+        Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+            *index = if *index >= length - 1 {
+                0
+            } else {
+                *index + 1
+            };
+            true
+        },
+        _ => false
+    })
+}
+
+#[macro_export] macro_rules! handle_menu_focus {
+    ($event:expr, $parent:expr, $child:expr, $focused:expr) => {
+        Ok(match $event {
+            Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
+                if $focused {
+                    false
                 } else {
-                    self.index - 1
-                };
-                Ok(true)
+                    if $child.focus(false) {
+                        $parent.focus(true);
+                    }
+                    true
+                }
             },
-            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
-                self.index = if self.index >= self.items.len() - 1 {
-                    0
+            Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
+                if $child.focus(true) {
+                    $parent.focus(false);
+                }
+                true
+            },
+            Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
+                if $focused {
+                    false
                 } else {
-                    self.index + 1
-                };
-                Ok(true)
+                    if $child.focus(false) {
+                        $parent.focus(true);
+                    }
+                    true
+                }
             },
-            _ => Ok(false)
-        }
+            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                if $child.focus(true) {
+                    $parent.focus(false);
+                }
+                true
+            },
+            _ => {
+                false
+            }
+        })
     }
 }

@@ -1,9 +1,13 @@
 use std::io::{Result, Write};
-use dawless_common::{TUI, draw_box, Menu};
+use dawless_common::{TUI, draw_box, Menu, handle_menu_focus};
 use laterna;
 use crossterm::{
     queue,
-    style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor, Print},
+    style::{
+        Color, ResetColor, SetBackgroundColor, SetForegroundColor,
+        Attribute, SetAttribute,
+        Print
+    },
     event::{Event, KeyEvent, KeyCode},
     cursor::MoveTo
 };
@@ -417,30 +421,33 @@ dawless_common::cli! {
 
 //}
 
-pub struct KorgElectribe2TUI {
-    focused:    bool,
-    features:   Menu<'static, Box<dyn TUI>>,
+pub struct Electribe2TUI {
+    focused:  bool,
+    features: Menu<'static, Box<dyn TUI>>,
 }
 
-impl KorgElectribe2TUI {
+impl Electribe2TUI {
     pub fn new () -> Self {
         Self {
             focused: false,
             features: Menu::new(vec![
-                ("Patterns", Box::new(KorgElectribe2PatternsTUI::new()) as Box<dyn TUI>),
-                ("Samples",  Box::new(KorgElectribe2SamplesTUI::new())),
+                ("Edit pattern bank", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
+                ("Edit sample bank",  Box::new(Electribe2SamplesTUI::new())),
             ])
         }
     }
+    fn feature <'a> (&'a mut self) -> &'a mut dyn TUI {
+        &mut **self.features.get_mut().unwrap()
+    }
 }
 
-impl TUI for KorgElectribe2TUI {
+impl TUI for Electribe2TUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(out, col1, row1, 16, 6, bg, Some((
+        draw_box(out, col1, row1, 21, 6, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Electribe 2"
@@ -449,9 +456,9 @@ impl TUI for KorgElectribe2TUI {
             SetBackgroundColor(bg),
             SetForegroundColor(Color::White)
         )?;
-        self.features.render(col1, row1 + 2, 12, 0)?;
+        self.features.render(col1, row1 + 2, 17, 0)?;
         if let Some(feature) = self.features.get() {
-            (*feature).render(col1 + 17, row1, 0, 0)?;
+            (*feature).render(col1 + 22, row1, 0, 0)?;
         }
         //self.render_pattern(&mut out, col1 + 48, row1)?;
         Ok(())
@@ -463,43 +470,41 @@ impl TUI for KorgElectribe2TUI {
     }
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
+        if !self.focused {
+            if self.feature().handle(&event)? {
+                return Ok(true)
+            }
+        }
         if self.features.handle(event)? {
             return Ok(true)
         }
-        Ok(false)
+        handle_menu_focus!(event, self, self.feature(), self.focused)
     }
 }
 
-struct KorgElectribe2PatternsTUI {}
+struct Electribe2PatternsTUI <'a> {
+    focused:  bool,
+    bank:     Option<Electribe2PatternBank>,
+    patterns: Menu<'a, String>,
+}
 
-impl KorgElectribe2PatternsTUI {
+impl <'a> Electribe2PatternsTUI <'a> {
     pub fn new () -> Self {
-        Self {}
-    }
-}
-
-impl TUI for KorgElectribe2PatternsTUI {
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        let out = &mut std::io::stdout();
-        let bg = Color::AnsiValue(232);
-        draw_box(out,
-            col1, row1, 30, 32,
-            bg, Some((bg, Color::Yellow, "Patterns"))
-        )?;
-        for i in 1..24 {
-            queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(Color::White),
-                MoveTo(col1 + 1, row1 + 1 + i),
-                Print(format!("{:>3} Init Pattern", i))
-            )?;
+        Self {
+            focused:  false,
+            bank:     None,
+            patterns: Menu::new(vec![]),
         }
-        Ok(())
     }
-}
-
-impl KorgElectribe2PatternsTUI {
-
+    pub fn import (&'a mut self, bank: &std::path::Path) {
+        let data = dawless_common::read(bank);
+        let bank = Electribe2PatternBank::read(&data);
+        self.bank = Some(bank);
+        let patterns: Vec<(&'a str, String)> = self.bank.as_ref().unwrap().patterns.iter()
+            .map(|pattern|(pattern.name.as_str(), pattern.name.clone()))
+            .collect();
+        self.patterns = Menu::new(patterns);
+    }
     fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
@@ -510,18 +515,96 @@ impl KorgElectribe2PatternsTUI {
         laterna::demo(out, col1)?;
         Ok(())
     }
-
 }
 
-struct KorgElectribe2SamplesTUI {}
+impl <'a> TUI for Electribe2PatternsTUI <'a> {
+    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        let out = &mut std::io::stdout();
+        let bg = Color::AnsiValue(232);
+        let fg = Color::White;
+        let hi = Color::Yellow;
+        if let Some(bank) = &self.bank {
+            draw_box(out,
+                col1, row1, 30, 32,
+                bg, Some((bg, Color::Yellow, "Patterns"))
+            )?;
+            for i in 1..24 {
+                queue!(out,
+                    SetBackgroundColor(bg),
+                    SetForegroundColor(Color::White),
+                    MoveTo(col1 + 1, row1 + 1 + i),
+                    Print(format!("{:>3} Init Pattern", i))
+                )?;
+            }
+        } else {
+            use std::env::current_dir;
+            use std::fs::{read_dir, metadata};
+            let cwd = current_dir().unwrap();
+            let parent = cwd.parent().unwrap().to_path_buf();
+            let mut dirs: Vec<String> = vec!["..".into()];
+            let mut files: Vec<String> = vec![];
+            let mut max_len: u16 = 32;
+            for file in read_dir(cwd).unwrap() {
+                let file = file.unwrap();
+                let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
+                max_len = u16::max(max_len, name.len() as u16);
+                if metadata(file.path()).unwrap().is_dir() {
+                    dirs.push(name)
+                } else {
+                    files.push(name)
+                }
+            }
+            dirs.sort();
+            files.sort();
+            draw_box(out,
+                col1, row1, 4 + max_len, 4 + files.len() as u16 + dirs.len() as u16,
+                bg, Some((
+                    if self.focused { hi } else { bg },
+                    if self.focused { bg } else { hi },
+                    "Select ALLPAT file:"
+                ))
+            )?;
+            queue!(out,
+                SetAttribute(Attribute::Bold),
+                SetBackgroundColor(Color::AnsiValue(232)),
+                SetForegroundColor(Color::White),
+            )?;
+            for (index, path) in dirs.iter().enumerate() {
+                queue!(out,
+                    MoveTo(col1 + 1, row1 + 2 + index as u16),
+                    Print(format!("■ {:<0width$}", path, width = max_len as usize)),
+                )?;
+            }
+            queue!(out,
+                SetAttribute(Attribute::Reset),
+                SetBackgroundColor(Color::AnsiValue(232)),
+                SetForegroundColor(Color::White),
+            )?;
+            for (index, path) in files.iter().enumerate() {
+                queue!(out,
+                    MoveTo(col1 + 1, row1 + 2 + dirs.len() as u16 + index as u16),
+                    Print(format!("  {:<0width$}", path, width = max_len as usize)),
+                )?;
+            }
+        }
+        Ok(())
+    }
 
-impl KorgElectribe2SamplesTUI {
+    fn focus (&mut self, focus: bool) -> bool {
+        self.focused = focus;
+        true
+    }
+}
+
+struct Electribe2SamplesTUI {}
+
+impl Electribe2SamplesTUI {
     pub fn new () -> Self {
         Self {}
     }
 }
 
-impl TUI for KorgElectribe2SamplesTUI {
+impl TUI for Electribe2SamplesTUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);

@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use std::env::{current_dir, set_current_dir};
-use std::fs::{read_dir, metadata};
-use pathdiff::diff_paths;
+//use std::path::PathBuf;
+//use std::env::{current_dir, set_current_dir};
+//use std::fs::{read_dir, metadata};
+//use pathdiff::diff_paths;
 
 mod lib_tui;
 pub use lib_tui::*;
@@ -13,6 +13,17 @@ pub use lib_tui::*;
     };
 }
 
+use std::fs::{File, metadata};
+use std::io::{Read};
+use std::path::{Path};
+pub fn read (filename: &Path) -> Vec<u8> {
+    let mut f      = File::open(&filename).expect("file not found");
+    let metadata   = metadata(&filename).expect("unable to read metadata");
+    let mut buffer = vec![0; metadata.len() as usize];
+    f.read(&mut buffer).expect("buffer overflow");
+    buffer
+}
+
 #[macro_export] macro_rules! cli {
     ($($body:item)*) => {
         #[cfg(feature = "cli")] pub use cli::*;
@@ -21,13 +32,7 @@ pub use lib_tui::*;
             use std::fs::{File, metadata};
             use std::io::{Read, Write};
             use std::path::{Path, PathBuf};
-            pub fn read (filename: &Path) -> Vec<u8> {
-                let mut f      = File::open(&filename).expect("file not found");
-                let metadata   = metadata(&filename).expect("unable to read metadata");
-                let mut buffer = vec![0; metadata.len() as usize];
-                f.read(&mut buffer).expect("buffer overflow");
-                buffer
-            }
+            use dawless_common::read;
             $($body)*
         }
     }
@@ -41,13 +46,7 @@ pub use lib_tui::*;
             use std::fs::{File, metadata};
             use std::io::{Read, Write};
             use std::path::{Path, PathBuf};
-            pub fn read (filename: &Path) -> Vec<u8> {
-                let mut f      = File::open(&filename).expect("file not found");
-                let metadata   = metadata(&filename).expect("unable to read metadata");
-                let mut buffer = vec![0; metadata.len() as usize];
-                f.read(&mut buffer).expect("buffer overflow");
-                buffer
-            }
+            use dawless_common::read;
             $($body)*
         }
     }
