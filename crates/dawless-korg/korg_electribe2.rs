@@ -421,8 +421,8 @@ impl TUI for KorgElectribe2TUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let mut out = std::io::stdout();
         self.render_menu(&mut out, col1, row1)?;
-        self.render_sample_list(&mut out, col1 + 25, row1)?;
-        self.render_pattern_list(&mut out, col1 + 56, row1)?;
+        //self.render_sample_list(&mut out, col1 + 21, row1)?;
+        self.render_pattern_list(&mut out, col1 + 16, row1)?;
 
         let bg = Color::AnsiValue(232);
         draw_box(&mut out,
@@ -474,17 +474,14 @@ impl KorgElectribe2TUI {
 
     fn render_menu <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
-        draw_box(out,
-            col1, row1, 24, 6,
-            bg, Some((Color::Yellow, bg, "Korg Electribe 2"))
-        )?;
+        draw_box(out,col1, row1, 15, 6, bg, Some((Color::Yellow, bg, "Electribe 2")))?;
         queue!(out,
             SetBackgroundColor(bg),
             SetForegroundColor(Color::White),
             MoveTo(col1 + 1, row1 + 2),
-            Print("Import pattern bank..."),
+            Print("Patterns"),
             MoveTo(col1 + 1, row1 + 3),
-            Print("Import sample bank...")
+            Print("Samples")
         )?;
         Ok(())
     }

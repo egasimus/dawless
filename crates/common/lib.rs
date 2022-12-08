@@ -43,9 +43,16 @@ pub fn draw_box <W: Write> (
             SetBackgroundColor(bg),
             SetForegroundColor(fg),
             MoveTo(col1, row1),
+            Print(" "),
+            MoveTo(col1+1, row1),
             SetAttribute(Attribute::Bold),
-            Print(format!(" {text} ")),
-            SetAttribute(Attribute::Reset)
+            SetAttribute(Attribute::Underlined),
+            Print(text),
+            SetAttribute(Attribute::Reset),
+            MoveTo(col1+1+text.len() as u16, row1),
+            SetBackgroundColor(bg),
+            SetForegroundColor(fg),
+            Print(" "),
         )?;
     }
 
@@ -54,8 +61,8 @@ pub fn draw_box <W: Write> (
 
 pub trait TUI: Sync {
     fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()>;
-    fn update (&mut self, _event: Event) -> Result<()> {
-        Ok(())
+    fn handle (&mut self, _event: &Event) -> Result<bool> {
+        Ok(false)
     }
 }
 

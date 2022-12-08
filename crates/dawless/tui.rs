@@ -29,8 +29,8 @@ pub(crate) fn main() -> Result<()> {
                 break
             }
             let (cols, rows) = size()?;
-            tui.render(0, 0, cols, rows)?;
-            tui.update(rx.recv().unwrap())?;
+            tui.render(0, 1, cols, rows)?;
+            tui.handle(&rx.recv().unwrap())?;
         }
         execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
         disable_raw_mode()
@@ -51,29 +51,47 @@ pub(crate) fn main() -> Result<()> {
 
 }
 
-struct RootTUI <'a> {
-    exited:  Arc<AtomicBool>,
-    devices: Vec<(&'static str, Box<&'a dyn TUI>)>,
-    device:  usize
-}
+struct EmptyTUI {}
 
-impl <'a> RootTUI <'a> {
-    fn new (exited: Arc<AtomicBool>) -> Self {
-        RootTUI {
-            exited,
-            devices: vec![
-                ("Korg Electribe",      Box::new(&KorgElectribe2TUI {})),
-                ("Korg Triton",         Box::new(&KorgElectribe2TUI {})),
-                ("AKAI S3000XL",        Box::new(&KorgElectribe2TUI {})),
-                ("AKAI MPC2000",        Box::new(&KorgElectribe2TUI {})),
-                ("iConnectivity mioXL", Box::new(&KorgElectribe2TUI {}))
-            ],
-            device: 0
-        }
+impl TUI for EmptyTUI {
+    fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
+        Ok(())
     }
 }
 
-impl <'a> TUI for RootTUI <'a> {
+struct RootTUI {
+    exited:  Arc<AtomicBool>,
+    devices: Vec<(&'static str, Box<dyn TUI>)>,
+    device:  usize,
+    focus:   bool
+}
+
+impl RootTUI {
+    fn new (exited: Arc<AtomicBool>) -> Self {
+        RootTUI {
+            exited,
+            focus: true,
+            device: 0,
+            devices: vec![
+                ("Korg Electribe",      Box::new(KorgElectribe2TUI {})),
+                ("Korg Triton",         Box::new(EmptyTUI {})),
+                ("AKAI S3000XL",        Box::new(EmptyTUI {})),
+                ("AKAI MPC2000",        Box::new(EmptyTUI {})),
+                ("iConnectivity mioXL", Box::new(EmptyTUI {}))
+            ],
+        }
+    }
+    fn exit (&mut self) {
+        self.exited.store(true, Ordering::Relaxed);
+    }
+    fn device <'a> (&'a mut self) -> &'a mut dyn TUI {
+        let device = self.devices.get_mut(self.device).unwrap();
+        &mut *device.1
+    }
+}
+
+impl TUI for RootTUI {
+
     fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
         use crossterm::{cursor::{Hide}, terminal::{Clear, ClearType}};
         let mut out = std::io::stdout();
@@ -81,30 +99,79 @@ impl <'a> TUI for RootTUI <'a> {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(&mut out, col1 + 1, row1, 21, 9, bg, Some((bg, fg, "Devices")))?;
+        draw_box(&mut out, col1 + 1, row1, 23, 9, bg, Some((
+            if self.focus { hi } else { bg },
+            if self.focus { bg } else { hi },
+            "Devices"
+        )))?;
         for (index, device) in self.devices.iter().enumerate() {
             queue!(out,
                 SetBackgroundColor(bg),
                 SetForegroundColor(if index == self.device { hi } else { fg }),
                 MoveTo(col1 + 1, row1 + 2 + (index as u16)),
-                Print(format!(" {:<19} ", device.0))
+                Print(format!(" {:<19} ▶ ", device.0))
             )?;
             if index == self.device {
-                device.1.render(col1 + 23, row1, 50, 30)?;
+                device.1.render(col1 + 25, row1, 50, 30)?;
             }
         }
         out.flush()?;
         Ok(())
     }
-    fn update (&mut self, event: Event) -> Result<()> {
-        match event {
-            Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) => {
-                self.exited.store(true, Ordering::Relaxed);
-            },
-            _ => {}
+
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
+            self.exit();
+            return Ok(true)
         }
-        Ok(())
+        if !self.focus {
+            if self.device().handle(&event)? {
+                return Ok(true)
+            }
+        }
+        match event {
+            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+                self.device = if self.device == 0 {
+                    self.devices.len() - 1
+                } else {
+                    self.device - 1
+                };
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+                self.device = if self.device >= self.devices.len() - 1 {
+                    0
+                } else {
+                    self.device + 1
+                };
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
+                self.focus = true;
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
+                self.focus = false;
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
+                self.focus = true;
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                self.focus = false;
+                Ok(true)
+            },
+            Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) => {
+                self.exit();
+                Ok(true)
+            },
+            _ => {
+                Ok(false)
+            }
+        }
     }
+
 }
 
 //use std::{error::Error, io};
