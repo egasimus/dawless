@@ -1,6 +1,6 @@
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
-use dawless_common::{TUI, draw_box, handle_menu};
+use dawless_common::{TUI, draw_box, Menu};
 use dawless_korg::KorgElectribe2TUI;
 use crossterm::{
     execute, queue,
@@ -61,8 +61,7 @@ impl TUI for EmptyTUI {
 
 struct RootTUI {
     exited:  Arc<AtomicBool>,
-    devices: Vec<(&'static str, Box<dyn TUI>)>,
-    device:  usize,
+    devices: Menu<'static, Box<dyn TUI>>,
     focused: bool
 }
 
@@ -71,22 +70,20 @@ impl RootTUI {
         RootTUI {
             exited,
             focused: true,
-            device: 0,
-            devices: vec![
-                ("Korg Electribe",      Box::new(KorgElectribe2TUI::new())),
+            devices: Menu::new(vec![
+                ("Korg Electribe",      Box::new(KorgElectribe2TUI::new()) as Box<dyn TUI>),
                 ("Korg Triton",         Box::new(EmptyTUI {})),
                 ("AKAI S3000XL",        Box::new(EmptyTUI {})),
                 ("AKAI MPC2000",        Box::new(EmptyTUI {})),
                 ("iConnectivity mioXL", Box::new(EmptyTUI {}))
-            ],
+            ])
         }
     }
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
     fn device <'a> (&'a mut self) -> &'a mut dyn TUI {
-        let device = self.devices.get_mut(self.device).unwrap();
-        &mut *device.1
+        &mut **self.devices.get_mut().unwrap()
     }
 }
 
@@ -94,26 +91,19 @@ impl TUI for RootTUI {
 
     fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
         use crossterm::{cursor::{Hide}, terminal::{Clear, ClearType}};
-        let mut out = std::io::stdout();
+        let out = &mut std::io::stdout();
         queue!(out, ResetColor, Clear(ClearType::All), Hide)?;
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(&mut out, col1 + 1, row1, 23, 9, bg, Some((
+        draw_box(out, col1 + 1, row1, 23, 9, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Devices"
         )))?;
-        for (index, device) in self.devices.iter().enumerate() {
-            queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(if index == self.device { hi } else { fg }),
-                MoveTo(col1 + 1, row1 + 2 + (index as u16)),
-                Print(format!(" {:<19} ▶ ", device.0))
-            )?;
-            if index == self.device {
-                device.1.render(col1 + 25, row1, 50, 30)?;
-            }
+        self.devices.render(col1 + 1, row1 + 2, 19, 0)?;
+        if let Some(device) = self.devices.get() {
+            device.render(col1 + 25, row1, 50, 30)?;
         }
         out.flush()?;
         Ok(())
@@ -134,7 +124,7 @@ impl TUI for RootTUI {
                 return Ok(true)
             }
         }
-        if handle_menu(event, self.devices.len(), &mut self.device)? {
+        if self.devices.handle(event)? {
             return Ok(true)
         }
         match event {

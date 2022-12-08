@@ -1,95 +1,10 @@
 use std::path::PathBuf;
 use std::env::{current_dir, set_current_dir};
 use std::fs::{read_dir, metadata};
-use std::io::{Result, Write};
 use pathdiff::diff_paths;
 
-use crossterm::{
-    queue,
-    style::{
-        Print,
-        Color, ResetColor, SetForegroundColor, SetBackgroundColor,
-        Attribute, SetAttribute
-    },
-    cursor::MoveTo,
-    event::{Event, KeyEvent, KeyCode}
-};
-
-pub fn draw_box <W: Write> (
-    out:   &mut W,
-    col1:  u16,
-    row1:  u16,
-    cols:  u16,
-    rows:  u16,
-    bg:    Color,
-    title: Option<(Color, Color, &str)>
-) -> Result<()> {
-    queue!(out, ResetColor, SetForegroundColor(bg))?;
-
-    let border = "▄".repeat(cols as usize);
-    queue!(out, MoveTo(col1, row1), Print(&border))?;
-
-    //let border = "▀".repeat(cols as usize);
-    //queue!(out, MoveTo(col1, row1 + rows - 1), Print(&border))?;
-
-    let background = " ".repeat(cols as usize);
-    queue!(out, ResetColor, SetBackgroundColor(bg))?;
-    for row in row1+1..row1+rows-1 {
-        queue!(out, MoveTo(col1, row), Print(&background))?;
-    }
-
-    if let Some((bg, fg, text)) = title {
-        queue!(out,
-            SetBackgroundColor(bg),
-            SetForegroundColor(fg),
-            MoveTo(col1, row1),
-            Print(" "),
-            MoveTo(col1+1, row1),
-            SetAttribute(Attribute::Bold),
-            SetAttribute(Attribute::Underlined),
-            Print(text),
-            SetAttribute(Attribute::Reset),
-            MoveTo(col1+1+text.len() as u16, row1),
-            SetBackgroundColor(bg),
-            SetForegroundColor(fg),
-            Print(" "),
-        )?;
-    }
-
-    Ok(())
-}
-
-pub trait TUI: Sync {
-    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()>;
-    fn handle (&mut self, _event: &Event) -> Result<bool> {
-        Ok(false)
-    }
-    fn focus (&mut self, _focus: bool) -> bool {
-        false
-    }
-}
-
-pub fn handle_menu (event: &Event, items: usize, index: &mut usize) -> Result<bool> {
-    match event {
-        Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
-            *index = if *index == 0 {
-                items - 1
-            } else {
-                *index - 1
-            };
-            Ok(true)
-        },
-        Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
-            *index = if *index >= items - 1 {
-                0
-            } else {
-                *index + 1
-            };
-            Ok(true)
-        },
-        _ => Ok(false)
-    }
-}
+mod lib_tui;
+pub use lib_tui::*;
 
 #[macro_export] macro_rules! module {
     ($name:ident) => {

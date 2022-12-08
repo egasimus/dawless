@@ -1,5 +1,5 @@
 use std::io::{Result, Write};
-use dawless_common::{TUI, draw_box, handle_menu};
+use dawless_common::{TUI, draw_box, Menu};
 use laterna;
 use crossterm::{
     queue,
@@ -419,52 +419,42 @@ dawless_common::cli! {
 
 pub struct KorgElectribe2TUI {
     focused:    bool,
-    menu_item:  usize,
-    menu_items: Vec<&'static str>
+    features:   Menu<'static, Box<dyn TUI>>,
 }
 
 impl KorgElectribe2TUI {
     pub fn new () -> Self {
         Self {
             focused: false,
-            menu_item: 0,
-            menu_items: vec![
-                "Patterns",
-                "Samples"
-            ]
+            features: Menu::new(vec![
+                ("Patterns", Box::new(KorgElectribe2PatternsTUI::new()) as Box<dyn TUI>),
+                ("Samples",  Box::new(KorgElectribe2SamplesTUI::new())),
+            ])
         }
     }
 }
 
 impl TUI for KorgElectribe2TUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        let mut out = std::io::stdout();
+        let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(&mut out, col1, row1, 16, 6, bg, Some((
+        draw_box(out, col1, row1, 16, 6, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Electribe 2"
         )))?;
-        queue!(&mut out,
+        queue!(out,
             SetBackgroundColor(bg),
             SetForegroundColor(Color::White)
         )?;
-        for (index, menu_item) in self.menu_items.iter().enumerate() {
-            queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(if index == self.menu_item { hi } else { fg }),
-                MoveTo(col1, row1 + 2 + (index as u16)),
-                Print(format!(" {:<12} ▶ ", menu_item))
-            )?;
-        }
-        match self.menu_item {
-            0 => self.render_pattern_list(&mut out, col1 + 17, row1),
-            1 => self.render_sample_list(&mut out, col1 + 17, row1),
-            _ => Ok(())
+        self.features.render(col1, row1 + 2, 12, 0)?;
+        if let Some(feature) = self.features.get() {
+            (*feature).render(col1 + 17, row1, 0, 0)?;
         }
         //self.render_pattern(&mut out, col1 + 48, row1)?;
+        Ok(())
     }
 
     fn focus (&mut self, focus: bool) -> bool {
@@ -473,17 +463,24 @@ impl TUI for KorgElectribe2TUI {
     }
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        if handle_menu(event, self.menu_items.len(), &mut self.menu_item)? {
+        if self.features.handle(event)? {
             return Ok(true)
         }
         Ok(false)
     }
 }
 
+struct KorgElectribe2PatternsTUI {}
 
-impl KorgElectribe2TUI {
+impl KorgElectribe2PatternsTUI {
+    pub fn new () -> Self {
+        Self {}
+    }
+}
 
-    fn render_pattern_list <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+impl TUI for KorgElectribe2PatternsTUI {
+    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
         draw_box(out,
             col1, row1, 30, 32,
@@ -499,8 +496,34 @@ impl KorgElectribe2TUI {
         }
         Ok(())
     }
+}
 
-    fn render_sample_list <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+impl KorgElectribe2PatternsTUI {
+
+    fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
+        let out = &mut std::io::stdout();
+        let bg = Color::AnsiValue(232);
+        draw_box(out,
+            col1+1, row1, 66, 32,
+            bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
+        )?;
+        laterna::demo(out, col1)?;
+        Ok(())
+    }
+
+}
+
+struct KorgElectribe2SamplesTUI {}
+
+impl KorgElectribe2SamplesTUI {
+    pub fn new () -> Self {
+        Self {}
+    }
+}
+
+impl TUI for KorgElectribe2SamplesTUI {
+    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
         draw_box(out,
             col1, row1, 30, 32,
@@ -516,15 +539,4 @@ impl KorgElectribe2TUI {
         }
         Ok(())
     }
-
-    fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
-        let bg = Color::AnsiValue(232);
-        draw_box(out,
-            col1+1, row1, 66, 32,
-            bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
-        )?;
-        laterna::demo(out, col1)?;
-        Ok(())
-    }
-
 }
