@@ -62,7 +62,7 @@ pub struct Electribe2Pattern {
     /// 0x0010..0x0020 - name
     pub name:      String,
     /// 0x0012..0x0013 - bpm
-    pub bpm:       u16,
+    pub bpm:       f32,
     /// 0x0014 - swing
     pub swing:     u8,
     /// 0x0015 - length
@@ -93,8 +93,16 @@ impl Electribe2Pattern {
     pub fn read (raw: &[u8]) -> Self {
         assert_eq!(&raw[0x0000..0x0004], &PTST);
         let mut pattern = Self::default();
-        pattern.name = String::from_utf8(raw[0x0010..0x0020].into())
-            .expect("invalid pattern name");
+        let name_raw = raw[0x0010..0x0020].iter()
+            .map(|x|if *x == 0 { 32 } else { *x })
+            .collect::<Vec<u8>>();
+        pattern.name = String::from_utf8(name_raw)
+            .expect("invalid pattern name").trim().into();
+        pattern.bpm    = f32::from(raw[0x0012]) + f32::from(raw[0x0013]) / 255.0f32;
+        pattern.length = raw[0x0015];
+        pattern.beats  = raw[0x0016];
+        pattern.key    = raw[0x0017];
+        pattern.scale  = raw[0x0018];
         for i in 0..16 {
             let start = PARTS_OFFSET + i * 0x330;
             let end   = start + PART_SIZE;
@@ -541,7 +549,7 @@ impl TUI for Electribe2PatternsTUI {
         if let Some(bank) = &self.bank {
 
             render_frame(out,
-                col1, row1, 30, 32,
+                col1, row1, 78, 42,
                 bg, Some((
                     if self.focused { hi } else { bg },
                     if self.focused { bg } else { hi },
@@ -610,18 +618,31 @@ pub fn render_pattern_list <W: Write> (
     let bg = Color::AnsiValue(232);
     let fg = Color::White;
     let hi = Color::Yellow;
-    for index in 0..24 {
+    queue!(out,
+        SetBackgroundColor(bg),
+        SetForegroundColor(fg),
+        MoveTo(col1, row1),
+        Print(format!("{:>3} {:<16} {:>3} {:>3} {:>3}",
+            "#",
+            "Name",
+            "BPM",
+            "Length",
+            "Beats"
+        ))
+    )?;
+    for index in 0..36 {
         let pattern = patterns.get(index as usize).unwrap();
-        let row = format!("{:>3} {:<24} {} {}",
+        let row = format!("{:>3} {:<16} {:>3} {:>3} {:>3}",
             index + 1,
-            pattern.name,
+            pattern.name.trim(),
+            pattern.bpm,
             pattern.length,
             pattern.beats
         );
         queue!(out,
             SetBackgroundColor(bg),
             SetForegroundColor(if selected == index { hi } else { fg }),
-            MoveTo(col1, row1 + index as u16),
+            MoveTo(col1, row1 + 2 + index as u16),
             Print(row)
         )?;
     }
