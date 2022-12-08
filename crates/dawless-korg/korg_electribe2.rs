@@ -98,7 +98,8 @@ impl Electribe2Pattern {
             .collect::<Vec<u8>>();
         pattern.name = String::from_utf8(name_raw)
             .expect("invalid pattern name").trim().into();
-        pattern.bpm    = f32::from(raw[0x0012]) + f32::from(raw[0x0013]) / 255.0f32;
+        pattern.bpm    = f32::from(raw[0x0012] as u16 + 0x100u16 * raw[0x0013] as u16) / 256.0;
+        pattern.swing  = raw[0x0014];
         pattern.length = raw[0x0015];
         pattern.beats  = raw[0x0016];
         pattern.key    = raw[0x0017];
@@ -621,18 +622,22 @@ pub fn render_pattern_list <W: Write> (
     queue!(out,
         SetBackgroundColor(bg),
         SetForegroundColor(fg),
+        SetAttribute(Attribute::Bold),
         MoveTo(col1, row1),
-        Print(format!("{:>3} {:<16} {:>3} {:>3} {:>3}",
+        Print(format!("{:>3}  {:<16} {:<5}  {:>3}  {:>3}",
             "#",
             "Name",
             "BPM",
             "Length",
             "Beats"
-        ))
+        )),
+        SetAttribute(Attribute::Reset),
+        SetBackgroundColor(bg),
+        SetForegroundColor(fg),
     )?;
     for index in 0..36 {
         let pattern = patterns.get(index as usize).unwrap();
-        let row = format!("{:>3} {:<16} {:>3} {:>3} {:>3}",
+        let row = format!("{:>3}  {:<16} {:>5.1}  {:>3}     {:>3}",
             index + 1,
             pattern.name.trim(),
             pattern.bpm,
