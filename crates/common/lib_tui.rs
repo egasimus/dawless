@@ -11,14 +11,9 @@ use crossterm::{
     event::{Event, KeyEvent, KeyCode}
 };
 
-pub fn draw_box <W: Write> (
-    out:   &mut W,
-    col1:  u16,
-    row1:  u16,
-    cols:  u16,
-    rows:  u16,
-    bg:    Color,
-    title: Option<(Color, Color, &str)>
+pub fn render_frame <W: Write> (
+    out: &mut W, col1: u16, row1: u16, cols: u16, rows: u16,
+    bg: Color, title: Option<(Color, Color, &str)>
 ) -> Result<()> {
     queue!(out,
         ResetColor,
@@ -99,13 +94,11 @@ impl <T: Sync> TUI for Menu <T> {
         Ok(())
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(
-            handle_menu_list(event, self.items.len(), &mut self.index)?
-        )
+        handle_menu_selection(event, self.items.len(), &mut self.index)
     }
 }
 
-pub fn handle_menu_list (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
+pub fn handle_menu_selection (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
     Ok(match event {
         Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
             *index = if *index == 0 {
@@ -167,4 +160,58 @@ pub fn handle_menu_list (event: &Event, length: usize, index: &mut usize) -> Res
             }
         })
     }
+}
+
+pub fn render_directory_listing <W: Write> (
+    out: &mut W, col1: u16, row1: u16, pad: usize,
+    items: &Vec<(String, (String, bool))>,
+    selected: usize,
+) -> Result<()> {
+    let bg = Color::AnsiValue(232);
+    let fg = Color::White;
+    let hi = Color::Yellow;
+    for (index, (_, (path, is_dir))) in items.iter().enumerate() {
+        queue!(out,
+            SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }),
+            SetBackgroundColor(bg),
+            SetForegroundColor(if selected == index { hi } else { fg }),
+            MoveTo(col1, row1 + index as u16),
+            Print(format!("{} {:<0width$}",
+                if *is_dir { "■" } else { " " },
+                path,
+                width = pad as usize
+            )),
+        )?;
+    }
+    Ok(())
+}
+
+pub fn list_current_directory () -> (Vec<(String, (String, bool))>, usize) {
+    use std::env::current_dir;
+    use std::fs::{read_dir, metadata};
+    let cwd = current_dir().unwrap();
+    let mut dirs: Vec<String> = vec!["..".into()];
+    let mut files: Vec<String> = vec![];
+    let mut max_len: usize = 32;
+    for file in read_dir(cwd).unwrap() {
+        let file = file.unwrap();
+        let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
+        max_len = usize::max(max_len, name.len());
+        if metadata(file.path()).unwrap().is_dir() {
+            dirs.push(name)
+        } else {
+            files.push(name)
+        }
+    }
+    dirs.sort();
+    files.sort();
+
+    let mut entries = vec![];
+    for dir in dirs.iter() {
+        entries.push((dir.clone(), (dir.clone(), true)))
+    }
+    for file in files.iter() {
+        entries.push((file.clone(), (file.clone(), false)))
+    }
+    (entries, max_len)
 }

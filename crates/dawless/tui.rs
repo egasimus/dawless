@@ -1,6 +1,6 @@
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
-use dawless_common::{TUI, draw_box, Menu, handle_menu_focus};
+use dawless_common::{TUI, render_frame, Menu, handle_menu_focus};
 use dawless_korg::Electribe2TUI;
 use crossterm::{
     execute, queue,
@@ -96,7 +96,7 @@ impl TUI for RootTUI {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(out, col1 + 1, row1, 23, 9, bg, Some((
+        render_frame(out, col1 + 1, row1, 23, 9, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Devices"

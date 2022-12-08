@@ -1,5 +1,9 @@
 use std::io::{Result, Write};
-use dawless_common::{TUI, draw_box, Menu, handle_menu_focus};
+use dawless_common::{
+    TUI, render_frame,
+    Menu, handle_menu_focus,
+    list_current_directory, render_directory_listing
+};
 use laterna;
 use crossterm::{
     queue,
@@ -447,7 +451,7 @@ impl TUI for Electribe2TUI {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        draw_box(out, col1, row1, 21, 6, bg, Some((
+        render_frame(out, col1, row1, 21, 6, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Electribe 2"
@@ -514,7 +518,7 @@ impl Electribe2PatternsTUI {
     fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
-        draw_box(out,
+        render_frame(out,
             col1+1, row1, 66, 32,
             bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
         )?;
@@ -522,33 +526,7 @@ impl Electribe2PatternsTUI {
         Ok(())
     }
     fn update_listing (&mut self) {
-        use std::env::current_dir;
-        use std::fs::{read_dir, metadata};
-        let cwd = current_dir().unwrap();
-        let parent = cwd.parent().unwrap().to_path_buf();
-        let mut dirs: Vec<String> = vec!["..".into()];
-        let mut files: Vec<String> = vec![];
-        let mut max_len: u16 = 32;
-        for file in read_dir(cwd).unwrap() {
-            let file = file.unwrap();
-            let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
-            max_len = u16::max(max_len, name.len() as u16);
-            if metadata(file.path()).unwrap().is_dir() {
-                dirs.push(name)
-            } else {
-                files.push(name)
-            }
-        }
-        dirs.sort();
-        files.sort();
-
-        let mut entries = vec![];
-        for dir in dirs.iter() {
-            entries.push((dir.clone(), (dir.clone(), true)))
-        }
-        for file in files.iter() {
-            entries.push((file.clone(), (file.clone(), false)))
-        }
+        let (entries, max_len) = list_current_directory();
         self.entries = Menu::new(entries);
         self.max_len = max_len as u16;
     }
@@ -561,25 +539,25 @@ impl TUI for Electribe2PatternsTUI {
         let fg = Color::White;
         let hi = Color::Yellow;
         if let Some(bank) = &self.bank {
-            draw_box(out,
+
+            render_frame(out,
                 col1, row1, 30, 32,
                 bg, Some((
                     if self.focused { hi } else { bg },
                     if self.focused { bg } else { hi },
-                    "Patterns"
+                    "Patterns:"
                 ))
             )?;
-            for i in 1..24 {
-                queue!(out,
-                    SetBackgroundColor(bg),
-                    SetForegroundColor(Color::White),
-                    MoveTo(col1 + 1, row1 + 1 + i),
-                    Print(format!("{:>3} {}", i, bank.patterns.get(i as usize).unwrap().name))
-                )?;
-            }
+
+            render_pattern_list(
+                out, col1 + 1, row1 + 2, 50,
+                &bank.patterns,
+                self.patterns.index
+            )?;
+
         } else {
 
-            draw_box(out,
+            render_frame(out,
                 col1, row1, 4 + self.max_len, 4 + self.entries.items.len() as u16,
                 bg, Some((
                     if self.focused { hi } else { bg },
@@ -588,19 +566,11 @@ impl TUI for Electribe2PatternsTUI {
                 ))
             )?;
 
-            for (index, (_, (path, is_dir))) in self.entries.items.iter().enumerate() {
-                queue!(out,
-                    SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }),
-                    SetBackgroundColor(Color::AnsiValue(232)),
-                    SetForegroundColor(if self.entries.index == index { hi } else { fg }),
-                    MoveTo(col1 + 1, row1 + 2 + index as u16),
-                    Print(format!("{} {:<0width$}",
-                        if *is_dir { "■" } else { " " },
-                        path,
-                        width = self.max_len as usize
-                    )),
-                )?;
-            }
+            render_directory_listing(
+                out, col1 + 1, row1 + 2, self.max_len as usize,
+                &self.entries.items,
+                self.entries.index
+            )?;
 
         }
         Ok(())
@@ -632,6 +602,32 @@ impl TUI for Electribe2PatternsTUI {
     }
 }
 
+pub fn render_pattern_list <W: Write> (
+    out: &mut W, col1: u16, row1: u16, pad: usize,
+    patterns: &Vec<Electribe2Pattern>,
+    selected: usize,
+) -> Result<()> {
+    let bg = Color::AnsiValue(232);
+    let fg = Color::White;
+    let hi = Color::Yellow;
+    for index in 0..24 {
+        let pattern = patterns.get(index as usize).unwrap();
+        let row = format!("{:>3} {:<24} {} {}",
+            index + 1,
+            pattern.name,
+            pattern.length,
+            pattern.beats
+        );
+        queue!(out,
+            SetBackgroundColor(bg),
+            SetForegroundColor(if selected == index { hi } else { fg }),
+            MoveTo(col1, row1 + index as u16),
+            Print(row)
+        )?;
+    }
+    Ok(())
+}
+
 struct Electribe2SamplesTUI {}
 
 impl Electribe2SamplesTUI {
@@ -644,7 +640,7 @@ impl TUI for Electribe2SamplesTUI {
     fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let out = &mut std::io::stdout();
         let bg = Color::AnsiValue(232);
-        draw_box(out,
+        render_frame(out,
             col1, row1, 30, 32,
             bg, Some((bg, Color::Yellow, "Samples"))
         )?;
