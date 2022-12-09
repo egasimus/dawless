@@ -10,7 +10,8 @@ pub use list::*;
 pub mod file;
 pub use file::*;
 
-pub(crate) use std::io::{Result, Write};
+pub use std::io::{Result, Write};
+
 pub(crate) use crossterm::{
     QueueableCommand,
     style::{
@@ -48,6 +49,8 @@ pub trait TUI: Sync {
         -> Result<bool> { Ok(false) }
     fn focus (&mut self, _focus: bool)
         -> bool { false }
+    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16)
+        -> Result<()> { Ok(()) }
 }
 
 //impl FnOnce<(&mut dyn Write,)> for dyn TUI {
