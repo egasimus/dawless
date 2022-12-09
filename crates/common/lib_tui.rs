@@ -120,7 +120,7 @@ pub fn handle_menu_selection (event: &Event, length: usize, index: &mut usize) -
     })
 }
 
-pub fn handle_menu_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {
+pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {
     if index < offset {
         let diff = offset - index;
         usize::max(offset - diff, 0)

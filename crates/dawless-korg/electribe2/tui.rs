@@ -176,7 +176,7 @@ impl TUI for Electribe2PatternsTUI {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Some(bank) = &self.bank {
             if self.patterns.handle(event)? {
-                self.offset = handle_menu_scroll(
+                self.offset = handle_scroll(
                     self.patterns.items.len(), self.patterns.index, 36, self.offset
                 );
                 Ok(true)
@@ -243,7 +243,7 @@ pub fn render_pattern_list <W: Write> (
             "".into()
         };
         queue!(out,
-            SetForegroundColor(if selected == index { hi } else { fg }),
+            SetForegroundColor(if selected == index+offset { hi } else { fg }),
             MoveTo(col1, row1 + 2 + index as u16),
             Print(row)
         )?;
