@@ -1,18 +1,17 @@
-use std::io::{Result, Write};
+use crate::electribe2::*;
+
 use dawless_common::*;
 use laterna;
 use crossterm::{
     QueueableCommand,
+    event::{Event, KeyEvent, KeyCode},
+    cursor::MoveTo,
     style::{
         Color, ResetColor, SetBackgroundColor, SetForegroundColor,
         Attribute, SetAttribute,
         Print
     },
-    event::{Event, KeyEvent, KeyCode},
-    cursor::MoveTo
 };
-
-use crate::electribe2::*;
 
 pub struct Electribe2TUI {
     pub rect:     Rect,
@@ -20,15 +19,22 @@ pub struct Electribe2TUI {
     pub focused:  bool,
     pub patterns: Electribe2PatternsTUI,
     pub samples:  Electribe2SamplesTUI,
-    pub menu:     List<usize>,
+    pub menu:     List<Electribe2TUIFeature>,
+}
+
+#[derive(Default)]
+pub enum Electribe2TUIFeature {
+    #[default]
+    Patterns,
+    Samples
 }
 
 impl Electribe2TUI {
 
     pub fn new () -> Self {
         let mut menu = List::default();
-        menu.add("Edit pattern bank".into(), 0)
-            .add("Edit sample bank".into(),  1);
+        menu.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
+            .add("Edit sample bank".into(),  Electribe2TUIFeature::Samples);
         Self {
             rect:     (0, 0, 0, 0),
             theme:    Theme::default(),
@@ -41,17 +47,15 @@ impl Electribe2TUI {
 
     fn feature (&self) -> &dyn TUI {
         match self.menu.get().unwrap() {
-            0 => &self.patterns,
-            1 => &self.samples,
-            _ => unreachable!()
+            Electribe2TUIFeature::Patterns => &self.patterns,
+            Electribe2TUIFeature::Samples  => &self.samples,
         }
     }
 
     fn feature_mut (&mut self) -> &mut dyn TUI {
         match self.menu.get().unwrap() {
-            0 => &mut self.patterns,
-            1 => &mut self.samples,
-            _ => unreachable!()
+            Electribe2TUIFeature::Patterns => &mut self.patterns,
+            Electribe2TUIFeature::Samples  => &mut self.samples,
         }
     }
 
@@ -59,24 +63,22 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
 
+    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        self.rect = (col1, row1, 21, 5);
+        self.menu.layout(col1, row1 + 2, 17, 0);
+        self.patterns.rect = (self.rect.0 + 22, self.rect.1, 0, 0);
+        self.samples.rect = (self.rect.0 + 22, self.rect.1, 0, 0);
+        Ok(())
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-
-        let (col1, row1, ..) = self.rect;
-
-        Frame {
-            theme: self.theme,
-            rect:  (col1, row1, 21, 6),
-            title: "Electribe 2", focused: self.focused
-        }.render(term)?;
-
+        let Self { rect, theme, focused, .. } = *self;
+        Frame { rect, theme, focused, title: "Electribe 2" }(term)?;
         term.queue(SetBackgroundColor(self.theme.bg))?
             .queue(SetForegroundColor(Color::White))?;
-
         self.menu.render(term)?;
-        (*self.feature()).render(term)?;//, col1 + 22, row1, 0, 0)?;
-        //self.render_pattern(&mut out, col1 + 48, row1)?;
+        (*self.feature()).render(term)?;
         Ok(())
-
     }
 
     fn focus (&mut self, focus: bool) -> bool {
@@ -95,6 +97,7 @@ impl TUI for Electribe2TUI {
         }
         handle_menu_focus!(event, self, self.feature_mut(), self.focused)
     }
+
 }
 
 #[derive(Default)]
@@ -113,7 +116,6 @@ impl Electribe2PatternsTUI {
 
     pub fn new () -> Self {
         let mut new = Self::default();
-        new.max_len = 20;
         new.update_listing();
         return new
     }
@@ -131,12 +133,13 @@ impl Electribe2PatternsTUI {
     fn update_listing (&mut self) {
         let (entries, max_len) = list_current_directory();
         self.entries = List { items: entries, ..List::default() };
-        self.max_len = max_len as u16;
+        self.max_len = u16::max(max_len as u16, 20);
     }
 
 }
 
 impl TUI for Electribe2PatternsTUI {
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let theme = self.theme;
         let (col1, row1, cols, row) = self.rect;
@@ -170,11 +173,7 @@ impl TUI for Electribe2PatternsTUI {
                 focused: self.focused
             }(term)?;
 
-            render_directory_listing(
-                term, col1 + 1, row1 + 2, self.max_len as usize,
-                &self.entries.items,
-                self.entries.index
-            )?;
+            FileList(&self.entries).render(term)?;
 
         }
         Ok(())
@@ -330,9 +329,17 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
+
+    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        self.rect = (col1, row1, 30, 32);
+        Ok(())
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let bg = Color::AnsiValue(232);
-        let (col1, row1, ..) = self.rect;
+        let Self { rect, theme, .. } = *self;
+        let Theme { bg, .. } = theme;
+        let (col1, row1, ..) = rect;
+        Frame { theme, rect, title: "Samples", focused: false }(term)?;
         render_frame(term,
             col1, row1, 30, 32,
             bg, Some((bg, Color::Yellow, "Samples"))
@@ -345,4 +352,5 @@ impl TUI for Electribe2SamplesTUI {
         }
         Ok(())
     }
+
 }
