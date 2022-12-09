@@ -1,9 +1,5 @@
 use std::io::{Result, Write};
-use dawless_common::{
-    TUI, render_frame,
-    Menu, handle_menu_focus,
-    list_current_directory, render_directory_listing
-};
+use dawless_common::*;
 use laterna;
 use crossterm::{
     queue,
@@ -239,15 +235,9 @@ pub fn render_pattern_list <W: Write> (
             Print(row)
         )?;
     }
-    for index in 0..height {
-        let scroll_offset = (offset * height) / patterns.len();
-        let scroll_index  = (index  * height) / patterns.len();
-        queue!(out,
-            SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }),
-            MoveTo(col1 + 55, row1 + 2 + index as u16),
-            Print("▒"),
-        )?;
-    }
+
+    render_scrollbar(out, col1 + 55, row1 + 2, patterns.len(), offset, height)?;
+
     Ok(())
 }
 

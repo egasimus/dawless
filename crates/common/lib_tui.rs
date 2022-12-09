@@ -215,3 +215,21 @@ pub fn list_current_directory () -> (Vec<(String, (String, bool))>, usize) {
     }
     (entries, max_len)
 }
+
+pub fn render_scrollbar <W: Write> (
+    out: &mut W, col1: u16, row1: u16,
+    length: usize, offset: usize, height: usize,
+) -> Result<()> {
+    let fg = Color::White;
+    let hi = Color::Yellow;
+    for index in 0..height {
+        let scroll_offset = (offset * height) / length;
+        let scroll_index  = (index  * height) / length;
+        queue!(out,
+            SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }),
+            MoveTo(col1, row1 + index as u16),
+            Print("▒"),
+        )?;
+    }
+    Ok(())
+}
