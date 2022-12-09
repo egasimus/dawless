@@ -79,18 +79,6 @@ pub fn handle_list_select (event: &Event, length: usize, index: &mut usize) -> R
     })
 }
 
-pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {
-    if index < offset {
-        let diff = offset - index;
-        usize::max(offset - diff, 0)
-    } else if index >= offset + height {
-        let diff = index - (offset + height) + 1;
-        usize::min(offset + diff, length)
-    } else {
-        offset
-    }
-}
-
 #[macro_export] macro_rules! handle_menu_focus {
     ($event:expr, $parent:expr, $child:expr, $focused:expr) => {
         Ok(match $event {
@@ -131,20 +119,4 @@ pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize)
             }
         })
     }
-}
-
-pub fn render_scrollbar (
-    term: &mut dyn Write, col1: u16, row1: u16,
-    length: usize, offset: usize, height: usize,
-) -> Result<()> {
-    let fg = Color::White;
-    let hi = Color::Yellow;
-    for index in 0..height {
-        let scroll_offset = (offset * height) / length;
-        let scroll_index  = (index  * height) / length;
-        term.queue(SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }))?
-            .queue(MoveTo(col1, row1 + index as u16))?
-            .queue(Print("▒"))?;
-    }
-    Ok(())
 }

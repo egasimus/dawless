@@ -1,6 +1,9 @@
 pub mod empty;
 pub use empty::*;
 
+pub mod label;
+pub use label::*;
+
 pub mod frame;
 pub use frame::*;
 
@@ -9,6 +12,9 @@ pub use list::*;
 
 pub mod file;
 pub use file::*;
+
+pub mod scroll;
+pub use scroll::*;
 
 pub use std::io::{Result, Write};
 
@@ -53,12 +59,29 @@ pub trait TUI: Sync {
         -> Result<()> { Ok(()) }
 }
 
-//impl FnOnce<(&mut dyn Write,)> for dyn TUI {
-    //type Output = Result<()>;
-    //extern "rust-call" fn call_once (self, term: (&mut dyn Write,)) -> Self::Output {
-        //self.render(term.0)
-    //}
-//}
+impl FnOnce<(&mut dyn Write,)> for Box<dyn TUI> {
+    type Output = std::io::Result<()>;
+    extern "rust-call" fn call_once (self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+
+impl FnOnce<(&mut dyn Write,)> for &'_ dyn TUI {
+    type Output = Result<()>;
+    extern "rust-call" fn call_once (self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+impl FnMut<(&mut dyn Write,)> for &'_ dyn TUI {
+    extern "rust-call" fn call_mut (&mut self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+impl Fn<(&mut dyn Write,)> for &'_ dyn TUI {
+    extern "rust-call" fn call (&self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
 
 //impl FnOnce<(&Event,)> for &mut dyn TUI {
     //type Output = Result<bool>;
