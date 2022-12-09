@@ -1,3 +1,6 @@
+pub mod empty;
+pub use empty::*;
+
 pub mod frame;
 pub use frame::*;
 
@@ -19,14 +22,47 @@ pub(crate) use crossterm::{
     event::{Event, KeyEvent, KeyCode}
 };
 
+#[derive(Copy, Clone)]
+pub struct Theme {
+    pub bg: Color,
+    pub fg: Color,
+    pub hi: Color
+}
+
+impl Default for Theme {
+    fn default () -> Self {
+        Theme {
+            bg: Color::AnsiValue(232),
+            fg: Color::White,
+            hi: Color::Yellow
+        }
+    }
+}
+
+pub type Rect = (u16, u16, u16, u16);
+
 pub trait TUI: Sync {
-    fn render (&self, term: &mut dyn Write, _col1: u16, _row1: u16, _cols: u16, _rows: u16)
+    fn render (&self, term: &mut dyn Write)
         -> Result<()>;
     fn handle (&mut self, _event: &Event)
         -> Result<bool> { Ok(false) }
     fn focus (&mut self, _focus: bool)
         -> bool { false }
 }
+
+//impl FnOnce<(&mut dyn Write,)> for dyn TUI {
+    //type Output = Result<()>;
+    //extern "rust-call" fn call_once (self, term: (&mut dyn Write,)) -> Self::Output {
+        //self.render(term.0)
+    //}
+//}
+
+//impl FnOnce<(&Event,)> for &mut dyn TUI {
+    //type Output = Result<bool>;
+    //extern "rust-call" fn call_once (self, event: (&Event,)) -> Result<bool> {
+        //self.handle(event.0)
+    //}
+//}
 
 #[macro_export] macro_rules! tui {
     ($($body:item)*) => {

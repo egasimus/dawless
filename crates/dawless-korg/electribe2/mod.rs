@@ -1,21 +1,3 @@
-use std::io::{Result, Write};
-use dawless_common::{
-    TUI, render_frame,
-    Menu, handle_menu_focus,
-    list_current_directory, render_directory_listing
-};
-use laterna;
-use crossterm::{
-    queue,
-    style::{
-        Color, ResetColor, SetBackgroundColor, SetForegroundColor,
-        Attribute, SetAttribute,
-        Print
-    },
-    event::{Event, KeyEvent, KeyCode},
-    cursor::MoveTo
-};
-
 mod tui;
 pub use tui::*;
 

@@ -1,3 +1,7 @@
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
+#![feature(unsized_locals)]
+
 //use std::path::PathBuf;
 //use std::env::{current_dir, set_current_dir};
 //use std::fs::{read_dir, metadata};

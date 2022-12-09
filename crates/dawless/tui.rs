@@ -1,11 +1,11 @@
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
-use dawless_common::{TUI, render_frame, Menu, handle_menu_focus};
+use dawless_common::*;
 use dawless_korg::Electribe2TUI;
 use crossterm::{
     execute, QueueableCommand,
     event::{poll, read, Event, KeyEvent, KeyCode},
-    style::{Color, ResetColor, SetForegroundColor, SetBackgroundColor},
+    style::{Color, ResetColor},
     cursor::{Show, Hide},
     terminal::{
         size, enable_raw_mode, disable_raw_mode,
@@ -21,20 +21,52 @@ pub(crate) fn main () -> Result<()> {
     let exit_thread = Arc::clone(&exit);
 
     std::thread::spawn(move || {
+
         let mut term = std::io::stdout();
+
         execute!(term, EnterAlternateScreen)?;
+
         enable_raw_mode()?;
-        let mut tui = RootTUI::new(exit_thread.clone());
+
+        let (cols, rows) = size()?;
+
+        let mut tui = RootTUI {
+            rect:    (cols / 2 - 24, rows / 2 - 15, 0, 0),
+            theme:   Theme::default(),
+            focused: true,
+            devices: List::default(),
+            exited:  exit_thread.clone(),
+        };
+
+        let mut e2tui = Electribe2TUI::new();
+        e2tui.rect = (tui.rect.0 + 25, tui.rect.1, 50, 30);
+        e2tui.menu.rect = (e2tui.rect.0, e2tui.rect.1 + 2, 17, 0);
+        e2tui.patterns.rect = (e2tui.rect.0 + 22, e2tui.rect.1, 0, 0);
+        e2tui.samples.rect = (e2tui.rect.0 + 22, e2tui.rect.1, 0, 0);
+
+        tui.devices
+            .add("Korg Electribe",      Box::new(e2tui))
+            .add("Korg Triton",         Box::new(EmptyTUI {}))
+            .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
+            .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
+            .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
+
+        tui.devices.rect = (tui.rect.0 + 1, tui.rect.1 + 2, 19, 0);
+
         loop {
             if exit_thread.fetch_and(true, Ordering::Relaxed) == true {
                 break
             }
             let (cols, rows) = size()?;
-            tui.render(&mut term, 0, 0, cols, rows)?;
+            tui.rect = (tui.rect.0, tui.rect.1, cols, rows);
+            tui.render(&mut term)?;
             tui.handle(&rx.recv().unwrap())?;
         }
+
         execute!(term, ResetColor, Show, LeaveAlternateScreen)?;
+
         disable_raw_mode()
+
     });
 
     loop {
@@ -52,34 +84,15 @@ pub(crate) fn main () -> Result<()> {
 
 }
 
-struct EmptyTUI {}
-
-impl TUI for EmptyTUI {
-    fn render (&self, term: &mut dyn Write, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
-        Ok(())
-    }
-}
-
 struct RootTUI {
+    rect:    Rect,
+    theme:   Theme,
     exited:  Arc<AtomicBool>,
-    devices: Menu<Box<dyn TUI>>,
+    devices: List<Box<dyn TUI>>,
     focused: bool
 }
 
 impl RootTUI {
-    fn new (exited: Arc<AtomicBool>) -> Self {
-        RootTUI {
-            exited,
-            focused: true,
-            devices: Menu::new(vec![
-                ("Korg Electribe".into(),      Box::new(Electribe2TUI::new()) as Box<dyn TUI>),
-                ("Korg Triton".into(),         Box::new(EmptyTUI {})),
-                ("AKAI S3000XL".into(),        Box::new(EmptyTUI {})),
-                ("AKAI MPC2000".into(),        Box::new(EmptyTUI {})),
-                ("iConnectivity mioXL".into(), Box::new(EmptyTUI {}))
-            ])
-        }
-    }
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
@@ -90,26 +103,31 @@ impl RootTUI {
 
 impl TUI for RootTUI {
 
-    fn render (
-        &self, term: &mut dyn Write, col1: u16, row1: u16, _cols: u16, _rows: u16
-    ) -> Result<()> {
+    fn render (&self, term: &mut dyn Write) -> Result<()> {
+
         term.queue(ResetColor)?
             .queue(Clear(ClearType::All))?
             .queue(Hide)?;
-        let bg = Color::AnsiValue(232);
-        let fg = Color::White;
-        let hi = Color::Yellow;
-        render_frame(term, col1 + 1, row1, 23, 9, bg, Some((
-            if self.focused { hi } else { bg },
-            if self.focused { bg } else { hi },
-            "Devices"
-        )))?;
-        self.devices.render(term, col1 + 1, row1 + 2, 19, 0)?;
+
+        let (col1, row1, ..) = self.rect;
+
+        Frame {
+            rect:    (col1 + 1, row1, 23, 9),
+            theme:   self.theme,
+            title:   "Devices",
+            focused: self.focused,
+        }(term)?;
+
+        self.devices.render(term)?;
+
         if let Some(device) = self.devices.get() {
-            device.render(term, col1 + 25, row1, 50, 30)?;
+            device.render(term)?;
         }
+
         term.flush()?;
+
         Ok(())
+
     }
 
     fn focus (&mut self, focus: bool) -> bool {

@@ -21,3 +21,5 @@ pub fn render_directory_listing (
     }
     Ok(())
 }
+
+pub struct FileList (List<(String, bool)>);

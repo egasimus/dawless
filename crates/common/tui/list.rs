@@ -1,16 +1,17 @@
 use super::*;
 
-pub struct Menu <T> {
+#[derive(Default)]
+pub struct List <T> {
+    pub rect:  Rect,
+    pub theme: Theme,
     pub index: usize,
     pub items: Vec<(String, T)>
 }
 
-impl <T> Menu <T> {
-    pub fn new (items: Vec<(String, T)>) -> Self {
-        Self {
-            index: 0,
-            items
-        }
+impl <T> List <T> {
+    pub fn add (&mut self, label: &str, value: T) -> &mut Self {
+        self.items.push((label.into(), value));
+        self
     }
     pub fn get (&self) -> Option<&T> {
         self.items.get(self.index).map(|x| &x.1)
@@ -23,22 +24,25 @@ impl <T> Menu <T> {
     }
 }
 
-impl <T: Sync> TUI for Menu <T> {
-    fn render (&self, term: &mut dyn Write, col1: u16, row1: u16, cols: u16, _rows: u16) -> Result<()> {
-        let bg = Color::AnsiValue(232);
-        let fg = Color::White;
-        let hi = Color::Yellow;
+impl <T: Sync> TUI for List <T> {
+
+    fn render (&self, term: &mut dyn Write) -> Result<()> {
+        let Theme { bg, fg, hi } = self.theme;
+        let (col1, row1, cols, ..) = self.rect;
         for (index, item) in self.items.iter().enumerate() {
+            let fg = if index == self.index { hi } else { fg };
             term.queue(SetBackgroundColor(bg))?
-                .queue(SetForegroundColor(if index == self.index { hi } else { fg }))?
+                .queue(SetForegroundColor(fg))?
                 .queue(MoveTo(col1, row1 + (index as u16)))?
                 .queue(Print(format!(" {:<0width$} ▶ ", item.0, width = cols as usize)))?;
         }
         Ok(())
     }
+
     fn handle (&mut self, event: &Event) -> Result<bool> {
         handle_menu_selection(event, self.items.len(), &mut self.index)
     }
+
 }
 
 pub fn handle_menu_selection (event: &Event, length: usize, index: &mut usize) -> Result<bool> {

@@ -36,3 +36,45 @@ pub fn render_frame (
     Ok(())
 
 }
+
+pub struct Frame <'a> {
+    pub rect:    Rect,
+    pub theme:   Theme,
+    pub title:   &'a str,
+    pub focused: bool,
+}
+
+impl<'a> TUI for Frame<'a> {
+    fn render (&self, term: &mut dyn Write) -> Result<()> {
+        let Theme { bg, fg, hi } = self.theme;
+        let (col1, row1, cols, rows) = self.rect;
+        render_frame(term, col1, row1, cols, rows, bg, Some((
+            if self.focused { hi } else { bg },
+            if self.focused { bg } else { hi },
+            &self.title
+        )))
+    }
+}
+
+impl<'a> FnOnce<(&mut dyn Write,)> for Frame<'a> {
+    type Output = Result<()>;
+    extern "rust-call" fn call_once (self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+impl<'a> FnMut<(&mut dyn Write,)> for Frame<'a> {
+    extern "rust-call" fn call_mut (&mut self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+impl<'a> Fn<(&mut dyn Write,)> for Frame<'a> {
+    extern "rust-call" fn call (&self, args: (&mut dyn Write,)) -> Self::Output {
+        self.render(args.0)
+    }
+}
+impl<'a> FnOnce<(&Event,)> for Frame<'a> {
+    type Output = Result<bool>;
+    extern "rust-call" fn call_once (mut self, args: (&Event,)) -> Self::Output {
+        self.handle(args.0)
+    }
+}
