@@ -15,18 +15,14 @@ use crossterm::{
 };
 
 pub(crate) fn main () -> Result<()> {
-
     let (tx, rx) = channel::<Event>();
     let exit = Arc::new(AtomicBool::new(false));
     let exit_thread = Arc::clone(&exit);
-
     std::thread::spawn(move || {
         let mut term = std::io::stdout();
-        let mut app  = setup(&mut term, exit_thread.clone())?;
+        let mut app  = setup(&mut term, exit_thread)?;
         loop {
-            if exit_thread.fetch_and(true, Ordering::Relaxed) == true {
-                break
-            }
+            if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
             app.rect = (app.rect.0, app.rect.1, cols, rows);
             app.render(&mut term)?;
@@ -34,20 +30,13 @@ pub(crate) fn main () -> Result<()> {
         }
         teardown(&mut term)
     });
-
     loop {
-        if exit.fetch_and(true, Ordering::Relaxed) == true {
-            break
-        }
+        if exit.fetch_and(true, Ordering::Relaxed) == true { break }
         if poll(std::time::Duration::from_millis(100))? {
-            if let Err(_) = tx.send(read()?) {
-                break
-            }
+            if tx.send(read()?).is_err() { break }
         }
     }
-
     Ok(())
-
 }
 
 fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
@@ -76,6 +65,13 @@ fn teardown (term: &mut dyn Write) -> Result<()> {
     disable_raw_mode()
 }
 
+fn clear (term: &mut dyn Write) -> Result<()> {
+    term.queue(ResetColor)?
+        .queue(Clear(ClearType::All))?
+        .queue(Hide)?;
+    Ok(())
+}
+
 struct AppTUI {
     rect:    Rect,
     theme:   Theme,
@@ -95,20 +91,18 @@ impl AppTUI {
 
 impl TUI for AppTUI {
 
-    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.rect = (x, y, w, h);
+    fn layout (&mut self, x: u16, y: u16, _w: u16, _h: u16) -> Result<()> {
+        self.rect = (x, y, 23, 9);
         self.devices.layout(x + 1, y + 2, 19, 0)?;
         self.devices.items[0].1.layout(x + 25, y, 50, 30)?;
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
+        clear(term)?;
         let Self { rect, theme, focused, .. } = *self;
-        let (col1, row1, ..) = self.rect;
-        term.queue(ResetColor)?
-            .queue(Clear(ClearType::All))?
-            .queue(Hide)?;
-        Frame { rect: (col1 + 1, row1, 23, 9), theme, focused, title: "Devices" }(term)?;
+        let (col1, row1, ..) = rect;
+        Frame { rect: (col1 + 1, row1, 23, 9), theme, focused, title: "Devices" }.render(term)?;
         self.devices.render(term)?;
         if let Some(device) = self.devices.get() { device.render(term)?; }
         term.flush()?;
