@@ -80,6 +80,7 @@ struct Electribe2PatternsTUI {
     bank:     Option<Electribe2PatternBank>,
     entries:  Menu<(String, bool)>,
     patterns: Menu<String>,
+    offset:   usize,
     max_len:  u16
 }
 
@@ -90,6 +91,7 @@ impl Electribe2PatternsTUI {
             bank:     None,
             entries:  Menu::new(vec![]),
             patterns: Menu::new(vec![]),
+            offset:   0,
             max_len:  20
         };
         this.update_listing();
@@ -141,7 +143,8 @@ impl TUI for Electribe2PatternsTUI {
             render_pattern_list(
                 out, col1 + 1, row1 + 2, 50,
                 &bank.patterns,
-                self.patterns.index
+                self.patterns.index,
+                self.offset
             )?;
 
         } else {
@@ -172,7 +175,14 @@ impl TUI for Electribe2PatternsTUI {
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Some(bank) = &self.bank {
-            self.patterns.handle(event)
+            if self.patterns.handle(event)? {
+                self.offset = handle_menu_scroll(
+                    self.patterns.items.len(), self.patterns.index, 36, self.offset
+                );
+                Ok(true)
+            } else {
+                Ok(false)
+            }
         } else {
             if let Event::Key(KeyEvent { code: KeyCode::Enter, .. }) = event {
                 let (path, is_dir) = &self.entries.items.get(self.entries.index).unwrap().1;
@@ -195,6 +205,7 @@ pub fn render_pattern_list <W: Write> (
     out: &mut W, col1: u16, row1: u16, pad: usize,
     patterns: &Vec<Electribe2Pattern>,
     selected: usize,
+    offset:   usize
 ) -> Result<()> {
     let bg = Color::AnsiValue(232);
     let fg = Color::White;
@@ -216,19 +227,21 @@ pub fn render_pattern_list <W: Write> (
         SetAttribute(Attribute::Reset),
         SetBackgroundColor(bg),
     )?;
-    let offset = 0;
     let height = 36;
-    for index in offset..offset+height {
-        let pattern = patterns.get(index as usize).unwrap();
-        let row = format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
-            index + 1,
-            pattern.name.trim(),
-            pattern.bpm,
-            pattern.length,
-            pattern.beats,
-            pattern.key,
-            pattern.scale,
-        );
+    for index in 0..0+height {
+        let row = if let Some(pattern) = patterns.get(index+offset as usize) {
+            format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
+                index + offset + 1,
+                pattern.name.trim(),
+                pattern.bpm,
+                pattern.length,
+                pattern.beats,
+                pattern.key,
+                pattern.scale,
+            )
+        } else {
+            "".into()
+        };
         queue!(out,
             SetForegroundColor(if selected == index { hi } else { fg }),
             MoveTo(col1, row1 + 2 + index as u16),

@@ -120,6 +120,18 @@ pub fn handle_menu_selection (event: &Event, length: usize, index: &mut usize) -
     })
 }
 
+pub fn handle_menu_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {
+    if index < offset {
+        let diff = offset - index;
+        usize::max(offset - diff, 0)
+    } else if index >= offset + height {
+        let diff = index - (offset + height) + 1;
+        usize::min(offset + diff, length)
+    } else {
+        offset
+    }
+}
+
 #[macro_export] macro_rules! handle_menu_focus {
     ($event:expr, $parent:expr, $child:expr, $focused:expr) => {
         Ok(match $event {
