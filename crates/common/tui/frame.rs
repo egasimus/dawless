@@ -13,7 +13,7 @@ pub fn render_frame (
         .queue(SetBackgroundColor(bg))?;
 
     let background = " ".repeat(cols as usize);
-    for row in row1+1..row1+rows-1 {
+    for row in row1+1..row1+rows {
         term.queue(MoveTo(col1, row))?.queue(Print(&background))?;
     }
 
