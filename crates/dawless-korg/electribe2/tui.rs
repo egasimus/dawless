@@ -147,6 +147,11 @@ impl TUI for Electribe2PatternsTUI {
                 self.offset
             )?;
 
+            render_pattern(
+                out, col1 + 59, row1,
+                bank.patterns.get(self.patterns.index).unwrap()
+            )?;
+
         } else {
 
             render_frame(out,
@@ -251,6 +256,56 @@ pub fn render_pattern_list <W: Write> (
 
     render_scrollbar(out, col1 + 55, row1 + 2, patterns.len(), offset, height)?;
 
+    Ok(())
+}
+
+pub fn render_pattern <W: Write> (
+    out: &mut W, col1: u16, row1: u16,
+    pattern: &Electribe2Pattern
+) -> Result<()> {
+    let bg = Color::AnsiValue(232);
+    let fg = Color::White;
+    let hi = Color::Yellow;
+    render_frame(out, col1, row1, 50, 20, bg, Some((
+        bg,
+        hi,
+        "Pattern details"
+    )))?;
+    queue!(out,
+        SetForegroundColor(fg),
+        MoveTo(col1 + 1, row1 + 2),
+        Print(&pattern.name),
+        MoveTo(col1 + 21, row1 + 2),
+        Print(&pattern.level),
+        MoveTo(col1 + 1, row1 + 3),
+        Print(&pattern.bpm),
+        MoveTo(col1 + 21, row1 + 3),
+        Print(&pattern.swing),
+        MoveTo(col1 + 1, row1 + 4),
+        Print(&pattern.length),
+        MoveTo(col1 + 21, row1 + 4),
+        Print(&pattern.beats),
+        MoveTo(col1 + 1, row1 + 5),
+        Print(&pattern.key),
+        MoveTo(col1 + 21, row1 + 5),
+        Print(&pattern.scale),
+        MoveTo(col1 + 1, row1 + 6),
+        Print(&pattern.chord_set),
+        MoveTo(col1 + 21, row1 + 6),
+        Print(&pattern.gate_arp),
+        MoveTo(col1 + 1, row1 + 7),
+        Print(&pattern.mfx_type),
+        MoveTo(col1 + 1, row1 + 8),
+        Print(&pattern.alt_13_14),
+        MoveTo(col1 + 21, row1 + 8),
+        Print(&pattern.alt_15_16),
+    )?;
+    for index in 1..1+24 {
+        queue!(out,
+            MoveTo(col1 + 1, row1 + 9 + index),
+            Print(format!("Part {index}...")),
+        )?;
+    }
     Ok(())
 }
 
