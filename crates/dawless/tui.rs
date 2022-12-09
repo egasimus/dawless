@@ -54,22 +54,18 @@ fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
     term.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let (cols, rows) = size()?;
-    let mut app = AppTUI {
-        rect:    (cols / 2 - 40, rows / 2 - 15, 0, 0),
-        theme:   Theme::default(),
-        focused: true,
-        devices: List::default(),
-        exited
-    };
-    app.devices.layout(app.rect.0 + 1, app.rect.1 + 2, 19, 0)?;
-    let mut e2tui = Electribe2TUI::new();
-    e2tui.layout(app.rect.0 + 25, app.rect.1, 50, 30)?;
+    let rect = (0, 0, 0, 0);
+    let theme = Theme::default();
+    let focused = true;
+    let devices = List::default();
+    let mut app = AppTUI { rect, theme, focused, devices, exited };
     app.devices
-        .add("Korg Electribe",      Box::new(e2tui))
+        .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
         .add("Korg Triton",         Box::new(EmptyTUI {}))
         .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
         .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
         .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
+    app.layout(cols / 2 - 40, rows / 2 - 15, 0, 0)?;
     Ok(app)
 }
 
@@ -98,6 +94,13 @@ impl AppTUI {
 }
 
 impl TUI for AppTUI {
+
+    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
+        self.rect = (x, y, w, h);
+        self.devices.layout(x + 1, y + 2, 19, 0)?;
+        self.devices.items[0].1.layout(x + 25, y, 50, 30)?;
+        Ok(())
+    }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { rect, theme, focused, .. } = *self;
