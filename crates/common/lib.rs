@@ -3,25 +3,17 @@
 //use std::fs::{read_dir, metadata};
 //use pathdiff::diff_paths;
 
-mod lib_tui;
-pub use lib_tui::*;
+mod tui;
+pub use tui::*;
+
+mod file;
+pub use file::*;
 
 #[macro_export] macro_rules! module {
     ($name:ident) => {
         mod $name;
         pub use $name::*;
     };
-}
-
-use std::fs::{File, metadata};
-use std::io::{Read};
-use std::path::{Path};
-pub fn read (filename: &Path) -> Vec<u8> {
-    let mut f      = File::open(&filename).expect("file not found");
-    let metadata   = metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-    buffer
 }
 
 #[macro_export] macro_rules! cli {
