@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
 use crossterm::{
-    queue,
+    QueueableCommand,
     style::{
         Print,
         Color, ResetColor, SetForegroundColor, SetBackgroundColor,
@@ -11,50 +11,64 @@ use crossterm::{
     event::{Event, KeyEvent, KeyCode}
 };
 
-pub fn render_frame <W: Write> (
-    out: &mut W, col1: u16, row1: u16, cols: u16, rows: u16,
+#[macro_export] macro_rules! tui {
+    ($($body:item)*) => {
+        #[cfg(feature = "tui")] pub use tui::*;
+        #[cfg(feature = "tui")] mod tui {
+            use super::*;
+            use std::fs::{File, metadata};
+            use std::io::{Read, Write};
+            use std::path::{Path, PathBuf};
+            use dawless_common::read;
+            $($body)*
+        }
+    }
+}
+
+pub fn render_frame (
+    term: &mut dyn Write, col1: u16, row1: u16, cols: u16, rows: u16,
     bg: Color, title: Option<(Color, Color, &str)>
 ) -> Result<()> {
-    queue!(out,
-        ResetColor,
-        SetForegroundColor(bg),
-        MoveTo(col1, row1),
-        Print("▄".repeat(cols as usize)),
-        ResetColor, SetBackgroundColor(bg)
-    )?;
+
+    term.queue(ResetColor)?
+        .queue(SetForegroundColor(bg))?
+        .queue(MoveTo(col1, row1))?
+        .queue(Print("▄".repeat(cols as usize)))?
+        .queue(ResetColor)?
+        .queue(SetBackgroundColor(bg))?;
+
     let background = " ".repeat(cols as usize);
     for row in row1+1..row1+rows-1 {
-        queue!(out, MoveTo(col1, row), Print(&background))?;
+        term.queue(MoveTo(col1, row))?.queue(Print(&background))?;
     }
+
     if let Some((bg, fg, text)) = title {
-        queue!(out,
-            SetBackgroundColor(bg),
-            SetForegroundColor(fg),
-            MoveTo(col1, row1),
-            Print(" "),
-            MoveTo(col1+1, row1),
-            SetAttribute(Attribute::Bold),
-            SetAttribute(Attribute::Underlined),
-            Print(text),
-            SetAttribute(Attribute::Reset),
-            MoveTo(col1+1+text.len() as u16, row1),
-            SetBackgroundColor(bg),
-            SetForegroundColor(fg),
-            Print(" "),
-        )?;
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(fg))?
+            .queue(MoveTo(col1, row1))?
+            .queue(Print(" "))?
+            .queue(MoveTo(col1+1, row1))?
+            .queue(SetAttribute(Attribute::Bold))?
+            .queue(SetAttribute(Attribute::Underlined))?
+            .queue(Print(text))?
+            .queue(SetAttribute(Attribute::Reset))?
+            .queue(MoveTo(col1+1+text.len() as u16, row1))?
+            .queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(fg))?
+            .queue(Print(" "))?;
     }
 
     Ok(())
+
 }
 
 pub trait TUI: Sync {
-    fn render (&self, _col1: u16, _row1: u16, _cols: u16, _rows: u16) -> Result<()>;
-    fn handle (&mut self, _event: &Event) -> Result<bool> {
-        Ok(false)
-    }
-    fn focus (&mut self, _focus: bool) -> bool {
-        false
-    }
+    fn render (&self, term: &mut dyn Write, _col1: u16, _row1: u16, _cols: u16, _rows: u16)
+        -> Result<()>;
+    fn handle (&mut self, _event: &Event)
+        -> Result<bool> { Ok(false) }
+    fn focus (&mut self, _focus: bool)
+        -> bool { false }
 }
 
 pub struct Menu <T> {
@@ -75,21 +89,21 @@ impl <T> Menu <T> {
     pub fn get_mut (&mut self) -> Option<&mut T> {
         self.items.get_mut(self.index).map(|x| &mut x.1)
     }
+    pub fn len (&self) -> usize {
+        self.items.len()
+    }
 }
 
 impl <T: Sync> TUI for Menu <T> {
-    fn render (&self, col1: u16, row1: u16, cols: u16, _rows: u16) -> Result<()> {
-        let mut out = std::io::stdout();
+    fn render (&self, term: &mut dyn Write, col1: u16, row1: u16, cols: u16, _rows: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
         for (index, item) in self.items.iter().enumerate() {
-            queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(if index == self.index { hi } else { fg }),
-                MoveTo(col1, row1 + (index as u16)),
-                Print(format!(" {:<0width$} ▶ ", item.0, width = cols as usize))
-            )?;
+            term.queue(SetBackgroundColor(bg))?
+                .queue(SetForegroundColor(if index == self.index { hi } else { fg }))?
+                .queue(MoveTo(col1, row1 + (index as u16)))?
+                .queue(Print(format!(" {:<0width$} ▶ ", item.0, width = cols as usize)))?;
         }
         Ok(())
     }
@@ -174,8 +188,8 @@ pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize)
     }
 }
 
-pub fn render_directory_listing <W: Write> (
-    out: &mut W, col1: u16, row1: u16, pad: usize,
+pub fn render_directory_listing (
+    term: &mut dyn Write, col1: u16, row1: u16, pad: usize,
     items: &Vec<(String, (String, bool))>,
     selected: usize,
 ) -> Result<()> {
@@ -183,17 +197,15 @@ pub fn render_directory_listing <W: Write> (
     let fg = Color::White;
     let hi = Color::Yellow;
     for (index, (_, (path, is_dir))) in items.iter().enumerate() {
-        queue!(out,
-            SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }),
-            SetBackgroundColor(bg),
-            SetForegroundColor(if selected == index { hi } else { fg }),
-            MoveTo(col1, row1 + index as u16),
-            Print(format!("{} {:<0width$}",
+        term.queue(SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }))?
+            .queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(if selected == index { hi } else { fg }))?
+            .queue(MoveTo(col1, row1 + index as u16))?
+            .queue(Print(format!("{} {:<0width$}",
                 if *is_dir { "■" } else { " " },
                 path,
                 width = pad as usize
-            )),
-        )?;
+            )))?;
     }
     Ok(())
 }
@@ -228,8 +240,8 @@ pub fn list_current_directory () -> (Vec<(String, (String, bool))>, usize) {
     (entries, max_len)
 }
 
-pub fn render_scrollbar <W: Write> (
-    out: &mut W, col1: u16, row1: u16,
+pub fn render_scrollbar (
+    term: &mut dyn Write, col1: u16, row1: u16,
     length: usize, offset: usize, height: usize,
 ) -> Result<()> {
     let fg = Color::White;
@@ -237,11 +249,9 @@ pub fn render_scrollbar <W: Write> (
     for index in 0..height {
         let scroll_offset = (offset * height) / length;
         let scroll_index  = (index  * height) / length;
-        queue!(out,
-            SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }),
-            MoveTo(col1, row1 + index as u16),
-            Print("▒"),
-        )?;
+        term.queue(SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }))?
+            .queue(MoveTo(col1, row1 + index as u16))?
+            .queue(Print("▒"))?;
     }
     Ok(())
 }

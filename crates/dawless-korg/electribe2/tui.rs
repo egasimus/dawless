@@ -2,7 +2,7 @@ use std::io::{Result, Write};
 use dawless_common::*;
 use laterna;
 use crossterm::{
-    queue,
+    QueueableCommand,
     style::{
         Color, ResetColor, SetBackgroundColor, SetForegroundColor,
         Attribute, SetAttribute,
@@ -35,23 +35,23 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        let out = &mut std::io::stdout();
+
+    fn render (
+        &self, term: &mut dyn Write, col1: u16, row1: u16, cols: u16, rows: u16
+    ) -> Result<()> {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        render_frame(out, col1, row1, 21, 6, bg, Some((
+        render_frame(term, col1, row1, 21, 6, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Electribe 2"
         )))?;
-        queue!(out,
-            SetBackgroundColor(bg),
-            SetForegroundColor(Color::White)
-        )?;
-        self.features.render(col1, row1 + 2, 17, 0)?;
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::White))?;
+        self.features.render(term, col1, row1 + 2, 17, 0)?;
         if let Some(feature) = self.features.get() {
-            (*feature).render(col1 + 22, row1, 0, 0)?;
+            (*feature).render(term, col1 + 22, row1, 0, 0)?;
         }
         //self.render_pattern(&mut out, col1 + 48, row1)?;
         Ok(())
@@ -106,14 +106,13 @@ impl Electribe2PatternsTUI {
             .collect();
         self.patterns = Menu::new(patterns);
     }
-    fn render_pattern <W: Write> (&self, out: &mut W, col1: u16, row1: u16) -> Result<()> {
-        let out = &mut std::io::stdout();
+    fn render_pattern (&self, term: &mut dyn Write, col1: u16, row1: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
-        render_frame(out,
+        render_frame(term,
             col1+1, row1, 66, 32,
             bg, Some((bg, Color::Yellow, "Pattern 23 Part 5"))
         )?;
-        laterna::demo(out, col1)?;
+        laterna::demo(term, col1)?;
         Ok(())
     }
     fn update_listing (&mut self) {
@@ -124,15 +123,14 @@ impl Electribe2PatternsTUI {
 }
 
 impl TUI for Electribe2PatternsTUI {
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        let out = &mut std::io::stdout();
+    fn render (&self, term: &mut dyn Write, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
         if let Some(bank) = &self.bank {
 
-            render_frame(out,
-                col1, row1, 58, 42,
+            render_frame(
+                term, col1, row1, 58, 42,
                 bg, Some((
                     if self.focused { hi } else { bg },
                     if self.focused { bg } else { hi },
@@ -141,21 +139,21 @@ impl TUI for Electribe2PatternsTUI {
             )?;
 
             render_pattern_list(
-                out, col1 + 1, row1 + 2, 50,
+                term, col1 + 1, row1 + 2, 50,
                 &bank.patterns,
                 self.patterns.index,
                 self.offset
             )?;
 
             render_pattern(
-                out, col1 + 59, row1,
+                term, col1 + 59, row1,
                 bank.patterns.get(self.patterns.index).unwrap()
             )?;
 
         } else {
 
-            render_frame(out,
-                col1, row1, 4 + self.max_len, 4 + self.entries.items.len() as u16,
+            render_frame(
+                term, col1, row1, 4 + self.max_len, 4 + self.entries.items.len() as u16,
                 bg, Some((
                     if self.focused { hi } else { bg },
                     if self.focused { bg } else { hi },
@@ -164,7 +162,7 @@ impl TUI for Electribe2PatternsTUI {
             )?;
 
             render_directory_listing(
-                out, col1 + 1, row1 + 2, self.max_len as usize,
+                term, col1 + 1, row1 + 2, self.max_len as usize,
                 &self.entries.items,
                 self.entries.index
             )?;
@@ -206,8 +204,8 @@ impl TUI for Electribe2PatternsTUI {
     }
 }
 
-pub fn render_pattern_list <W: Write> (
-    out: &mut W, col1: u16, row1: u16, pad: usize,
+pub fn render_pattern_list (
+    term: &mut dyn Write, col1: u16, row1: u16, pad: usize,
     patterns: &Vec<Electribe2Pattern>,
     selected: usize,
     offset:   usize
@@ -215,23 +213,16 @@ pub fn render_pattern_list <W: Write> (
     let bg = Color::AnsiValue(232);
     let fg = Color::White;
     let hi = Color::Yellow;
-    queue!(out,
-        SetBackgroundColor(bg),
-        SetForegroundColor(fg),
-        SetAttribute(Attribute::Bold),
-        MoveTo(col1, row1),
-        Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
-            "#",
-            "Name",
-            "BPM",
-            "Length",
-            "Beats",
-            "Key",
-            "Scale"
-        )),
-        SetAttribute(Attribute::Reset),
-        SetBackgroundColor(bg),
-    )?;
+    term.queue(SetBackgroundColor(bg))?
+        .queue(SetForegroundColor(fg))?
+        .queue(SetAttribute(Attribute::Bold))?
+        .queue(MoveTo(col1, row1))?
+        .queue(Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
+            "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
+        )))?
+        .queue(SetAttribute(Attribute::Reset))?
+        .queue(SetBackgroundColor(bg))?;
+
     let height = 36;
     for index in 0..0+height {
         let row = if let Some(pattern) = patterns.get(index+offset as usize) {
@@ -247,64 +238,78 @@ pub fn render_pattern_list <W: Write> (
         } else {
             "".into()
         };
-        queue!(out,
-            SetForegroundColor(if selected == index+offset { hi } else { fg }),
-            MoveTo(col1, row1 + 2 + index as u16),
-            Print(row)
-        )?;
+        term.queue(SetForegroundColor(if selected == index+offset { hi } else { fg }))?
+            .queue(MoveTo(col1, row1 + 2 + index as u16))?
+            .queue(Print(row))?;
     }
 
-    render_scrollbar(out, col1 + 55, row1 + 2, patterns.len(), offset, height)?;
+    render_scrollbar(term, col1 + 55, row1 + 2, patterns.len(), offset, height)?;
 
     Ok(())
 }
 
-pub fn render_pattern <W: Write> (
-    out: &mut W, col1: u16, row1: u16,
+pub fn render_pattern (
+    term: &mut dyn Write, col1: u16, row1: u16,
     pattern: &Electribe2Pattern
 ) -> Result<()> {
     let bg = Color::AnsiValue(232);
     let fg = Color::White;
     let hi = Color::Yellow;
-    render_frame(out, col1, row1, 50, 20, bg, Some((
+    render_frame(term, col1, row1, 46, 30, bg, Some((
         bg,
         hi,
         "Pattern details"
     )))?;
-    queue!(out,
-        SetForegroundColor(fg),
-        MoveTo(col1 + 1, row1 + 2),
-        Print(&pattern.name),
-        MoveTo(col1 + 21, row1 + 2),
-        Print(&pattern.level),
-        MoveTo(col1 + 1, row1 + 3),
-        Print(&pattern.bpm),
-        MoveTo(col1 + 21, row1 + 3),
-        Print(&pattern.swing),
-        MoveTo(col1 + 1, row1 + 4),
-        Print(&pattern.length),
-        MoveTo(col1 + 21, row1 + 4),
-        Print(&pattern.beats),
-        MoveTo(col1 + 1, row1 + 5),
-        Print(&pattern.key),
-        MoveTo(col1 + 21, row1 + 5),
-        Print(&pattern.scale),
-        MoveTo(col1 + 1, row1 + 6),
-        Print(&pattern.chord_set),
-        MoveTo(col1 + 21, row1 + 6),
-        Print(&pattern.gate_arp),
-        MoveTo(col1 + 1, row1 + 7),
-        Print(&pattern.mfx_type),
-        MoveTo(col1 + 1, row1 + 8),
-        Print(&pattern.alt_13_14),
-        MoveTo(col1 + 21, row1 + 8),
-        Print(&pattern.alt_15_16),
-    )?;
-    for index in 1..1+24 {
-        queue!(out,
-            MoveTo(col1 + 1, row1 + 9 + index),
-            Print(format!("Part {index}...")),
-        )?;
+    term.queue(SetForegroundColor(fg))?
+        .queue(MoveTo(col1 + 1, row1 + 2))?
+        .queue(Print(&pattern.name))?
+        .queue(MoveTo(col1 + 21, row1 + 2))?
+        .queue(Print(&pattern.level))?
+        .queue(MoveTo(col1 + 1, row1 + 3))?
+        .queue(Print(&pattern.bpm))?
+        .queue(MoveTo(col1 + 21, row1 + 3))?
+        .queue(Print(&pattern.swing))?
+        .queue(MoveTo(col1 + 1, row1 + 4))?
+        .queue(Print(&pattern.length))?
+        .queue(MoveTo(col1 + 21, row1 + 4))?
+        .queue(Print(&pattern.beats))?
+        .queue(MoveTo(col1 + 1, row1 + 5))?
+        .queue(Print(&pattern.key))?
+        .queue(MoveTo(col1 + 21, row1 + 5))?
+        .queue(Print(&pattern.scale))?
+        .queue(MoveTo(col1 + 1, row1 + 6))?
+        .queue(Print(&pattern.chord_set))?
+        .queue(MoveTo(col1 + 21, row1 + 6))?
+        .queue(Print(&pattern.gate_arp))?
+        .queue(MoveTo(col1 + 1, row1 + 7))?
+        .queue(Print(&pattern.mfx_type))?
+        .queue(MoveTo(col1 + 1, row1 + 8))?
+        .queue(Print(&pattern.alt_13_14))?
+        .queue(MoveTo(col1 + 21, row1 + 8))?
+        .queue(Print(&pattern.alt_15_16))?
+        .queue(MoveTo(col1 + 1, row1 + 10))?
+        .queue(SetAttribute(Attribute::Bold))?
+        .queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
+        .queue(SetAttribute(Attribute::Reset))?
+        .queue(SetBackgroundColor(bg))?
+        .queue(SetForegroundColor(fg))?;
+    for index in 0..17 {
+        term.queue(MoveTo(col1 + 1, row1 + 12 + index))?
+            .queue(if let Some(part) = pattern.parts.get(index as usize) {
+                Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
+                    index + 1,
+                    part.sample,
+                    part.pitch,
+                    part.filter_type,
+                    part.modulation_type,
+                    part.ifx_on,
+                    part.level,
+                    part.pan,
+                    part.mfx_on,
+                ))
+            } else {
+                Print("".into())
+            })?;
     }
     Ok(())
 }
@@ -318,20 +323,19 @@ impl Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
-    fn render (&self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        let out = &mut std::io::stdout();
+    fn render (
+        &self, term: &mut dyn Write, col1: u16, row1: u16, cols: u16, rows: u16
+    ) -> Result<()> {
         let bg = Color::AnsiValue(232);
-        render_frame(out,
+        render_frame(term,
             col1, row1, 30, 32,
             bg, Some((bg, Color::Yellow, "Samples"))
         )?;
         for i in 1..24 {
-            queue!(out,
-                SetBackgroundColor(bg),
-                SetForegroundColor(Color::White),
-                MoveTo(col1 + 1, row1 + 1 + i),
-                Print(format!("{:>3} Sample", i))
-            )?;
+            term.queue(SetBackgroundColor(bg))?
+                .queue(SetForegroundColor(Color::White))?
+                .queue(MoveTo(col1 + 1, row1 + 1 + i))?
+                .queue(Print(format!("{:>3} Sample", i)))?;
         }
         Ok(())
     }

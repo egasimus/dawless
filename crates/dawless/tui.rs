@@ -3,7 +3,7 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
 use dawless_common::{TUI, render_frame, Menu, handle_menu_focus};
 use dawless_korg::Electribe2TUI;
 use crossterm::{
-    execute, queue,
+    execute, QueueableCommand,
     event::{poll, read, Event, KeyEvent, KeyCode},
     style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
     cursor::{Show, MoveTo},
@@ -13,15 +13,15 @@ use crossterm::{
     }
 };
 
-pub(crate) fn main() -> Result<()> {
+pub(crate) fn main () -> Result<()> {
 
     let (tx, rx) = channel::<Event>();
     let exit = Arc::new(AtomicBool::new(false));
     let exit_thread = Arc::clone(&exit);
 
     std::thread::spawn(move || {
-        let mut out = std::io::stdout();
-        execute!(out, EnterAlternateScreen)?;
+        let mut term = std::io::stdout();
+        execute!(term, EnterAlternateScreen)?;
         enable_raw_mode()?;
         let mut tui = RootTUI::new(exit_thread.clone());
         loop {
@@ -29,10 +29,10 @@ pub(crate) fn main() -> Result<()> {
                 break
             }
             let (cols, rows) = size()?;
-            tui.render(0, 1, cols, rows)?;
+            tui.render(&mut term, 0, 0, cols, rows)?;
             tui.handle(&rx.recv().unwrap())?;
         }
-        execute!(out, ResetColor, Show, LeaveAlternateScreen)?;
+        execute!(term, ResetColor, Show, LeaveAlternateScreen)?;
         disable_raw_mode()
     });
 
@@ -54,7 +54,7 @@ pub(crate) fn main() -> Result<()> {
 struct EmptyTUI {}
 
 impl TUI for EmptyTUI {
-    fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
         Ok(())
     }
 }
@@ -89,23 +89,26 @@ impl RootTUI {
 
 impl TUI for RootTUI {
 
-    fn render (&self, col1: u16, row1: u16, _cols: u16, _rows: u16) -> Result<()> {
+    fn render (
+        &self, term: &mut dyn Write, col1: u16, row1: u16, _cols: u16, _rows: u16
+    ) -> Result<()> {
         use crossterm::{cursor::{Hide}, terminal::{Clear, ClearType}};
-        let out = &mut std::io::stdout();
-        queue!(out, ResetColor, Clear(ClearType::All), Hide)?;
+        term.queue(ResetColor)?
+            .queue(Clear(ClearType::All))?
+            .queue(Hide)?;
         let bg = Color::AnsiValue(232);
         let fg = Color::White;
         let hi = Color::Yellow;
-        render_frame(out, col1 + 1, row1, 23, 9, bg, Some((
+        render_frame(term, col1 + 1, row1, 23, 9, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             "Devices"
         )))?;
-        self.devices.render(col1 + 1, row1 + 2, 19, 0)?;
+        self.devices.render(term, col1 + 1, row1 + 2, 19, 0)?;
         if let Some(device) = self.devices.get() {
-            device.render(col1 + 25, row1, 50, 30)?;
+            device.render(term, col1 + 25, row1, 50, 30)?;
         }
-        out.flush()?;
+        term.flush()?;
         Ok(())
     }
 
