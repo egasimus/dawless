@@ -1,6 +1,6 @@
 macro_rules! module { ($name:ident) => { mod $name; pub use $name::*; }; }
 
-module!(korg_electribe2);
+module!(electribe2);
 module!(korg_triton);
 
 #[cfg(feature = "cli")]
@@ -25,7 +25,7 @@ pub enum Korg {
 #[cfg(feature = "cli")]
 pub fn cli (model: &Korg) {
     match model {
-        Korg::Electribe2 { command } => korg_electribe2::cli(command),
-        //Korg::Triton{ command } => korg_triton::cli(command),
+        Korg::Electribe2 { command } => electribe2::cli(command),
+        //Korg::Triton{ command } => triton::cli(command),
     }
 }
