@@ -26,6 +26,18 @@ impl <T> List <T> {
 
 impl <T: Sync> TUI for List <T> {
 
+    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+        let mut max_len = 0;
+        for (label, _) in self.items.iter() {
+            let len = label.len();
+            if len > max_len {
+                max_len = len
+            }
+        }
+        self.rect = (col1, row1, u16::min(cols, max_len as u16), 0);
+        Ok(())
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.theme;
         let (col1, row1, cols, ..) = self.rect;
@@ -40,12 +52,12 @@ impl <T: Sync> TUI for List <T> {
     }
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        handle_menu_selection(event, self.items.len(), &mut self.index)
+        handle_list_select(event, self.items.len(), &mut self.index)
     }
 
 }
 
-pub fn handle_menu_selection (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
+pub fn handle_list_select (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
     Ok(match event {
         Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
             *index = if *index == 0 {
