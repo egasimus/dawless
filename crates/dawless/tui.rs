@@ -24,7 +24,7 @@ pub(crate) fn main () -> Result<()> {
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
-            app.rect = (app.rect.0, app.rect.1, cols, rows);
+            app.rect = Rect::new(app.rect.x, app.rect.y, cols, rows);
             app.render(&mut term)?;
             app.handle(&rx.recv().unwrap())?;
         }
@@ -43,7 +43,7 @@ fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
     term.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let (cols, rows) = size()?;
-    let rect = (0, 0, 0, 0);
+    let rect = Rect::new(0, 0, 0, 0);
     let theme = Theme::default();
     let focused = true;
     let devices = List::default();
@@ -92,7 +92,7 @@ impl AppTUI {
 impl TUI for AppTUI {
 
     fn layout (&mut self, x: u16, y: u16, _w: u16, _h: u16) -> Result<()> {
-        self.rect = (x, y, 23, 9);
+        self.rect = Rect::new(x, y, 23, 9);
         self.devices.layout(x + 1, y + 2, 19, 0)?;
         self.devices.items[0].1.layout(x + 25, y, 50, 30)?;
         Ok(())
@@ -101,8 +101,8 @@ impl TUI for AppTUI {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         clear(term)?;
         let Self { rect, theme, focused, .. } = *self;
-        let (col1, row1, ..) = rect;
-        Frame { rect: (col1 + 1, row1, 23, 9), theme, focused, title: "Devices" }.render(term)?;
+        let Rect { x, y, .. } = rect;
+        Frame { rect: Rect::new(x + 1, y, 23, 9), theme, focused, title: "Devices" }.render(term)?;
         self.devices.render(term)?;
         if let Some(device) = self.devices.get() { device.render(term)?; }
         term.flush()?;

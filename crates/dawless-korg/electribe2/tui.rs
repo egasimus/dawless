@@ -46,7 +46,7 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            rect:     (0, 0, 0, 0),
+            rect:     Rect::default(),
             theme:    Theme::default(),
             focused:  false,
             section,
@@ -81,17 +81,17 @@ impl Electribe2TUI {
 impl TUI for Electribe2TUI {
 
     fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.rect = (x, y, 23, 6);
+        self.rect = Rect::new(x, y, 23, 6);
         if self.patterns.toggle {
             self.patterns.layout(x + 1, y + 2, 0, 20)?;
-            self.rect.2 = u16::max(20, self.patterns.open.max_len + 5);
-            self.rect.3 += 20;
+            self.rect.y = u16::max(20, self.patterns.open.max_len + 5);
+            self.rect.w += 20;
         } else {
             self.patterns.layout(x + 1, y + 2, 0, 0)?;
         }
         if self.samples.toggle {
             self.samples.layout(x + 1, y + 4, 0, 20)?;
-            self.rect.3 += 20;
+            self.rect.w += 20;
         } else {
             self.samples.layout(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0)?;
         }
@@ -110,7 +110,7 @@ impl TUI for Electribe2TUI {
 
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        let (x, y, w, h) = self.rect;
+        let Rect { x, y, w, h } = self.rect;
         self.layout(x, y, w, h);
         true
     }
@@ -171,31 +171,31 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
 
     fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.rect = (x, y, w, h);
-        self.entries.rect = (x + 1, y + 1, 0, 0);
+        self.rect = Rect::new(x, y, w, h);
+        self.entries.rect = Rect::new(x + 1, y + 1, 0, 0);
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { theme, focused, rect, offset, .. } = *self;
-        let (x, y, cols, _) = rect;
+        let Rect { x, y, w, .. } = rect;
         if let Some(bank) = &self.bank {
 
-            let rect = (x, y, 58, 42);
+            let rect = Rect::new(x, y, 58, 42);
             Frame { theme, focused, rect, title: "Patterns:" }.render(term)?;
 
-            let rect = (x + 1, y + 2, 50, 0);
+            let rect = Rect::new(x + 1, y + 2, 50, 0);
             let patterns = &bank.patterns;
             let selected = self.patterns.index;
             PatternList { theme, rect, patterns, selected, offset }.render(term)?;
 
-            let rect = (x + 59, y, 0, 0);
+            let rect = Rect::new(x + 59, y, 0, 0);
             let pattern = bank.patterns.get(self.patterns.index).unwrap() ;
             Pattern { theme, rect, pattern }.render(term)?;
 
         } else {
 
-            let rect = (x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
+            let rect = Rect::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
             Frame { theme, focused, rect, title: "Select ALLPAT file:" }.render(term)?;
 
             FileList(&self.entries).render(term)?;
@@ -249,11 +249,11 @@ impl<'a> TUI for PatternList<'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { theme, rect, patterns, selected, offset, .. } = *self;
         let Theme { bg, fg, hi } = theme;
-        let (col1, row1, pad, ..) = rect;
+        let Rect { x, y, w, .. } = rect;
         term.queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(fg))?
             .queue(SetAttribute(Attribute::Bold))?
-            .queue(MoveTo(col1, row1))?
+            .queue(MoveTo(x, y))?
             .queue(Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
                 "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
             )))?
@@ -267,8 +267,8 @@ impl<'a> TUI for PatternList<'a> {
             Label {
                 theme,
                 focused: selected == index + offset,
-                col: col1,
-                row: row1 + 2 + index as u16,
+                col: x,
+                row: y + 2 + index as u16,
                 text: if let Some(pattern) = patterns.get(index+offset as usize) {
                     format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
                         index + offset + 1,
@@ -286,7 +286,7 @@ impl<'a> TUI for PatternList<'a> {
 
         }
 
-        let rect = (col1 + 55, row1 + 2, 0, height as u16);
+        let rect = Rect::new(x + 55, y + 2, 0, height as u16);
         Scrollbar { theme, rect, offset, length: patterns.len() }.render(term)?;
 
         Ok(())
@@ -303,32 +303,32 @@ impl <'a> TUI for Pattern <'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { rect, theme, pattern, .. } = *self;
         let Theme { bg, fg, hi } = theme;
-        let (col1, row1, ..) = rect;
-        Frame {
-            theme, focused: true, rect: (col1, row1, 46, 30), title: "Pattern details"
-        }.render(term)?;
+        let Rect { x, y, .. } = rect;
+        let rect  = Rect { x, y, w: 46, h: 30 };
+        let title = "Pattern details";
+        Frame { theme, focused: true, rect, title }.render(term)?;
         term.queue(SetForegroundColor(fg))?
-            .queue(MoveTo(col1 +  1, row1 + 2))?.queue(Print(&pattern.name))?
-            .queue(MoveTo(col1 + 21, row1 + 2))?.queue(Print(&pattern.level))?
-            .queue(MoveTo(col1 +  1, row1 + 3))?.queue(Print(&pattern.bpm))?
-            .queue(MoveTo(col1 + 21, row1 + 3))?.queue(Print(&pattern.swing))?
-            .queue(MoveTo(col1 +  1, row1 + 4))?.queue(Print(&pattern.length))?
-            .queue(MoveTo(col1 + 21, row1 + 4))?.queue(Print(&pattern.beats))?
-            .queue(MoveTo(col1 +  1, row1 + 5))?.queue(Print(&pattern.key))?
-            .queue(MoveTo(col1 + 21, row1 + 5))?.queue(Print(&pattern.scale))?
-            .queue(MoveTo(col1 +  1, row1 + 6))?.queue(Print(&pattern.chord_set))?
-            .queue(MoveTo(col1 + 21, row1 + 6))?.queue(Print(&pattern.gate_arp))?
-            .queue(MoveTo(col1 +  1, row1 + 7))?.queue(Print(&pattern.mfx_type))?
-            .queue(MoveTo(col1 +  1, row1 + 8))?.queue(Print(&pattern.alt_13_14))?
-            .queue(MoveTo(col1 + 21, row1 + 8))?.queue(Print(&pattern.alt_15_16))?
-            .queue(MoveTo(col1 + 1, row1 + 10))?
+            .queue(MoveTo(x +  1, y + 2))?.queue(Print(&pattern.name))?
+            .queue(MoveTo(x + 21, y + 2))?.queue(Print(&pattern.level))?
+            .queue(MoveTo(x +  1, y + 3))?.queue(Print(&pattern.bpm))?
+            .queue(MoveTo(x + 21, y + 3))?.queue(Print(&pattern.swing))?
+            .queue(MoveTo(x +  1, y + 4))?.queue(Print(&pattern.length))?
+            .queue(MoveTo(x + 21, y + 4))?.queue(Print(&pattern.beats))?
+            .queue(MoveTo(x +  1, y + 5))?.queue(Print(&pattern.key))?
+            .queue(MoveTo(x + 21, y + 5))?.queue(Print(&pattern.scale))?
+            .queue(MoveTo(x +  1, y + 6))?.queue(Print(&pattern.chord_set))?
+            .queue(MoveTo(x + 21, y + 6))?.queue(Print(&pattern.gate_arp))?
+            .queue(MoveTo(x +  1, y + 7))?.queue(Print(&pattern.mfx_type))?
+            .queue(MoveTo(x +  1, y + 8))?.queue(Print(&pattern.alt_13_14))?
+            .queue(MoveTo(x + 21, y + 8))?.queue(Print(&pattern.alt_15_16))?
+            .queue(MoveTo(x + 1, y + 10))?
             .queue(SetAttribute(Attribute::Bold))?
             .queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
             .queue(SetAttribute(Attribute::Reset))?
             .queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(fg))?;
         for index in 0..17 {
-            term.queue(MoveTo(col1 + 1, row1 + 12 + index))?
+            term.queue(MoveTo(x + 1, y + 12 + index))?
                 .queue(if let Some(part) = pattern.parts.get(index as usize) {
                     Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
                         index + 1,
@@ -358,15 +358,16 @@ pub struct Electribe2SamplesTUI {
 impl TUI for Electribe2SamplesTUI {
 
     fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        self.rect = (col1, row1, 30, 32);
+        self.rect = Rect { x: col1, y: row1, w: 30, h: 32 };
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { rect, theme, .. } = *self;
-        let Theme { bg, fg, .. } = theme;
-        let (x, y, ..) = rect;
-        Frame { theme, rect: (x, y, 30, 32), title: "Samples", focused: false }.render(term)?;
+        let Self  { rect, theme, .. } = *self;
+        let Theme { bg, fg, .. }      = theme;
+        let Rect  { x, y, .. }        = rect;
+        let rect = Rect { x, y, w: 30, h: 32 };
+        Frame { theme, rect, title: "Samples", focused: false }.render(term)?;
         for i in 1..24 {
             let text = format!("{:>3} Sample", i);
             Label { theme, focused: false, col: x + 1, row: y + 1 + i, text }.render(term)?;

@@ -46,9 +46,10 @@ pub struct Frame <'a> {
 
 impl<'a> TUI for Frame<'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Theme { bg, fg, hi } = self.theme;
-        let (col1, row1, cols, rows) = self.rect;
-        render_frame(term, col1, row1, cols, rows, bg, Some((
+        let Self { theme, rect, .. } = *self;
+        let Theme { bg, fg, hi } = theme;
+        let Rect { x, y, w, h } = rect;
+        render_frame(term, x, y, w, h, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },
             &self.title

@@ -26,7 +26,7 @@ impl <T> List <T> {
 
 impl <T: Sync> TUI for List <T> {
 
-    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
+    fn layout (&mut self, x: u16, y: u16, w: u16, _: u16) -> Result<()> {
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
             let len = label.len();
@@ -34,19 +34,17 @@ impl <T: Sync> TUI for List <T> {
                 max_len = len
             }
         }
-        self.rect = (col1, row1, u16::min(cols, max_len as u16), 0);
+        self.rect = Rect::new(x, y, u16::min(w, max_len as u16), 0);
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Theme { bg, fg, hi } = self.theme;
-        let (col1, row1, cols, ..) = self.rect;
+        let Self { theme, rect, .. } = *self;
+        let Rect { x, y, w, .. } = rect;
         for (index, item) in self.items.iter().enumerate() {
-            let fg = if index == self.index { hi } else { fg };
-            term.queue(SetBackgroundColor(bg))?
-                .queue(SetForegroundColor(fg))?
-                .queue(MoveTo(col1, row1 + (index as u16)))?
-                .queue(Print(format!(" {:<0width$} ▶ ", item.0, width = cols as usize)))?;
+            let text = format!(" {:<0width$} ▶ ", item.0, width = w as usize);
+            let row  = y + index as u16;
+            Label { theme, col: x, row, focused: index == self.index, text }.render(term)?;
         }
         Ok(())
     }

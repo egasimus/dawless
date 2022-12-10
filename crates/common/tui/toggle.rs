@@ -12,8 +12,8 @@ pub struct Toggle<T: TUI, U: TUI> {
 impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
-            rect: (0,0,0,0),
-            theme: Theme::default(),
+            rect:   Rect::default(),
+            theme:  Theme::default(),
             toggle: false,
             closed,
             open
