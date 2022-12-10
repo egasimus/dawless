@@ -61,6 +61,9 @@ impl Space {
     pub fn new (x: u16, y: u16, w: u16, h: u16) -> Self {
         Self { x, y, w, h }
     }
+    pub fn center (&self) -> (u16, u16) {
+        (self.x + self.w/2, self.y + self.h/2)
+    }
     /** Return part of the space.
       * Positive x and y coordinates are offsets from top left.
       * Negative x and y coordinates are offsets from bottom right. 

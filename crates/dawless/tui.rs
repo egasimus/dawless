@@ -43,19 +43,17 @@ pub(crate) fn main () -> Result<()> {
 fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
     term.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
-    let (cols, rows) = size()?;
     let space = Space::new(0, 0, 0, 0);
     let theme = Theme::default();
     let focused = true;
-    let devices = List::default();
-    let mut app = AppTUI { space, theme, focused, devices, exited };
-    app.devices
+    let menu = List::default();
+    let mut app = AppTUI { space, theme, focused, menu, exited };
+    app.menu
         .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
         .add("Korg Triton",         Box::new(EmptyTUI {}))
         .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
         .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
         .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
-    app.layout(&Space::new(cols / 2 - 40, rows / 2 - 15, 0, 0))?;
     Ok(app)
 }
 
@@ -74,11 +72,11 @@ fn clear (term: &mut dyn Write) -> Result<()> {
 }
 
 struct AppTUI {
-    space:    Space,
+    space:   Space,
     theme:   Theme,
+    focused: bool,
     exited:  Arc<AtomicBool>,
-    devices: List<Box<dyn TUI>>,
-    focused: bool
+    menu:    List<Box<dyn TUI>>,
 }
 
 impl AppTUI {
@@ -86,19 +84,29 @@ impl AppTUI {
         self.exited.store(true, Ordering::Relaxed);
     }
     fn device <'a> (&'a mut self) -> &'a mut dyn TUI {
-        &mut **self.devices.get_mut().unwrap()
+        &mut **self.menu.get_mut().unwrap()
     }
 }
 
 impl TUI for AppTUI {
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
+        // Start by putting the upper left corner
+        // of the layout at the center of the screen
+        let (mut x, mut y) = space.center();
+        // Offset it by half the size of each displayed item
+        let menu = self.menu.layout(&space)?;
+        x = x.saturating_sub(menu.w / 2);
+        y = y.saturating_sub(menu.h / 2);
+        let item = self.device().layout(&space)?;
+        x = x.saturating_sub(item.w / 2);
+        y = y.saturating_sub(item.h / 2);
         // Take the entire screen
-        self.space = space.clone();
+        self.space = Space::new(x, y, space.w - x, space.h - y);
         // Apportion space for the device menu
-        self.devices.layout(&space.sub(1, 2, 19, 0))?;
+        self.menu.layout(&self.space.sub(0, 2, 19, 0))?;
         // Apportion space for the menu items
-        self.devices.items[0].1.layout(&space.sub(25, 0, 50, 30))?;
+        self.menu.items[0].1.layout(&self.space.sub(24, 0, 50, 30))?;
         Ok(self.space)
     }
 
@@ -106,11 +114,11 @@ impl TUI for AppTUI {
         clear(term)?;
         let Self { space: Space { x, y, .. }, theme, focused, .. } = *self;
 
-        let space = Space::new(x + 1, y, 23, 8);
+        let space = self.space.sub(0, 0, 23, 8);
         Frame { space, theme, focused, title: "Devices" }.render(term)?;
 
-        self.devices.render(term)?;
-        if let Some(device) = self.devices.get() { device.render(term)?; }
+        self.menu.render(term)?;
+        if let Some(device) = self.menu.get() { device.render(term)?; }
 
         Ok(())
     }
@@ -130,7 +138,7 @@ impl TUI for AppTUI {
                 return Ok(true)
             }
         }
-        if self.devices.handle(event)? {
+        if self.menu.handle(event)? {
             return Ok(true)
         }
         handle_menu_focus!(event, self, self.device(), self.focused)

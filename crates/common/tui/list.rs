@@ -35,7 +35,7 @@ impl <T: Sync> TUI for List <T> {
                 max_len = len
             }
         }
-        self.space = Space::new(x, y, u16::min(w, max_len as u16), 0);
+        self.space = Space::new(x, y, u16::min(w, max_len as u16), self.items.len() as u16);
         Ok(self.space)
     }
 
