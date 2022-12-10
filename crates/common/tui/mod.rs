@@ -61,6 +61,9 @@ impl Space {
     pub fn new (x: u16, y: u16, w: u16, h: u16) -> Self {
         Self { x, y, w, h }
     }
+    pub fn clip (&self, w: u16, h: u16) -> Self {
+        Space::new(self.x, self.y, w, h)
+    }
 }
 
 pub trait TUI: Sync {
@@ -70,7 +73,7 @@ pub trait TUI: Sync {
         -> Result<bool> { Ok(false) }
     fn focus (&mut self, _focus: bool)
         -> bool { false }
-    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16)
+    fn layout (&mut self, _space: &Space)
         -> Result<()> { Ok(()) }
 }
 

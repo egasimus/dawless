@@ -54,7 +54,7 @@ fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
         .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
         .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
         .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
-    app.layout(cols / 2 - 40, rows / 2 - 15, 0, 0)?;
+    app.layout(&Space::new(cols / 2 - 40, rows / 2 - 15, 0, 0))?;
     Ok(app)
 }
 
@@ -91,10 +91,11 @@ impl AppTUI {
 
 impl TUI for AppTUI {
 
-    fn layout (&mut self, x: u16, y: u16, _w: u16, _h: u16) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        let Space { x, y, .. } = *space;
         self.space = Space::new(x, y, 23, 9);
-        self.devices.layout(x + 1, y + 2, 19, 0)?;
-        self.devices.items[0].1.layout(x + 25, y, 50, 30)?;
+        self.devices.layout(&Space::new(x + 1, y + 2, 19, 0))?;
+        self.devices.items[0].1.layout(&Space::new(x + 25, y, 50, 30))?;
         Ok(())
     }
 

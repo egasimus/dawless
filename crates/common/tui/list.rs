@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Default, Debug)]
 pub struct List <T> {
-    pub space:  Space,
+    pub space: Space,
     pub theme: Theme,
     pub index: usize,
     pub items: Vec<(String, T)>
@@ -26,7 +26,8 @@ impl <T> List <T> {
 
 impl <T: Sync> TUI for List <T> {
 
-    fn layout (&mut self, x: u16, y: u16, w: u16, _: u16) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        let Space { x, y, w, .. } = *space;
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
             let len = label.len();

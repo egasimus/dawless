@@ -80,20 +80,21 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
 
-    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        let Space { x, y, w, h } = *space;
         self.space = Space::new(x, y, 23, 6);
         if self.patterns.toggle {
-            self.patterns.layout(x + 1, y + 2, 0, 20)?;
+            self.patterns.layout(&Space::new(x + 1, y + 2, 0, 20))?;
             self.space.y = u16::max(20, self.patterns.open.max_len + 5);
             self.space.w += 20;
         } else {
-            self.patterns.layout(x + 1, y + 2, 0, 0)?;
+            self.patterns.layout(&Space::new(x + 1, y + 2, 0, 0))?;
         }
         if self.samples.toggle {
-            self.samples.layout(x + 1, y + 4, 0, 20)?;
+            self.samples.layout(&Space::new(x + 1, y + 4, 0, 20))?;
             self.space.w += 20;
         } else {
-            self.samples.layout(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0)?;
+            self.samples.layout(&Space::new(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0))?;
         }
         Ok(())
     }
@@ -110,8 +111,7 @@ impl TUI for Electribe2TUI {
 
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        let Space { x, y, w, h } = self.space;
-        self.layout(x, y, w, h);
+        self.layout(&self.space.clone());
         true
     }
 
@@ -170,9 +170,9 @@ impl Electribe2PatternsTUI {
 
 impl TUI for Electribe2PatternsTUI {
 
-    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.space = Space::new(x, y, w, h);
-        self.entries.space = Space::new(x + 1, y + 1, 0, 0);
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        self.space = space.clone();
+        self.entries.space = Space::new(space.x + 1, space.y + 1, 0, 0);
         Ok(())
     }
 
@@ -357,8 +357,8 @@ pub struct Electribe2SamplesTUI {
 
 impl TUI for Electribe2SamplesTUI {
 
-    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        self.space = Space { x: col1, y: row1, w: 30, h: 32 };
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        self.space = space.clip(30, 32);
         Ok(())
     }
 

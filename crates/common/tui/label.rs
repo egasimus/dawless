@@ -20,9 +20,9 @@ impl TUI for Label {
         self.focused = focus;
         true
     }
-    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.col = x;
-        self.row = y;
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        self.col = space.x;
+        self.row = space.y;
         Ok(())
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {

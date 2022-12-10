@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
-    pub space:   Space,
+    pub space:  Space,
     pub theme:  Theme,
     pub toggle: bool,
     pub closed: T,
@@ -29,9 +29,9 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.focus(focus)
         }
     }
-    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.open.layout(x, y, w, h)?;
-        self.closed.layout(x, y, w, h)?;
+    fn layout (&mut self, space: &Space) -> Result<()> {
+        self.open.layout(space)?;
+        self.closed.layout(space)?;
         Ok(())
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
