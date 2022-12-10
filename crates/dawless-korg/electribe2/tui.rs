@@ -15,12 +15,13 @@ use crossterm::{
 
 #[derive(Debug)]
 pub struct Electribe2TUI {
-    pub space:     Space,
-    pub theme:    Theme,
-    pub focused:  bool,
-    pub patterns: Toggle<Label, Electribe2PatternsTUI>,
-    pub samples:  Toggle<Label, Electribe2SamplesTUI>,
-    pub section:  List<Electribe2TUIFeature>
+    space:    Space,
+    theme:    Theme,
+    focused:  bool,
+    patterns: Toggle<Label, Electribe2PatternsTUI>,
+    samples:  Toggle<Label, Electribe2SamplesTUI>,
+    section:  List<Electribe2TUIFeature>,
+    frame:    Frame
 }
 
 #[derive(Debug, Default)]
@@ -46,7 +47,8 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            space:     Space::default(),
+            frame:    Frame { title: "Electribe 2".into(), ..Frame::default() },
+            space:    Space::default(),
             theme:    Theme::default(),
             focused:  false,
             section,
@@ -83,53 +85,41 @@ impl TUI for Electribe2TUI {
     fn layout (&mut self, space: &Space) -> Result<Space> {
         let Space { x, y, w, h } = *space;
 
-        let patterns_h = 1 + if self.patterns.toggle {
-            self.patterns.open.entries.len() as u16
-        } else {
-            0
-        };
-
-        self.patterns.layout(&Space::new(
+        let patterns_space = self.patterns.layout(&Space::new(
             x + if self.patterns.toggle { 0 } else { 1 },
             y + 2,
             0,
-            patterns_h
-        ));
-
-        let samples_h = if self.samples.toggle {
-            self.samples.open.space.h
-        } else {
             0
-        };
+        ))?;
+
+        let samples_space = self.samples.layout(&Space::new(
+            x + if self.samples.toggle { 0 } else { 1 },
+            y + 3 + patterns_space.h,
+            0,
+            0
+        ))?;
 
         self.space = Space::new(
             x,
             y,
             space.w.min(22
-                .max(self.patterns.open.space.w + 2)
-                .max(self.samples.open.space.w + 2)),
-            space.h.min(6
-                + patterns_h
-                + samples_h)
+                .max(patterns_space.w + 2)
+                .max(samples_space.w + 2)),
+            space.h.min(4
+                + patterns_space.h + if self.patterns.toggle { 2 } else { 0 }
+                + samples_space.h  + if self.samples.toggle { 2 } else { 0 })
         );
 
-        self.samples.layout(&Space::new(
-            x + if self.samples.toggle { 0 } else { 1 },
-            y + 3 + patterns_h,
-            0,
-            samples_h
-        ));
+        self.frame.layout(&self.space)?;
 
         Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { space, theme, focused, .. } = *self;
-        Frame { space, theme, focused, title: "Electribe 2" }.render(term)?;
+        self.frame.render(term)?;
         self.patterns.render(term);
         self.samples.render(term);
-        //self.menu.render(term)?;
-        //(*self.feature()).render(term)?;
         Ok(())
     }
 
@@ -156,7 +146,7 @@ impl TUI for Electribe2TUI {
 
 #[derive(Debug, Default)]
 pub struct Electribe2PatternsTUI {
-    pub space:     Space,
+    pub space:    Space,
     pub theme:    Theme,
     pub focused:  bool,
     pub bank:     Option<Electribe2PatternBank>,
@@ -195,7 +185,7 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.space = space.clone();
+        self.space = Space::new(space.x, space.y, self.max_len, self.entries.len() as u16);
         self.entries.space = Space::new(space.x + 1, space.y + 1, 0, 0);
         Ok(self.space)
     }
@@ -206,7 +196,7 @@ impl TUI for Electribe2PatternsTUI {
         if let Some(bank) = &self.bank {
 
             let space = Space::new(x, y, 58, 42);
-            Frame { theme, focused, space, title: "Patterns:" }.render(term)?;
+            Frame { theme, focused, space, title: "Patterns:".into() }.render(term)?;
 
             let space = Space::new(x + 1, y + 2, 50, 0);
             let patterns = &bank.patterns;
@@ -220,7 +210,7 @@ impl TUI for Electribe2PatternsTUI {
         } else {
 
             let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
-            let title = "Select ALLPAT file (Esc to exit)";
+            let title = "Select ALLPAT file (Esc to exit)".into();
             Frame { theme, focused, space, title }.render(term)?;
 
             FileList(&self.entries).render(term)?;
@@ -331,7 +321,7 @@ impl <'a> TUI for Pattern <'a> {
         let Theme { bg, fg, hi } = theme;
         let Space { x, y, .. } = space;
         let space  = Space { x, y, w: 46, h: 30 };
-        let title = "Pattern details";
+        let title = "Pattern details".into();
         Frame { theme, focused: true, space, title }.render(term)?;
         term.queue(SetForegroundColor(fg))?
             .queue(MoveTo(x +  1, y + 2))?.queue(Print(&pattern.name))?
@@ -385,7 +375,7 @@ pub struct Electribe2SamplesTUI {
 impl TUI for Electribe2SamplesTUI {
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.space = space.sub(0, 0, 30, 32);
+        self.space = space.sub(0, 0, 30, 28);
         Ok(self.space)
     }
 
@@ -393,9 +383,8 @@ impl TUI for Electribe2SamplesTUI {
         let Self { space, theme, .. } = *self;
         let Theme { bg, fg, .. } = theme;
         let Space { x, y, .. } = space;
-        let space = Space { x, y, w: 30, h: 32 };
-        Frame { theme, space, title: "Samples", focused: false }.render(term)?;
-        for i in 1..24 {
+        Frame { theme, space, title: "Samples".into(), focused: false }.render(term)?;
+        for i in 1..24+1 {
             let text = format!("{:>3} Sample", i);
             Label { theme, focused: false, col: x + 1, row: y + 1 + i, text }.render(term)?;
         }

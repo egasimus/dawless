@@ -3,15 +3,8 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
 use dawless_common::*;
 use dawless_korg::Electribe2TUI;
 use crossterm::{
-    QueueableCommand, ExecutableCommand,
     event::{poll, read, Event, KeyEvent, KeyCode},
-    style::{ResetColor},
-    cursor::{Show, Hide},
-    terminal::{
-        size, enable_raw_mode, disable_raw_mode,
-        EnterAlternateScreen, LeaveAlternateScreen,
-        Clear, ClearType,
-    }
+    terminal::{size}
 };
 
 pub(crate) fn main () -> Result<()> {
@@ -20,7 +13,8 @@ pub(crate) fn main () -> Result<()> {
     let exit_thread = Arc::clone(&exit);
     std::thread::spawn(move || {
         let mut term = std::io::stdout();
-        let mut app  = setup(&mut term, exit_thread)?;
+        setup(&mut term)?;
+        let mut app = App::new(exited);
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
@@ -40,46 +34,32 @@ pub(crate) fn main () -> Result<()> {
     Ok(())
 }
 
-fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
-    term.execute(EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    let space = Space::new(0, 0, 0, 0);
-    let theme = Theme::default();
-    let focused = true;
-    let menu = List::default();
-    let mut app = AppTUI { space, theme, focused, menu, exited };
-    app.menu
-        .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
-        .add("Korg Triton",         Box::new(EmptyTUI {}))
-        .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
-        .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
-        .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
-    Ok(app)
-}
-
-fn teardown (term: &mut dyn Write) -> Result<()> {
-    term.execute(ResetColor)?
-        .execute(Show)?
-        .execute(LeaveAlternateScreen)?;
-    disable_raw_mode()
-}
-
-fn clear (term: &mut dyn Write) -> Result<()> {
-    term.queue(ResetColor)?
-        .queue(Clear(ClearType::All))?
-        .queue(Hide)?;
-    Ok(())
-}
-
 struct AppTUI {
+    exited:  Arc<AtomicBool>,
     space:   Space,
     theme:   Theme,
     focused: bool,
-    exited:  Arc<AtomicBool>,
+    frame:   Frame,
     menu:    List<Box<dyn TUI>>,
 }
 
 impl AppTUI {
+    fn new (exited: Arc<AtomicBool>) -> Self {
+        let menu = List::default();
+        menu.add("Korg Electribe",      Box::new(Electribe2TUI::new()))
+            .add("Korg Triton",         Box::new(EmptyTUI {}))
+            .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
+            .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
+            .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
+        Self {
+            exited,
+            space:   Space::default(),
+            theme:   Theme::default(),
+            focused: true,
+            frame:   Frame::default(),
+            menu,
+        }
+    }
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
@@ -94,32 +74,28 @@ impl TUI for AppTUI {
         // Start by putting the upper left corner
         // of the layout at the center of the screen
         let (mut x, mut y) = space.center();
-        // Offset it by half the size of each displayed item
+        // Offset it by half the size of each displayed widgets
         let menu = self.menu.layout(&space)?;
-        x = x.saturating_sub(menu.w / 2);
-        y = y.saturating_sub(menu.h / 2);
         let item = self.device().layout(&space)?;
-        x = x.saturating_sub(item.w / 2);
-        y = y.saturating_sub(item.h / 2);
-        // Take the entire screen
-        self.space = Space::new(x, y, space.w - x, space.h - y);
+        x = x.saturating_sub(u16::max(menu.w, item.w) / 2);
+        y = y.saturating_sub(u16::max(menu.h, item.h) / 2);
+        // The layout space is now equal to the centered widgets
+        self.space = Space::new(x, y, space.w - x * 2, space.h - y * 2);
         // Apportion space for the device menu
+        self.frame.layout(&self.space.sub(0, 0, 23, 8));
         self.menu.layout(&self.space.sub(0, 2, 19, 0))?;
         // Apportion space for the menu items
-        self.menu.items[0].1.layout(&self.space.sub(24, 0, 50, 30))?;
+        let item = self.space.sub(24, 0, 50, 30);
+        self.device().layout(&item)?;
         Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         clear(term)?;
         let Self { space: Space { x, y, .. }, theme, focused, .. } = *self;
-
-        let space = self.space.sub(0, 0, 23, 8);
-        Frame { space, theme, focused, title: "Devices" }.render(term)?;
-
+        self.frame.render(term)?;
         self.menu.render(term)?;
         if let Some(device) = self.menu.get() { device.render(term)?; }
-
         Ok(())
     }
 

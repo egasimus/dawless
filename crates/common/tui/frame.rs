@@ -1,81 +1,43 @@
 use super::*;
 
-pub fn render_frame (
-    term: &mut dyn Write, col1: u16, row1: u16, cols: u16, rows: u16,
-    bg: Color, title: Option<(Color, Color, &str)>
-) -> Result<()> {
-
-    term.queue(ResetColor)?
-        .queue(SetForegroundColor(bg))?
-        .queue(MoveTo(col1, row1))?
-        .queue(Print("▄".repeat(cols as usize)))?
-        .queue(ResetColor)?
-        .queue(SetBackgroundColor(bg))?;
-
-    let background = " ".repeat(cols as usize);
-    for row in row1+1..row1+rows {
-        term.queue(MoveTo(col1, row))?.queue(Print(&background))?;
-    }
-
-    if let Some((bg, fg, text)) = title {
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?
-            .queue(MoveTo(col1, row1))?
-            .queue(Print(" "))?
-            .queue(MoveTo(col1+1, row1))?
-            .queue(SetAttribute(Attribute::Bold))?
-            .queue(SetAttribute(Attribute::Underlined))?
-            .queue(Print(text))?
-            .queue(SetAttribute(Attribute::Reset))?
-            .queue(MoveTo(col1+1+text.len() as u16, row1))?
-            .queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?
-            .queue(Print(" "))?;
-    }
-
-    Ok(())
-
-}
-
-pub struct Frame <'a> {
-    pub space:    Space,
+#[derive(Default, Debug)]
+pub struct Frame {
+    pub space:   Space,
     pub theme:   Theme,
-    pub title:   &'a str,
+    pub title:   String,
     pub focused: bool,
 }
 
-impl<'a> TUI for Frame<'a> {
+impl TUI for Frame {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, space, .. } = *self;
-        let Theme { bg, fg, hi } = theme;
-        let Space { x, y, w, h } = space;
-        render_frame(term, x, y, w, h, bg, Some((
-            if self.focused { hi } else { bg },
-            if self.focused { bg } else { hi },
-            &self.title
-        )))
+        let Self { theme: Theme { bg, fg, hi, .. }, space: Space { x, y, w, h }, .. } = *self;
+
+        term.queue(ResetColor)?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print("▄".repeat(w as usize)))?
+            .queue(ResetColor)?
+            .queue(SetBackgroundColor(bg))?;
+
+        let background = " ".repeat(w as usize);
+        for row in y+1..y+h {
+            term.queue(MoveTo(x, row))?.queue(Print(&background))?;
+        }
+
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(fg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(" "))?
+            .queue(MoveTo(x+1, y))?
+            .queue(SetAttribute(Attribute::Bold))?
+            .queue(SetAttribute(Attribute::Underlined))?
+            .queue(Print(x))?
+            .queue(SetAttribute(Attribute::Reset))?
+            .queue(MoveTo(x+1+self.title.len() as u16, y))?
+            .queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(fg))?
+            .queue(Print(" "))?;
+
+        Ok(())
     }
 }
-
-//impl<'a> FnOnce<(&mut dyn Write,)> for Frame<'a> {
-    //type Output = Result<()>;
-    //extern "rust-call" fn call_once (self, args: (&mut dyn Write,)) -> Self::Output {
-        //self.render(args.0)
-    //}
-//}
-//impl<'a> FnMut<(&mut dyn Write,)> for Frame<'a> {
-    //extern "rust-call" fn call_mut (&mut self, args: (&mut dyn Write,)) -> Self::Output {
-        //self.render(args.0)
-    //}
-//}
-//impl<'a> Fn<(&mut dyn Write,)> for Frame<'a> {
-    //extern "rust-call" fn call (&self, args: (&mut dyn Write,)) -> Self::Output {
-        //self.render(args.0)
-    //}
-//}
-//impl<'a> FnOnce<(&Event,)> for Frame<'a> {
-    //type Output = Result<bool>;
-    //extern "rust-call" fn call_once (mut self, args: (&Event,)) -> Self::Output {
-        //self.handle(args.0)
-    //}
-//}

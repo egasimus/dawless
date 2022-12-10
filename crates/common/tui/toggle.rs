@@ -30,9 +30,9 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
         }
     }
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.open.layout(space)?;
-        self.closed.layout(space)?;
-        Ok(*space)
+        let open_space = self.open.layout(space)?;
+        let closed_space = self.closed.layout(space)?;
+        Ok(if self.toggle { open_space } else { closed_space })
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         if self.toggle {

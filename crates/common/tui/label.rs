@@ -23,7 +23,7 @@ impl TUI for Label {
     fn layout (&mut self, space: &Space) -> Result<Space> {
         self.col = space.x;
         self.row = space.y;
-        Ok(*space)
+        Ok(Space::new(space.x, space.y, self.text.len() as u16, 1))
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.theme;

@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 path = "lib.rs"
 
+[[example]]
+name = "dawless-layout-example"
+path = "examples/layout.rs"
+
 [dependencies]
 crossterm   = "0.25"
 pathdiff    = "0.2"
