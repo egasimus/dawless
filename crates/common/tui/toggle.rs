@@ -30,11 +30,9 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
         }
     }
     fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        if self.toggle {
-            self.open.layout(x, y, w, h)
-        } else {
-            self.closed.layout(x, y, w, h)
-        }
+        self.open.layout(x, y, w, h)?;
+        self.closed.layout(x, y, w, h)?;
+        Ok(())
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         if self.toggle {
@@ -42,5 +40,18 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
         } else {
             self.closed.render(term)
         }
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(match event {
+            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                self.toggle = !self.toggle;
+                true
+            },
+            Event::Key(KeyEvent { code: KeyCode::Char(' '), .. }) => {
+                self.toggle = !self.toggle;
+                true
+            },
+            _ => false
+        })
     }
 }

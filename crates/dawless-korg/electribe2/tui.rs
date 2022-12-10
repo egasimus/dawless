@@ -37,11 +37,11 @@ impl Electribe2TUI {
         section.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
                .add("Edit sample bank".into(),  Electribe2TUIFeature::Samples);
         let mut patterns = Toggle::new(
-            Label::new("Select pattern bank ▼"),
+            Label::new("Load pattern bank..."),
             Electribe2PatternsTUI::new()
         );
         let samples = Toggle::new(
-            Label::new("Select sample bank  ▼"),
+            Label::new("Load sample bank..."),
             Electribe2SamplesTUI::default()
         );
         patterns.focus(true);
@@ -69,14 +69,32 @@ impl Electribe2TUI {
         }
     }
 
+    fn focus_selected (&mut self) {
+        self.patterns.focus(false);
+        self.samples.focus(false);
+        self.selected_mut().focus(true);
+        self.focus(false);
+    }
+
 }
 
 impl TUI for Electribe2TUI {
 
-    fn layout (&mut self, x: u16, y: u16, cols: u16, rows: u16) -> Result<()> {
+    fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
         self.rect = (x, y, 23, 6);
-        self.patterns.layout(x + 1, y + 2, 0, 0);
-        self.samples.layout(x + 1, y + 4, 0, 0);
+        if self.patterns.toggle {
+            self.patterns.layout(x + 1, y + 2, 0, 20)?;
+            self.rect.2 = u16::max(20, self.patterns.open.max_len + 5);
+            self.rect.3 += 20;
+        } else {
+            self.patterns.layout(x + 1, y + 2, 0, 0)?;
+        }
+        if self.samples.toggle {
+            self.samples.layout(x + 1, y + 4, 0, 20)?;
+            self.rect.3 += 20;
+        } else {
+            self.samples.layout(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0)?;
+        }
         Ok(())
     }
 
@@ -92,19 +110,18 @@ impl TUI for Electribe2TUI {
 
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
+        let (x, y, w, h) = self.rect;
+        self.layout(x, y, w, h);
         true
     }
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        //if !self.focused {
-            //if self.feature_mut().handle(&event)? {
-                //return Ok(true)
-            //}
-        //}
+        if self.selected_mut().handle(&event)? {
+            self.focus(false);
+            return Ok(true)
+        }
         if self.section.handle(event)? {
-            self.patterns.focus(false);
-            self.samples.focus(false);
-            self.selected_mut().focus(true);
+            self.focus_selected();
             return Ok(true)
         }
         //handle_menu_focus!(event, self, self.feature_mut(), self.focused)
