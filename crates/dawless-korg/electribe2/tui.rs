@@ -15,7 +15,7 @@ use crossterm::{
 
 #[derive(Debug)]
 pub struct Electribe2TUI {
-    pub rect:     Rect,
+    pub space:     Space,
     pub theme:    Theme,
     pub focused:  bool,
     pub patterns: Toggle<Label, Electribe2PatternsTUI>,
@@ -46,7 +46,7 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            rect:     Rect::default(),
+            space:     Space::default(),
             theme:    Theme::default(),
             focused:  false,
             section,
@@ -81,17 +81,17 @@ impl Electribe2TUI {
 impl TUI for Electribe2TUI {
 
     fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.rect = Rect::new(x, y, 23, 6);
+        self.space = Space::new(x, y, 23, 6);
         if self.patterns.toggle {
             self.patterns.layout(x + 1, y + 2, 0, 20)?;
-            self.rect.y = u16::max(20, self.patterns.open.max_len + 5);
-            self.rect.w += 20;
+            self.space.y = u16::max(20, self.patterns.open.max_len + 5);
+            self.space.w += 20;
         } else {
             self.patterns.layout(x + 1, y + 2, 0, 0)?;
         }
         if self.samples.toggle {
             self.samples.layout(x + 1, y + 4, 0, 20)?;
-            self.rect.w += 20;
+            self.space.w += 20;
         } else {
             self.samples.layout(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0)?;
         }
@@ -99,8 +99,8 @@ impl TUI for Electribe2TUI {
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { rect, theme, focused, .. } = *self;
-        Frame { rect, theme, focused, title: "Electribe 2" }.render(term)?;
+        let Self { space, theme, focused, .. } = *self;
+        Frame { space, theme, focused, title: "Electribe 2" }.render(term)?;
         self.patterns.render(term);
         self.samples.render(term);
         //self.menu.render(term)?;
@@ -110,7 +110,7 @@ impl TUI for Electribe2TUI {
 
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        let Rect { x, y, w, h } = self.rect;
+        let Space { x, y, w, h } = self.space;
         self.layout(x, y, w, h);
         true
     }
@@ -132,7 +132,7 @@ impl TUI for Electribe2TUI {
 
 #[derive(Debug, Default)]
 pub struct Electribe2PatternsTUI {
-    pub rect:     Rect,
+    pub space:     Space,
     pub theme:    Theme,
     pub focused:  bool,
     pub bank:     Option<Electribe2PatternBank>,
@@ -171,32 +171,32 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
 
     fn layout (&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<()> {
-        self.rect = Rect::new(x, y, w, h);
-        self.entries.rect = Rect::new(x + 1, y + 1, 0, 0);
+        self.space = Space::new(x, y, w, h);
+        self.entries.space = Space::new(x + 1, y + 1, 0, 0);
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, focused, rect, offset, .. } = *self;
-        let Rect { x, y, w, .. } = rect;
+        let Self { theme, focused, space, offset, .. } = *self;
+        let Space { x, y, w, .. } = space;
         if let Some(bank) = &self.bank {
 
-            let rect = Rect::new(x, y, 58, 42);
-            Frame { theme, focused, rect, title: "Patterns:" }.render(term)?;
+            let space = Space::new(x, y, 58, 42);
+            Frame { theme, focused, space, title: "Patterns:" }.render(term)?;
 
-            let rect = Rect::new(x + 1, y + 2, 50, 0);
+            let space = Space::new(x + 1, y + 2, 50, 0);
             let patterns = &bank.patterns;
             let selected = self.patterns.index;
-            PatternList { theme, rect, patterns, selected, offset }.render(term)?;
+            PatternList { theme, space, patterns, selected, offset }.render(term)?;
 
-            let rect = Rect::new(x + 59, y, 0, 0);
+            let space = Space::new(x + 59, y, 0, 0);
             let pattern = bank.patterns.get(self.patterns.index).unwrap() ;
-            Pattern { theme, rect, pattern }.render(term)?;
+            Pattern { theme, space, pattern }.render(term)?;
 
         } else {
 
-            let rect = Rect::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
-            Frame { theme, focused, rect, title: "Select ALLPAT file:" }.render(term)?;
+            let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
+            Frame { theme, focused, space, title: "Select ALLPAT file:" }.render(term)?;
 
             FileList(&self.entries).render(term)?;
 
@@ -238,7 +238,7 @@ impl TUI for Electribe2PatternsTUI {
 }
 
 struct PatternList<'a> {
-    pub rect:     Rect,
+    pub space:     Space,
     pub theme:    Theme,
     pub patterns: &'a Vec<Electribe2Pattern>,
     pub selected: usize,
@@ -247,9 +247,9 @@ struct PatternList<'a> {
 
 impl<'a> TUI for PatternList<'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, rect, patterns, selected, offset, .. } = *self;
+        let Self { theme, space, patterns, selected, offset, .. } = *self;
         let Theme { bg, fg, hi } = theme;
-        let Rect { x, y, w, .. } = rect;
+        let Space { x, y, w, .. } = space;
         term.queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(fg))?
             .queue(SetAttribute(Attribute::Bold))?
@@ -286,27 +286,27 @@ impl<'a> TUI for PatternList<'a> {
 
         }
 
-        let rect = Rect::new(x + 55, y + 2, 0, height as u16);
-        Scrollbar { theme, rect, offset, length: patterns.len() }.render(term)?;
+        let space = Space::new(x + 55, y + 2, 0, height as u16);
+        Scrollbar { theme, space, offset, length: patterns.len() }.render(term)?;
 
         Ok(())
     }
 }
 
 struct Pattern <'a> {
-    rect: Rect,
+    space: Space,
     theme: Theme,
     pattern: &'a Electribe2Pattern
 }
 
 impl <'a> TUI for Pattern <'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { rect, theme, pattern, .. } = *self;
+        let Self { space, theme, pattern, .. } = *self;
         let Theme { bg, fg, hi } = theme;
-        let Rect { x, y, .. } = rect;
-        let rect  = Rect { x, y, w: 46, h: 30 };
+        let Space { x, y, .. } = space;
+        let space  = Space { x, y, w: 46, h: 30 };
         let title = "Pattern details";
-        Frame { theme, focused: true, rect, title }.render(term)?;
+        Frame { theme, focused: true, space, title }.render(term)?;
         term.queue(SetForegroundColor(fg))?
             .queue(MoveTo(x +  1, y + 2))?.queue(Print(&pattern.name))?
             .queue(MoveTo(x + 21, y + 2))?.queue(Print(&pattern.level))?
@@ -351,23 +351,23 @@ impl <'a> TUI for Pattern <'a> {
 
 #[derive(Debug, Default)]
 pub struct Electribe2SamplesTUI {
-    pub rect:  Rect,
+    pub space:  Space,
     pub theme: Theme
 }
 
 impl TUI for Electribe2SamplesTUI {
 
     fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        self.rect = Rect { x: col1, y: row1, w: 30, h: 32 };
+        self.space = Space { x: col1, y: row1, w: 30, h: 32 };
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self  { rect, theme, .. } = *self;
+        let Self  { space, theme, .. } = *self;
         let Theme { bg, fg, .. }      = theme;
-        let Rect  { x, y, .. }        = rect;
-        let rect = Rect { x, y, w: 30, h: 32 };
-        Frame { theme, rect, title: "Samples", focused: false }.render(term)?;
+        let Space  { x, y, .. }        = space;
+        let space = Space { x, y, w: 30, h: 32 };
+        Frame { theme, space, title: "Samples", focused: false }.render(term)?;
         for i in 1..24 {
             let text = format!("{:>3} Sample", i);
             Label { theme, focused: false, col: x + 1, row: y + 1 + i, text }.render(term)?;

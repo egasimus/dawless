@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct Scrollbar {
-    pub rect:   Rect,
+    pub space:   Space,
     pub theme:  Theme,
     pub length: usize,
     pub offset: usize
@@ -9,9 +9,9 @@ pub struct Scrollbar {
 
 impl TUI for Scrollbar {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { rect, theme, length, offset, .. } = *self;
+        let Self { space, theme, length, offset, .. } = *self;
         let Theme { fg, hi, .. } = theme;
-        let Rect { x, y, h, .. } = rect;
+        let Space { x, y, h, .. } = space;
         let h = h as usize;
         for index in 0..h {
             let scroll_offset = (offset * h) / length;

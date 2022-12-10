@@ -38,7 +38,7 @@ pub fn render_frame (
 }
 
 pub struct Frame <'a> {
-    pub rect:    Rect,
+    pub space:    Space,
     pub theme:   Theme,
     pub title:   &'a str,
     pub focused: bool,
@@ -46,9 +46,9 @@ pub struct Frame <'a> {
 
 impl<'a> TUI for Frame<'a> {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, rect, .. } = *self;
+        let Self { theme, space, .. } = *self;
         let Theme { bg, fg, hi } = theme;
-        let Rect { x, y, w, h } = rect;
+        let Space { x, y, w, h } = space;
         render_frame(term, x, y, w, h, bg, Some((
             if self.focused { hi } else { bg },
             if self.focused { bg } else { hi },

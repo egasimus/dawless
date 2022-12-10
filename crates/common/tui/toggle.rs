@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
-    pub rect:   Rect,
+    pub space:   Space,
     pub theme:  Theme,
     pub toggle: bool,
     pub closed: T,
@@ -12,7 +12,7 @@ pub struct Toggle<T: TUI, U: TUI> {
 impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
-            rect:   Rect::default(),
+            space:   Space::default(),
             theme:  Theme::default(),
             toggle: false,
             closed,

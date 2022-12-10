@@ -24,7 +24,7 @@ pub(crate) fn main () -> Result<()> {
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
-            app.rect = Rect::new(app.rect.x, app.rect.y, cols, rows);
+            app.space = Space::new(app.space.x, app.space.y, cols, rows);
             app.render(&mut term)?;
             app.handle(&rx.recv().unwrap())?;
         }
@@ -43,11 +43,11 @@ fn setup (term: &mut dyn Write, exited: Arc<AtomicBool>) -> Result<AppTUI> {
     term.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let (cols, rows) = size()?;
-    let rect = Rect::new(0, 0, 0, 0);
+    let space = Space::new(0, 0, 0, 0);
     let theme = Theme::default();
     let focused = true;
     let devices = List::default();
-    let mut app = AppTUI { rect, theme, focused, devices, exited };
+    let mut app = AppTUI { space, theme, focused, devices, exited };
     app.devices
         .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
         .add("Korg Triton",         Box::new(EmptyTUI {}))
@@ -73,7 +73,7 @@ fn clear (term: &mut dyn Write) -> Result<()> {
 }
 
 struct AppTUI {
-    rect:    Rect,
+    space:    Space,
     theme:   Theme,
     exited:  Arc<AtomicBool>,
     devices: List<Box<dyn TUI>>,
@@ -92,7 +92,7 @@ impl AppTUI {
 impl TUI for AppTUI {
 
     fn layout (&mut self, x: u16, y: u16, _w: u16, _h: u16) -> Result<()> {
-        self.rect = Rect::new(x, y, 23, 9);
+        self.space = Space::new(x, y, 23, 9);
         self.devices.layout(x + 1, y + 2, 19, 0)?;
         self.devices.items[0].1.layout(x + 25, y, 50, 30)?;
         Ok(())
@@ -100,9 +100,9 @@ impl TUI for AppTUI {
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         clear(term)?;
-        let Self { rect, theme, focused, .. } = *self;
-        let Rect { x, y, .. } = rect;
-        Frame { rect: Rect::new(x + 1, y, 23, 9), theme, focused, title: "Devices" }.render(term)?;
+        let Self { space, theme, focused, .. } = *self;
+        let Space { x, y, .. } = space;
+        Frame { space: Space::new(x + 1, y, 23, 9), theme, focused, title: "Devices" }.render(term)?;
         self.devices.render(term)?;
         if let Some(device) = self.devices.get() { device.render(term)?; }
         term.flush()?;

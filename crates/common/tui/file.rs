@@ -8,7 +8,7 @@ impl<'a> TUI for FileList<'a> {
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;
-        let Rect { x, y, w, .. } = self.0.rect;
+        let Space { x, y, w, .. } = self.0.space;
         for (index, (_, (path, is_dir))) in self.0.items.iter().enumerate() {
             term.queue(SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }))?
                 .queue(SetBackgroundColor(bg))?

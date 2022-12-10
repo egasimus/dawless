@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Default, Debug)]
 pub struct List <T> {
-    pub rect:  Rect,
+    pub space:  Space,
     pub theme: Theme,
     pub index: usize,
     pub items: Vec<(String, T)>
@@ -34,13 +34,13 @@ impl <T: Sync> TUI for List <T> {
                 max_len = len
             }
         }
-        self.rect = Rect::new(x, y, u16::min(w, max_len as u16), 0);
+        self.space = Space::new(x, y, u16::min(w, max_len as u16), 0);
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, rect, .. } = *self;
-        let Rect { x, y, w, .. } = rect;
+        let Self { theme, space, .. } = *self;
+        let Space { x, y, w, .. } = space;
         for (index, item) in self.items.iter().enumerate() {
             let text = format!(" {:<0width$} ▶ ", item.0, width = w as usize);
             let row  = y + index as u16;
