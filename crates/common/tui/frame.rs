@@ -31,7 +31,7 @@ impl TUI for Frame {
             .queue(MoveTo(x+1, y))?
             .queue(SetAttribute(Attribute::Bold))?
             .queue(SetAttribute(Attribute::Underlined))?
-            .queue(Print(x))?
+            .queue(Print(&self.title))?
             .queue(SetAttribute(Attribute::Reset))?
             .queue(MoveTo(x+1+self.title.len() as u16, y))?
             .queue(SetBackgroundColor(bg))?

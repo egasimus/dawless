@@ -44,7 +44,8 @@ pub(crate) use crossterm::{
 };
 
 pub fn setup (term: &mut dyn Write) -> Result<()> {
-    term.execute(EnterAlternateScreen)?;
+    term.execute(EnterAlternateScreen)?
+        .execute(Hide)?;
     enable_raw_mode()
 }
 
