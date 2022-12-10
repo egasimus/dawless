@@ -16,6 +16,9 @@ pub use file::*;
 pub mod scroll;
 pub use scroll::*;
 
+pub mod toggle;
+pub use toggle::*;
+
 pub use std::io::{Result, Write};
 
 pub(crate) use crossterm::{
@@ -29,7 +32,7 @@ pub(crate) use crossterm::{
     event::{Event, KeyEvent, KeyCode}
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Theme {
     pub bg: Color,
     pub fg: Color,

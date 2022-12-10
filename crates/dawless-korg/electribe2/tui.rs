@@ -13,16 +13,17 @@ use crossterm::{
     },
 };
 
+#[derive(Debug)]
 pub struct Electribe2TUI {
     pub rect:     Rect,
     pub theme:    Theme,
     pub focused:  bool,
-    pub patterns: Electribe2PatternsTUI,
-    pub samples:  Electribe2SamplesTUI,
-    pub menu:     List<Electribe2TUIFeature>,
+    pub patterns: Toggle<Label, Electribe2PatternsTUI>,
+    pub samples:  Toggle<Label, Electribe2SamplesTUI>,
+    pub section:  List<Electribe2TUIFeature>
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum Electribe2TUIFeature {
     #[default]
     Patterns,
@@ -32,28 +33,37 @@ pub enum Electribe2TUIFeature {
 impl Electribe2TUI {
 
     pub fn new () -> Self {
-        let mut menu = List::default();
-        menu.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
-            .add("Edit sample bank".into(),  Electribe2TUIFeature::Samples);
+        let mut section = List::default();
+        section.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
+               .add("Edit sample bank".into(),  Electribe2TUIFeature::Samples);
+        let mut patterns = Toggle::new(
+            Label::new("Select pattern bank ▼"),
+            Electribe2PatternsTUI::new()
+        );
+        let samples = Toggle::new(
+            Label::new("Select sample bank  ▼"),
+            Electribe2SamplesTUI::default()
+        );
+        patterns.focus(true);
         Self {
             rect:     (0, 0, 0, 0),
             theme:    Theme::default(),
             focused:  false,
-            patterns: Electribe2PatternsTUI::new(),
-            samples:  Electribe2SamplesTUI::default(),
-            menu
+            section,
+            patterns,
+            samples
         }
     }
 
-    fn feature (&self) -> &dyn TUI {
-        match self.menu.get().unwrap() {
+    fn selected (&self) -> &dyn TUI {
+        match self.section.get().unwrap() {
             Electribe2TUIFeature::Patterns => &self.patterns,
             Electribe2TUIFeature::Samples  => &self.samples,
         }
     }
 
-    fn feature_mut (&mut self) -> &mut dyn TUI {
-        match self.menu.get().unwrap() {
+    fn selected_mut (&mut self) -> &mut dyn TUI {
+        match self.section.get().unwrap() {
             Electribe2TUIFeature::Patterns => &mut self.patterns,
             Electribe2TUIFeature::Samples  => &mut self.samples,
         }
@@ -63,21 +73,20 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
 
-    fn layout (&mut self, col1: u16, row1: u16, cols: u16, rows: u16) -> Result<()> {
-        self.rect = (col1, row1, 21, 5);
-        self.menu.layout(col1, row1 + 2, 17, 0);
-        self.patterns.layout(col1 + 22, row1, 0, 0);
-        self.samples.rect = (self.rect.0 + 22, self.rect.1, 0, 0);
+    fn layout (&mut self, x: u16, y: u16, cols: u16, rows: u16) -> Result<()> {
+        self.rect = (x, y, 23, 6);
+        self.patterns.layout(x + 1, y + 2, 0, 0);
+        self.samples.layout(x + 1, y + 4, 0, 0);
         Ok(())
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { rect, theme, focused, .. } = *self;
         Frame { rect, theme, focused, title: "Electribe 2" }.render(term)?;
-        term.queue(SetBackgroundColor(self.theme.bg))?
-            .queue(SetForegroundColor(Color::White))?;
-        self.menu.render(term)?;
-        (*self.feature()).render(term)?;
+        self.patterns.render(term);
+        self.samples.render(term);
+        //self.menu.render(term)?;
+        //(*self.feature()).render(term)?;
         Ok(())
     }
 
@@ -87,20 +96,24 @@ impl TUI for Electribe2TUI {
     }
 
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        if !self.focused {
-            if self.feature_mut().handle(&event)? {
-                return Ok(true)
-            }
-        }
-        if self.menu.handle(event)? {
+        //if !self.focused {
+            //if self.feature_mut().handle(&event)? {
+                //return Ok(true)
+            //}
+        //}
+        if self.section.handle(event)? {
+            self.patterns.focus(false);
+            self.samples.focus(false);
+            self.selected_mut().focus(true);
             return Ok(true)
         }
-        handle_menu_focus!(event, self, self.feature_mut(), self.focused)
+        //handle_menu_focus!(event, self, self.feature_mut(), self.focused)
+        Ok(false)
     }
 
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Electribe2PatternsTUI {
     pub rect:     Rect,
     pub theme:    Theme,
@@ -235,11 +248,11 @@ impl<'a> TUI for PatternList<'a> {
         for index in 0..0+height {
 
             Label {
-                bg,
-                fg: if selected == index+offset { hi } else { fg },
+                theme,
+                focused: selected == index + offset,
                 col: col1,
                 row: row1 + 2 + index as u16,
-                text: &if let Some(pattern) = patterns.get(index+offset as usize) {
+                text: if let Some(pattern) = patterns.get(index+offset as usize) {
                     format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
                         index + offset + 1,
                         pattern.name.trim(),
@@ -319,7 +332,7 @@ impl <'a> TUI for Pattern <'a> {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Electribe2SamplesTUI {
     pub rect:  Rect,
     pub theme: Theme
@@ -338,7 +351,8 @@ impl TUI for Electribe2SamplesTUI {
         let (x, y, ..) = rect;
         Frame { theme, rect: (x, y, 30, 32), title: "Samples", focused: false }.render(term)?;
         for i in 1..24 {
-            Label { bg, fg, col: x + 1, row: y + 1 + i, text: &format!("{:>3} Sample", i) }.render(term)?;
+            let text = format!("{:>3} Sample", i);
+            Label { theme, focused: false, col: x + 1, row: y + 1 + i, text }.render(term)?;
         }
         Ok(())
     }

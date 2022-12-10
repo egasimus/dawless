@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct List <T> {
     pub rect:  Rect,
     pub theme: Theme,
