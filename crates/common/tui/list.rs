@@ -26,7 +26,7 @@ impl <T> List <T> {
 
 impl <T: Sync> TUI for List <T> {
 
-    fn layout (&mut self, space: &Space) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
         let Space { x, y, w, .. } = *space;
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
@@ -36,7 +36,7 @@ impl <T: Sync> TUI for List <T> {
             }
         }
         self.space = Space::new(x, y, u16::min(w, max_len as u16), 0);
-        Ok(())
+        Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {

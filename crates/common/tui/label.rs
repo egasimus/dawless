@@ -20,10 +20,10 @@ impl TUI for Label {
         self.focused = focus;
         true
     }
-    fn layout (&mut self, space: &Space) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
         self.col = space.x;
         self.row = space.y;
-        Ok(())
+        Ok(*space)
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.theme;

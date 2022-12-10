@@ -80,23 +80,47 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
 
-    fn layout (&mut self, space: &Space) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
         let Space { x, y, w, h } = *space;
-        self.space = Space::new(x, y, 23, 6);
-        if self.patterns.toggle {
-            self.patterns.layout(&Space::new(x + 1, y + 2, 0, 20))?;
-            self.space.y = u16::max(20, self.patterns.open.max_len + 5);
-            self.space.w += 20;
+
+        let patterns_h = 1 + if self.patterns.toggle {
+            self.patterns.open.entries.len() as u16
         } else {
-            self.patterns.layout(&Space::new(x + 1, y + 2, 0, 0))?;
-        }
-        if self.samples.toggle {
-            self.samples.layout(&Space::new(x + 1, y + 4, 0, 20))?;
-            self.space.w += 20;
+            0
+        };
+
+        self.patterns.layout(&Space::new(
+            x + if self.patterns.toggle { 0 } else { 1 },
+            y + 2,
+            0,
+            patterns_h
+        ));
+
+        let samples_h = if self.samples.toggle {
+            self.samples.open.space.h
         } else {
-            self.samples.layout(&Space::new(x + 1, y + 4 + if self.patterns.toggle { 20 } else { 0 }, 0, 0))?;
-        }
-        Ok(())
+            0
+        };
+
+        self.space = Space::new(
+            x,
+            y,
+            space.w.min(22
+                .max(self.patterns.open.space.w + 2)
+                .max(self.samples.open.space.w + 2)),
+            space.h.min(6
+                + patterns_h
+                + samples_h)
+        );
+
+        self.samples.layout(&Space::new(
+            x + if self.samples.toggle { 0 } else { 1 },
+            y + 3 + patterns_h,
+            0,
+            samples_h
+        ));
+
+        Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
@@ -170,15 +194,15 @@ impl Electribe2PatternsTUI {
 
 impl TUI for Electribe2PatternsTUI {
 
-    fn layout (&mut self, space: &Space) -> Result<()> {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
         self.space = space.clone();
         self.entries.space = Space::new(space.x + 1, space.y + 1, 0, 0);
-        Ok(())
+        Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, focused, space, offset, .. } = *self;
-        let Space { x, y, w, .. } = space;
+        let Self { theme, focused, space: Space { x, y, w, .. }, offset, .. } = *self;
+
         if let Some(bank) = &self.bank {
 
             let space = Space::new(x, y, 58, 42);
@@ -196,11 +220,13 @@ impl TUI for Electribe2PatternsTUI {
         } else {
 
             let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
-            Frame { theme, focused, space, title: "Select ALLPAT file:" }.render(term)?;
+            let title = "Select ALLPAT file (Esc to exit)";
+            Frame { theme, focused, space, title }.render(term)?;
 
             FileList(&self.entries).render(term)?;
 
         }
+
         Ok(())
     }
 
@@ -351,21 +377,22 @@ impl <'a> TUI for Pattern <'a> {
 
 #[derive(Debug, Default)]
 pub struct Electribe2SamplesTUI {
-    pub space:  Space,
-    pub theme: Theme
+    pub space: Space,
+    pub theme: Theme,
+    pub bank:  Option<Electribe2SampleBank>,
 }
 
 impl TUI for Electribe2SamplesTUI {
 
-    fn layout (&mut self, space: &Space) -> Result<()> {
-        self.space = space.clip(30, 32);
-        Ok(())
+    fn layout (&mut self, space: &Space) -> Result<Space> {
+        self.space = space.sub(0, 0, 30, 32);
+        Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self  { space, theme, .. } = *self;
-        let Theme { bg, fg, .. }      = theme;
-        let Space  { x, y, .. }        = space;
+        let Self { space, theme, .. } = *self;
+        let Theme { bg, fg, .. } = theme;
+        let Space { x, y, .. } = space;
         let space = Space { x, y, w: 30, h: 32 };
         Frame { theme, space, title: "Samples", focused: false }.render(term)?;
         for i in 1..24 {

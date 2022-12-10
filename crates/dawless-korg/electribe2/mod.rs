@@ -20,6 +20,10 @@ const STEPS_OFFSET:    usize = 0x001e;
 const STEP_SIZE:       usize = 0x000c;
 
 #[derive(Debug, Default)]
+pub struct Electribe2SampleBank {
+}
+
+#[derive(Debug, Default)]
 pub struct Electribe2PatternBank {
     pub patterns: Vec<Electribe2Pattern>
 }

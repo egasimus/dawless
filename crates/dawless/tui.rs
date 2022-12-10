@@ -24,8 +24,9 @@ pub(crate) fn main () -> Result<()> {
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
-            app.space = Space::new(app.space.x, app.space.y, cols, rows);
+            app.layout(&Space::new(0, 0, cols, rows))?;
             app.render(&mut term)?;
+            term.flush()?;
             app.handle(&rx.recv().unwrap())?;
         }
         teardown(&mut term)
@@ -91,22 +92,26 @@ impl AppTUI {
 
 impl TUI for AppTUI {
 
-    fn layout (&mut self, space: &Space) -> Result<()> {
-        let Space { x, y, .. } = *space;
-        self.space = Space::new(x, y, 23, 9);
-        self.devices.layout(&Space::new(x + 1, y + 2, 19, 0))?;
-        self.devices.items[0].1.layout(&Space::new(x + 25, y, 50, 30))?;
-        Ok(())
+    fn layout (&mut self, space: &Space) -> Result<Space> {
+        // Take the entire screen
+        self.space = space.clone();
+        // Apportion space for the device menu
+        self.devices.layout(&space.sub(1, 2, 19, 0))?;
+        // Apportion space for the menu items
+        self.devices.items[0].1.layout(&space.sub(25, 0, 50, 30))?;
+        Ok(self.space)
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         clear(term)?;
-        let Self { space, theme, focused, .. } = *self;
-        let Space { x, y, .. } = space;
-        Frame { space: Space::new(x + 1, y, 23, 9), theme, focused, title: "Devices" }.render(term)?;
+        let Self { space: Space { x, y, .. }, theme, focused, .. } = *self;
+
+        let space = Space::new(x + 1, y, 23, 8);
+        Frame { space, theme, focused, title: "Devices" }.render(term)?;
+
         self.devices.render(term)?;
         if let Some(device) = self.devices.get() { device.render(term)?; }
-        term.flush()?;
+
         Ok(())
     }
 

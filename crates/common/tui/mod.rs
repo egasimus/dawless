@@ -61,20 +61,35 @@ impl Space {
     pub fn new (x: u16, y: u16, w: u16, h: u16) -> Self {
         Self { x, y, w, h }
     }
-    pub fn clip (&self, w: u16, h: u16) -> Self {
-        Space::new(self.x, self.y, w, h)
+    /** Return part of the space.
+      * Positive x and y coordinates are offsets from top left.
+      * Negative x and y coordinates are offsets from bottom right. 
+      * Positive w and h are literal width and height.
+      * Negative w and h are subtracted from parent width and height. */
+    pub fn sub (&self, dx: i16, dy: i16, dw: i16, dh: i16) -> Self {
+        let Self { x, y, w, h } = *self;
+        Self {
+            x: if dx >= 0 { x + dx as u16 } else { x + w - dx as u16 },
+            y: if dy >= 0 { y + dy as u16 } else { y + w - dy as u16 },
+            w: if dw >= 0 { dw as u16 } else { w - (- dw) as u16 },
+            h: if dh >= 0 { dh as u16 } else { h - ( -dh) as u16 },
+        }
     }
 }
 
 pub trait TUI: Sync {
+    /** Draw to the terminal. */
     fn render (&self, term: &mut dyn Write)
         -> Result<()>;
+    /** Handle input events. */
     fn handle (&mut self, _event: &Event)
         -> Result<bool> { Ok(false) }
+    /** Handle focus changes. */
     fn focus (&mut self, _focus: bool)
         -> bool { false }
+    /** Update the layout. */
     fn layout (&mut self, _space: &Space)
-        -> Result<()> { Ok(()) }
+        -> Result<Space> { Ok(*_space) }
 }
 
 impl FnOnce<(&mut dyn Write,)> for Box<dyn TUI> {
