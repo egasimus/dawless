@@ -16,6 +16,12 @@ impl Label {
 }
 
 impl TUI for Label {
+
+    fn size (&self) -> Size {
+        let len = self.text.len() as u16;
+        Size { min_w: Some(len), max_w: Some(len), min_h: Some(1), max_h: Some(1) }
+    }
+
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true

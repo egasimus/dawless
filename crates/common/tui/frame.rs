@@ -24,8 +24,8 @@ impl TUI for Frame {
             term.queue(MoveTo(x, row))?.queue(Print(&background))?;
         }
 
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?
+        term.queue(SetBackgroundColor(if self.focused { hi } else { bg }))?
+            .queue(SetForegroundColor(if self.focused { bg } else { fg }))?
             .queue(MoveTo(x, y))?
             .queue(Print(" "))?
             .queue(MoveTo(x+1, y))?

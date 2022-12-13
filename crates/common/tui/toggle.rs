@@ -22,6 +22,15 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
+
+    fn size (&self) -> Size {
+        if self.toggle {
+            self.open.size()
+        } else {
+            self.closed.size()
+        }
+    }
+
     fn focus (&mut self, focus: bool) -> bool {
         if self.toggle {
             self.open.focus(focus)

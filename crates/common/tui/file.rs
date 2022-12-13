@@ -6,6 +6,10 @@ pub struct FileList<'a> (pub &'a List<FileListItem>);
 
 impl<'a> TUI for FileList<'a> {
 
+    fn size (&self) -> Size {
+        Size { max_w: Some(self.0.width()), min_h: Some(3), ..Size::default() }
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;
         let Space { x, y, w, .. } = self.0.space;

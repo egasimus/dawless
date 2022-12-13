@@ -15,6 +15,7 @@ pub(crate) fn main () -> Result<()> {
         let mut term = std::io::stdout();
         setup(&mut term)?;
         let mut app = AppTUI::new(exit_thread);
+        panic!("{:?}", &app.size());
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
@@ -68,16 +69,23 @@ impl AppTUI {
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
-    fn device <'a> (&'a mut self) -> &'a mut dyn TUI {
+    fn device <'a> (&'a self) -> &'a dyn TUI {
+        &**self.menu.get().unwrap()
+    }
+    fn device_mut <'a> (&'a mut self) -> &'a mut dyn TUI {
         &mut **self.menu.get_mut().unwrap()
     }
 }
 
 impl TUI for AppTUI {
 
+    fn size (&self) -> Size {
+        self.menu.size() + self.device().size()
+    }
+
     fn layout (&mut self, space: &Space) -> Result<Space> {
         let menu = self.menu.layout(&space.add(0, 2, 1, 2))?;
-        let item = self.device().layout(&menu.right(1))?;
+        let item = self.device_mut().layout(&menu.right(1))?;
         self.space = menu.join(&item);
         self.frame.space = menu.clone().add(0, -2, 1, 3);
         Ok(self.space)
@@ -86,7 +94,7 @@ impl TUI for AppTUI {
     fn offset (&mut self, dx: u16, dy: u16) {
         self.space = self.space.offset(dx, dy);
         self.menu.offset(dx, dy);
-        self.device().offset(dx, dy);
+        self.device_mut().offset(dx, dy);
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
@@ -107,14 +115,14 @@ impl TUI for AppTUI {
             return Ok(true)
         }
         if !self.focused {
-            if self.device().handle(&event)? {
+            if self.device_mut().handle(&event)? {
                 return Ok(true)
             }
         }
         if self.menu.handle(event)? {
             return Ok(true)
         }
-        handle_menu_focus!(event, self, self.device(), self.focused)
+        handle_menu_focus!(event, self, self.device_mut(), self.focused)
     }
 
 }

@@ -8,6 +8,11 @@ pub struct Scrollbar {
 }
 
 impl TUI for Scrollbar {
+
+    fn size (&self) -> Size {
+        Size { min_w: Some(1), max_w: Some(1), min_h: Some(3), ..Size::default() }
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { space, theme, length, offset, .. } = *self;
         let Theme { fg, hi, .. } = theme;

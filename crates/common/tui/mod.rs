@@ -4,6 +4,9 @@ pub use empty::*;
 pub mod space;
 pub use space::*;
 
+pub mod size;
+pub use size::*;
+
 pub mod theme;
 pub use theme::*;
 
@@ -82,5 +85,9 @@ pub trait TUI: Sync {
     }
     /** Move self and attached children by (dx, dy) */
     fn offset (&mut self, _dx: u16, _dy: u16) {
+    }
+    /** Return minimum and maximum sizes for this component. */
+    fn size (&self) -> Size {
+        Size::default()
     }
 }

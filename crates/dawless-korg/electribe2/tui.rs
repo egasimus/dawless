@@ -82,6 +82,10 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
 
+    fn size (&self) -> Size {
+        self.patterns.size() + self.samples.size()
+    }
+
     fn layout (&mut self, space: &Space) -> Result<Space> {
         let patterns = self.patterns.layout(&space.add(2, 0, 2, 2))?;
         let samples  = self.samples.layout(&patterns.below(1))?;

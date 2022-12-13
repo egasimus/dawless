@@ -22,9 +22,29 @@ impl <T> List <T> {
     pub fn len (&self) -> usize {
         self.items.len()
     }
+    pub fn width (&self) -> u16 {
+        let mut max_len = 0;
+        for (label, _) in self.items.iter() {
+            let len = label.len();
+            if len > max_len {
+                max_len = len
+            }
+        }
+        max_len as u16
+    }
 }
 
 impl <T: Sync> TUI for List <T> {
+
+    fn size (&self) -> Size {
+        let len = self.len() as u16;
+        Size {
+            max_w: Some(self.width()),
+            min_h: Some(len),
+            max_h: Some(len),
+            ..Size::default()
+        }
+    }
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
         let Space { x, y, w, .. } = *space;
