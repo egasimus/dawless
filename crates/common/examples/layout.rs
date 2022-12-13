@@ -11,7 +11,9 @@ fn main () -> Result<()> {
     let mut app = App::default();
     loop {
         let (cols, rows) = size()?;
-        app.layout(&Space::new(0, 0, cols, rows))?;
+        let space = Space::new(0, 0, cols, rows);
+        let taken = app.layout(&space)?;
+        app.offset(space.w / 2 - taken.w / 2, space.h / 2 - taken.h / 2);
         app.render(&mut term)?;
         term.flush()?;
         if poll(std::time::Duration::from_millis(100))? {
@@ -32,32 +34,29 @@ struct App {
 }
 
 impl TUI for App {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
+        let component1 = self.component1.layout(space)?;
+        let component2 = self.component2.layout(&component1.right(0))?;
+        self.space = component1.join(&component2);
+        Ok(self.space)
+    }
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+        for child in [&mut self.component1, &mut self.component2] {
+            child.offset(dx, dy)
+        }
+    }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         Frame {
             space:   self.space,
-            theme:   Theme { bg: Color::Red, ..self.theme },
+            theme:   Theme { bg: Color::AnsiValue(234), ..self.theme },
             title:   "App".into(),
             focused: false
         }.render(term)?;
-        self.component1.render(term)?;
-        self.component2.render(term)?;
+        for child in [&self.component1, &self.component2] {
+            child.render(term)?;
+        }
         Ok(())
-    }
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let component1 = self.component1.layout(space)?;
-        let component2 = self.component2.layout(&component1.right(1))?;
-        self.space = component1.join(&component2);
-        let Space { w, h, .. } = space;
-        let offset_x = w / 2 - self.space.w / 2;
-        let offset_y = h / 2 - self.space.h / 2;
-        self.space = self.space.offset(offset_x, offset_y);
-        self.component1.space = self.component1.space.offset(offset_x, offset_y);
-        self.component1.subcomponent1.space = self.component1.subcomponent1.space.offset(offset_x, offset_y);
-        self.component1.subcomponent2.space = self.component1.subcomponent2.space.offset(offset_x, offset_y);
-        self.component2.space = self.component2.space.offset(offset_x, offset_y);
-        self.component2.subcomponent1.space = self.component2.subcomponent1.space.offset(offset_x, offset_y);
-        self.component2.subcomponent2.space = self.component2.subcomponent2.space.offset(offset_x, offset_y);
-        Ok(self.space)
     }
 }
 
@@ -70,22 +69,29 @@ struct Component {
 }
 
 impl TUI for Component {
+    fn layout (&mut self, space: &Space) -> Result<Space> {
+        let component1 = self.subcomponent1.layout(space)?;
+        let component2 = self.subcomponent2.layout(&component1.below(0))?;
+        self.space = component1.join(&component2);
+        Ok(self.space)
+    }
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+        for child in [&mut self.subcomponent1, &mut self.subcomponent2] {
+            child.offset(dx, dy)
+        }
+    }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         Frame {
-            space:   self.space.inset(1),
-            theme:   Theme { bg: Color::Green, ..self.theme },
+            space:   self.space,//.add(1, 1, -2, -1),
+            theme:   Theme { bg: Color::AnsiValue(235), ..self.theme },
             title:   "Component".into(),
             focused: false
         }.render(term)?;
-        self.subcomponent1.render(term)?;
-        self.subcomponent2.render(term)?;
+        for child in [&self.subcomponent1, &self.subcomponent2] {
+            child.render(term)?;
+        }
         Ok(())
-    }
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let component1 = self.subcomponent1.layout(space)?;
-        let component2 = self.subcomponent2.layout(&component1.below(1))?;
-        self.space = component1.join(&component2);
-        Ok(self.space)
     }
 }
 
@@ -98,8 +104,8 @@ struct Subcomponent {
 impl TUI for Subcomponent {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         Frame {
-            space:   self.space.inset(1),
-            theme:   Theme { bg: Color::Blue, ..self.theme },
+            space:   self.space,//.add(2, 2, -3, -2),
+            theme:   Theme { bg: Color::AnsiValue(236), ..self.theme },
             title:   "Subcomponent".into(),
             focused: false
         }.render(term)?;
@@ -108,5 +114,8 @@ impl TUI for Subcomponent {
     fn layout (&mut self, space: &Space) -> Result<Space> {
         self.space = Space::new(space.x, space.y, 20, 5);
         Ok(self.space)
+    }
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
     }
 }

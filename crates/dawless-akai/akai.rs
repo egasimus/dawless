@@ -80,29 +80,3 @@ cli! {
     }
 
 }
-
-tui! {
-
-    lazy_static::lazy_static! {
-
-        //pub static ref AKAI_S3000XL_TUI: (
-            //&'static str,
-            //Vec<(KeyCode, &'static str, Option<fn()>)>
-        //) = ("AKAI S3000XL",   vec![
-            //(KeyCode::F(1), "Import disk", Some(import_disk as fn())),
-            //(KeyCode::F(2), "Add sample",  Some(add_sample  as fn())),
-            //(KeyCode::F(3), "Add program", Some(add_program as fn())),
-            //(KeyCode::F(4), "Add multi",   Some(add_multi   as fn())),
-        //]);
-
-    }
-
-    fn import_disk () {}
-
-    fn add_sample () {}
-
-    fn add_program () {}
-
-    fn add_multi () {}
-
-}

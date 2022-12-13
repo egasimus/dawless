@@ -65,15 +65,22 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 
 pub trait TUI: Sync {
     /** Draw to the terminal. */
-    fn render (&self, term: &mut dyn Write)
-        -> Result<()>;
+    fn render (&self, _term: &mut dyn Write) -> Result<()> {
+        Ok(())
+    }
     /** Handle input events. */
-    fn handle (&mut self, _event: &Event)
-        -> Result<bool> { Ok(false) }
+    fn handle (&mut self, _event: &Event) -> Result<bool> {
+        Ok(false)
+    }
     /** Handle focus changes. */
-    fn focus (&mut self, _focus: bool)
-        -> bool { false }
+    fn focus (&mut self, _focus: bool) -> bool {
+        false
+    }
     /** Update the layout. */
-    fn layout (&mut self, _space: &Space)
-        -> Result<Space> { Ok(Space::new(0, 0, 0, 0)) }
+    fn layout (&mut self, _space: &Space) -> Result<Space> {
+        Ok(Space::new(0, 0, 0, 0))
+    }
+    /** Move self and attached children by (dx, dy) */
+    fn offset (&mut self, _dx: u16, _dy: u16) {
+    }
 }

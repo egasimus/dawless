@@ -14,11 +14,14 @@ pub(crate) fn main () -> Result<()> {
     std::thread::spawn(move || {
         let mut term = std::io::stdout();
         setup(&mut term)?;
-        let mut app = App::new(exited);
+        let mut app = AppTUI::new(exit_thread);
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
-            app.layout(&Space::new(0, 0, cols, rows))?;
+            let space = Space::new(0, 0, cols, rows);
+            let taken = app.layout(&space)?;
+            app.offset(space.w / 2 - taken.w / 2, space.h / 2 - taken.h / 2);
+            clear(&mut term)?;
             app.render(&mut term)?;
             term.flush()?;
             app.handle(&rx.recv().unwrap())?;
@@ -45,18 +48,20 @@ struct AppTUI {
 
 impl AppTUI {
     fn new (exited: Arc<AtomicBool>) -> Self {
-        let menu = List::default();
+        let mut menu = List::<Box<dyn TUI>>::default();
         menu.add("Korg Electribe",      Box::new(Electribe2TUI::new()))
             .add("Korg Triton",         Box::new(EmptyTUI {}))
             .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
             .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
             .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
+        let mut frame = Frame::default();
+        frame.title = "Devices".into();
         Self {
             exited,
             space:   Space::default(),
             theme:   Theme::default(),
             focused: true,
-            frame:   Frame::default(),
+            frame,
             menu,
         }
     }
@@ -71,28 +76,20 @@ impl AppTUI {
 impl TUI for AppTUI {
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        // Start by putting the upper left corner
-        // of the layout at the center of the screen
-        let (mut x, mut y) = space.center();
-        // Offset it by half the size of each displayed widgets
-        let menu = self.menu.layout(&space)?;
-        let item = self.device().layout(&space)?;
-        x = x.saturating_sub(u16::max(menu.w, item.w) / 2);
-        y = y.saturating_sub(u16::max(menu.h, item.h) / 2);
-        // The layout space is now equal to the centered widgets
-        self.space = Space::new(x, y, space.w - x * 2, space.h - y * 2);
-        // Apportion space for the device menu
-        self.frame.layout(&self.space.sub(0, 0, 23, 8));
-        self.menu.layout(&self.space.sub(0, 2, 19, 0))?;
-        // Apportion space for the menu items
-        let item = self.space.sub(24, 0, 50, 30);
-        self.device().layout(&item)?;
+        let menu = self.menu.layout(&space.add(0, 2, 1, 2))?;
+        let item = self.device().layout(&menu.right(1))?;
+        self.space = menu.join(&item);
+        self.frame.space = menu.clone().add(0, -2, 1, 3);
         Ok(self.space)
     }
 
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+        self.menu.offset(dx, dy);
+        self.device().offset(dx, dy);
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        clear(term)?;
-        let Self { space: Space { x, y, .. }, theme, focused, .. } = *self;
         self.frame.render(term)?;
         self.menu.render(term)?;
         if let Some(device) = self.menu.get() { device.render(term)?; }

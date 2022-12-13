@@ -47,9 +47,9 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            frame:    Frame { title: "Electribe 2".into(), ..Frame::default() },
             space:    Space::default(),
-            theme:    Theme::default(),
+            theme:    Theme { bg: Color::AnsiValue(232), ..Theme::default() },
+            frame:    Frame { title: "Electribe 2".into(), ..Frame::default() },
             focused:  false,
             section,
             patterns,
@@ -83,36 +83,17 @@ impl Electribe2TUI {
 impl TUI for Electribe2TUI {
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        let Space { x, y, w, h } = *space;
-
-        let patterns_space = self.patterns.layout(&Space::new(
-            x + if self.patterns.toggle { 0 } else { 1 },
-            y + 2,
-            0,
-            0
-        ))?;
-
-        let samples_space = self.samples.layout(&Space::new(
-            x + if self.samples.toggle { 0 } else { 1 },
-            y + 3 + patterns_space.h,
-            0,
-            0
-        ))?;
-
-        self.space = Space::new(
-            x,
-            y,
-            space.w.min(22
-                .max(patterns_space.w + 2)
-                .max(samples_space.w + 2)),
-            space.h.min(4
-                + patterns_space.h + if self.patterns.toggle { 2 } else { 0 }
-                + samples_space.h  + if self.samples.toggle { 2 } else { 0 })
-        );
-
-        self.frame.layout(&self.space)?;
-
+        let patterns = self.patterns.layout(&space.add(2, 0, 2, 2))?;
+        let samples  = self.samples.layout(&patterns.below(1))?;
+        self.space = patterns.join(&samples);
+        self.frame.space = self.space.add(-1, -2, 2, 3);
         Ok(self.space)
+    }
+
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+        self.patterns.offset(dx, dy);
+        self.samples.offset(dx, dy);
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
@@ -136,6 +117,7 @@ impl TUI for Electribe2TUI {
         }
         if self.section.handle(event)? {
             self.focus_selected();
+            self.layout(&self.space.clone())?;
             return Ok(true)
         }
         //handle_menu_focus!(event, self, self.feature_mut(), self.focused)

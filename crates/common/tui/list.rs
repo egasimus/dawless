@@ -35,7 +35,7 @@ impl <T: Sync> TUI for List <T> {
                 max_len = len
             }
         }
-        self.space = Space::new(x, y, u16::min(w, max_len as u16), self.items.len() as u16);
+        self.space = Space::new(x, y, u16::min(w, (max_len + 3) as u16), self.items.len() as u16);
         Ok(self.space)
     }
 
@@ -43,7 +43,7 @@ impl <T: Sync> TUI for List <T> {
         let Self { theme, space, .. } = *self;
         let Space { x, y, w, .. } = space;
         for (index, item) in self.items.iter().enumerate() {
-            let text = format!(" {:<0width$} ▶ ", item.0, width = w as usize);
+            let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
             let row  = y + index as u16;
             Label { theme, col: x, row, focused: index == self.index, text }.render(term)?;
         }
