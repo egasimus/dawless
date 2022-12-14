@@ -96,14 +96,15 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     fn size (&self) -> Size {
-        self.patterns.size().add_h(self.samples.size())
+        self.patterns.size().add_h(self.samples.size()).inc_w(2).inc_h(3)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self { focused, .. } = *self;
         self.frame.render(term, space)?;
-        self.patterns.render(term, space)?;
-        self.samples.render(term, space)?;
-        Ok(())
+        Layout::column(&[
+            (1, &self.patterns),
+            (1, &self.samples)
+        ]).render(term, &space.inset(1))
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

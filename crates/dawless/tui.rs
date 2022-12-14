@@ -62,6 +62,7 @@ pub(crate) fn main () -> Result<()> {
     loop {
         let mut done = false;
         APP.with(|app| {
+            clear(&mut term).unwrap();
             {
                 let app = app.borrow();
                 if app.exited.fetch_and(true, Ordering::Relaxed) == true {
@@ -102,17 +103,25 @@ impl App {
 
 impl TUI for App {
     fn size (&self) -> Size {
-        self.menu.size().add_w(self.device().size())
+        if self.menu.get().is_some() {
+            self.menu.size().add_w(self.device().size())
+        } else {
+            self.menu.size()
+        }.inc_w(2).inc_h(3)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Frame { theme: THEME, title: "Devices".into(), ..Frame::default() }
             .render(term, space)?;
-        self.menu
-            .render(term, space)?;
-        if let Some(device) = self.menu.get() {
-            device.render(term, space)?;
+        if self.menu.get().is_some() {
+            Layout::row(&[
+                (1, &self.menu),
+                (1, self.device())
+            ]).render(term, &space.inset(1).offset(Point(0, 1)))
+        } else {
+            Layout::row(&[
+                (1, &self.menu),
+            ]).render(term, &space.inset(1).offset(Point(0, 1)))
         }
-        Ok(())
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

@@ -43,17 +43,16 @@ impl <T: Sync> TUI for List <T> {
             max_w: Some(width),
             min_h: Some(len),
             max_h: Some(len),
-            ..Size::default()
         }
     }
 
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Space(Point(x, y), Point(w, _)) = * space;
+        let width = self.width();
         for (index, item) in self.items.iter().enumerate() {
             let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
-            let row  = y + index as u16;
             Label { theme: self.theme, focused: index == self.index, text }
-                .render(term, space)?;
+                .render(term, &Space::new(x, y + index as u16, width, 1))?;
         }
         Ok(())
     }

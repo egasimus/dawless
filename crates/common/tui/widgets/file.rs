@@ -7,7 +7,7 @@ pub struct FileList<'a> (pub &'a List<FileListItem>);
 impl<'a> TUI for FileList<'a> {
 
     fn size (&self) -> Size {
-        Size { max_w: Some(self.0.width()), min_h: Some(3), ..Size::default() }
+        self.0.size()
     }
 
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
