@@ -34,10 +34,10 @@ impl<'a> Layout<'a> {
         let Layout { width, height, elements } = self;
         for (portion, element) in elements.iter() {
             let Space(Point(x, y), Point(w, h)) = *portion;
-            let x = x_offset + x/width  * w_total;
-            let y = y_offset + y/height * h_total;
-            let w = w / width  * w_total;
-            let h = h / height * h_total;
+            let x = x_offset + x * w_total / width;
+            let y = y_offset + y * h_total / height;
+            let w = w * w_total / width;
+            let h = h * h_total / height;
             element.render(term, &Space(Point(x, y), Point(w, h)))?;
         }
         Ok(())
