@@ -1,29 +1,11 @@
-pub mod empty;
-pub use empty::*;
+pub mod widgets;
+pub use widgets::*;
 
 pub mod layout;
 pub use layout::*;
 
 pub mod theme;
 pub use theme::*;
-
-pub mod label;
-pub use label::*;
-
-pub mod frame;
-pub use frame::*;
-
-pub mod list;
-pub use list::*;
-
-pub mod file;
-pub use file::*;
-
-pub mod scroll;
-pub use scroll::*;
-
-pub mod toggle;
-pub use toggle::*;
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 
@@ -64,8 +46,12 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 }
 
 pub trait TUI: Sync {
+    /** Return minimum and maximum sizes for this component. */
+    fn size (&self) -> Size {
+        Size::default()
+    }
     /** Draw to the terminal. */
-    fn render (&self, _term: &mut dyn Write) -> Result<()> {
+    fn render (&self, _term: &mut dyn Write, _space: &Space) -> Result<()> {
         Ok(())
     }
     /** Handle input events. */
@@ -75,16 +61,5 @@ pub trait TUI: Sync {
     /** Handle focus changes. */
     fn focus (&mut self, _focus: bool) -> bool {
         false
-    }
-    /** Update the layout. */
-    fn layout (&mut self, _space: &Space) -> Result<Space> {
-        Ok(Space::new(0, 0, 0, 0))
-    }
-    /** Move self and attached children by (dx, dy) */
-    fn offset (&mut self, _dx: u16, _dy: u16) {
-    }
-    /** Return minimum and maximum sizes for this component. */
-    fn size (&self) -> Size {
-        Size::default()
     }
 }

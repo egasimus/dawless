@@ -1,4 +1,4 @@
-use super::*;
+use crate::tui::{*, layout::*, widgets::*};
 
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
@@ -22,7 +22,6 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-
     fn size (&self) -> Size {
         if self.toggle {
             self.open.size()
@@ -30,7 +29,6 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.size()
         }
     }
-
     fn focus (&mut self, focus: bool) -> bool {
         if self.toggle {
             self.open.focus(focus)
@@ -38,16 +36,11 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.focus(focus)
         }
     }
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let open_space = self.open.layout(space)?;
-        let closed_space = self.closed.layout(space)?;
-        Ok(if self.toggle { open_space } else { closed_space })
-    }
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         if self.toggle {
-            self.open.render(term)
+            self.open.render(term, space)
         } else {
-            self.closed.render(term)
+            self.closed.render(term, space)
         }
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

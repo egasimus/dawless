@@ -1,20 +1,16 @@
-use super::*;
+use super::{*, super::{*, layout::*}};
 
 #[derive(Default, Debug)]
 pub struct Frame {
-    pub space:   Space,
     pub theme:   Theme,
     pub title:   String,
     pub focused: bool,
 }
 
 impl TUI for Frame {
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self {
-            theme: Theme { bg, fg, hi, .. },
-            space: Space(Point(x, y), Point(w, h)),
-            ..
-        } = *self;
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Self { theme: Theme { bg, fg, hi, .. }, .. } = *self;
+        let Space(Point(x, y), Point(w, h)) = *space;
 
         term.queue(ResetColor)?
             .queue(SetForegroundColor(bg))?

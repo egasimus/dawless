@@ -1,4 +1,4 @@
-use super::*;
+use super::{*, super::{*, layout::*}};
 
 pub type FileListItem = (String, bool);
 
@@ -10,7 +10,7 @@ impl<'a> TUI for FileList<'a> {
         Size { max_w: Some(self.0.width()), min_h: Some(3), ..Size::default() }
     }
 
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;
         let Space(Point(x, y), Point(w, ..)) = self.0.space;
         for (index, (_, (path, is_dir))) in self.0.items.iter().enumerate() {

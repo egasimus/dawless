@@ -1,4 +1,4 @@
-use super::*;
+use super::{*, super::{*, layout::*}};
 
 #[derive(Default, Debug)]
 pub struct List <T> {
@@ -37,34 +37,23 @@ impl <T> List <T> {
 impl <T: Sync> TUI for List <T> {
 
     fn size (&self) -> Size {
+        let width = self.width() as u16;
         let len = self.len() as u16;
         Size {
-            max_w: Some(self.width()),
+            min_w: Some(width),
+            max_w: Some(width),
             min_h: Some(len),
             max_h: Some(len),
             ..Size::default()
         }
     }
 
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let Space(Point(x, y), Point(w, _)) = *space;
-        let mut max_len = 0;
-        for (label, _) in self.items.iter() {
-            let len = label.len();
-            if len > max_len {
-                max_len = len
-            }
-        }
-        self.space = Space::new(x, y, u16::min(w, (max_len + 3) as u16), self.items.len() as u16);
-        Ok(self.space)
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self { theme, space: Space(Point(x, y), Point(w, _)), .. } = *self;
         for (index, item) in self.items.iter().enumerate() {
             let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
             let row  = y + index as u16;
-            Label { theme, col: x, row, focused: index == self.index, text }.render(term)?;
+            Label { theme, col: x, row, focused: index == self.index, text }.render(term, space)?;
         }
         Ok(())
     }

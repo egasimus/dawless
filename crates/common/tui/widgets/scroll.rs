@@ -1,4 +1,4 @@
-use super::*;
+use super::{*, super::{*, layout::*}};
 
 pub struct Scrollbar {
     pub space:   Space,
@@ -13,7 +13,7 @@ impl TUI for Scrollbar {
         Size { min_w: Some(1), max_w: Some(1), min_h: Some(3), ..Size::default() }
     }
 
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self {
             space: Space(Point(x, y), Point(h, _)),
             theme: Theme { fg, hi, .. },
