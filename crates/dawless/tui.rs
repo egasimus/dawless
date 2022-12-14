@@ -1,11 +1,31 @@
+use std::cell::RefCell;
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
 use dawless_common::*;
 use dawless_korg::Electribe2TUI;
 use crossterm::{
     event::{poll, read, Event, KeyEvent, KeyCode},
-    terminal::{size}
+    terminal::{size},
+    style::Color
 };
+
+static THEME: &'static Theme = &Theme {
+    bg: Color::AnsiValue(232),
+    fg: Color::White,
+    hi: Color::Yellow
+};
+
+static CHANNEL = channel::<Event>();
+
+thread_local!(static APP: RefCell<App> = RefCell::new(App {
+}));
+
+struct App {
+    exited:  Arc<AtomicBool>,
+    focused: bool,
+    frame:   Frame,
+    menu:    List<Box<dyn TUI>>,
+}
 
 pub(crate) fn main () -> Result<()> {
     let (tx, rx) = channel::<Event>();
@@ -14,15 +34,16 @@ pub(crate) fn main () -> Result<()> {
     std::thread::spawn(move || {
         let mut term = std::io::stdout();
         setup(&mut term)?;
-        let mut app = AppTUI::new(exit_thread);
+        let mut app = App::new(exit_thread);
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
-            let (cols, rows) = size()?;
-            let (cols, rows) = app.size().clip(cols, rows)?;
-            app.layout(&Space::new(0, 0, cols, rows))?;
-            app.offset(cols, rows);
-            clear(&mut term)?;
-            app.render(&mut term)?;
+            let (screen_cols, screen_rows) = size().unwrap();
+            let size = app.size().clip(Point(screen_cols, screen_rows)).unwrap();
+            let Point(cols, rows) = size;
+            let x = (screen_cols - cols) / 2;
+            let y = (screen_rows - rows) / 2;
+            let space = Space(Point(x, y), size);
+            app.render(&mut term, &space).unwrap();
             term.flush()?;
             app.handle(&rx.recv().unwrap())?;
         }
@@ -37,16 +58,7 @@ pub(crate) fn main () -> Result<()> {
     Ok(())
 }
 
-struct AppTUI {
-    exited:  Arc<AtomicBool>,
-    space:   Space,
-    theme:   Theme,
-    focused: bool,
-    frame:   Frame,
-    menu:    List<Box<dyn TUI>>,
-}
-
-impl AppTUI {
+impl App {
     fn new (exited: Arc<AtomicBool>) -> Self {
         let theme = Theme::default();
         let mut menu = List::<Box<dyn TUI>> { theme, ..List::default() };
@@ -77,7 +89,7 @@ impl AppTUI {
     }
 }
 
-impl TUI for AppTUI {
+impl TUI for App {
 
     fn size (&self) -> Size {
         self.menu.size() + self.device().size()

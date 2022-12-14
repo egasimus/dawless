@@ -53,7 +53,7 @@ impl <T: Sync> TUI for List <T> {
         for (index, item) in self.items.iter().enumerate() {
             let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
             let row  = y + index as u16;
-            Label { theme, col: x, row, focused: index == self.index, text }.render(term, space)?;
+            Label { theme, focused: index == self.index, text }.render(term, space)?;
         }
         Ok(())
     }

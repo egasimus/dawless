@@ -1,7 +1,6 @@
 use super::{*, super::{*, layout::*}};
 
 pub struct Scrollbar {
-    pub space:   Space,
     pub theme:  Theme,
     pub length: usize,
     pub offset: usize
@@ -15,12 +14,12 @@ impl TUI for Scrollbar {
 
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self {
-            space: Space(Point(x, y), Point(h, _)),
             theme: Theme { fg, hi, .. },
             length,
             offset,
             ..
         } = *self;
+        let Space(Point(x, y), Point(h, _)) = *space;
         let h = h as usize;
         for index in 0..h {
             let scroll_offset = (offset * h) / length;

@@ -6,7 +6,7 @@ use crossterm::{
     style::{Color}
 };
 
-static THEME: &'static Theme = &Theme {
+static THEME: Theme = Theme {
     bg: Color::AnsiValue(232),
     fg: Color::White,
     hi: Color::Yellow
@@ -50,7 +50,6 @@ fn main () -> Result<()> {
             let x = (screen_cols - cols) / 2;
             let y = (screen_rows - rows) / 2;
             let space = Space(Point(x, y), size);
-            //panic!("{space:?}");
             app.render(&mut term, &space).unwrap();
         });
         term.flush()?;
@@ -68,7 +67,7 @@ impl TUI for App {
         self.component1.size().add_w(self.component2.size()).inc_w(3)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let theme = Theme { bg: Color::AnsiValue(234), ..*THEME };
+        let theme = Theme { bg: Color::AnsiValue(234), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("A {w}x{h}+{x}+{y}").into();
         Frame { theme, title, focused: false }.render(term, space)?;
@@ -84,7 +83,7 @@ impl TUI for Component {
         self.subcomponent1.size().add_h(self.subcomponent2.size()).inc_h(3)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let theme = Theme { bg: Color::AnsiValue(235), ..*THEME };
+        let theme = Theme { bg: Color::AnsiValue(235), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("B {w}x{h}+{x}+{y}").into();
         Frame { theme, title,  focused: false }.render(term, space)?;
@@ -100,7 +99,7 @@ impl TUI for Subcomponent {
         Size::from_fixed(Point(20, 8))
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let theme = Theme { bg: Color::AnsiValue(236), ..*THEME };
+        let theme = Theme { bg: Color::AnsiValue(236), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("C {w}x{h}+{x}+{y}").into();
         Frame { theme, title, focused: false }.render(term, space)

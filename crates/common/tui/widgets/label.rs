@@ -2,8 +2,6 @@ use super::{*, super::{*, layout::*}};
 
 #[derive(Default, Debug)]
 pub struct Label {
-    pub col:     u16,
-    pub row:     u16,
     pub theme:   Theme,
     pub focused: bool,
     pub text:    String

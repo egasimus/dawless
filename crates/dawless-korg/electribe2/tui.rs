@@ -1,5 +1,4 @@
 use crate::electribe2::*;
-
 use dawless_common::*;
 use laterna;
 use crossterm::{
@@ -13,26 +12,47 @@ use crossterm::{
     },
 };
 
+static THEME: Theme = Theme {
+    bg: Color::AnsiValue(232),
+    fg: Color::White,
+    hi: Color::Yellow
+};
+
 #[derive(Debug)]
 pub struct Electribe2TUI {
-    space:    Space,
-    theme:    Theme,
     focused:  bool,
     patterns: Toggle<Label, Electribe2PatternsTUI>,
     samples:  Toggle<Label, Electribe2SamplesTUI>,
     section:  List<Electribe2TUIFeature>,
     frame:    Frame
 }
-
 #[derive(Debug, Default)]
 pub enum Electribe2TUIFeature {
     #[default]
     Patterns,
     Samples
 }
+#[derive(Debug, Default)]
+pub struct Electribe2PatternsTUI {
+    pub focused:  bool,
+    pub bank:     Option<Electribe2PatternBank>,
+    pub entries:  List<(String, bool)>,
+    pub patterns: List<String>,
+    pub offset:   usize,
+    pub max_len:  u16
+}
+#[derive(Debug, Default)]
+pub struct Electribe2SamplesTUI {
+    pub bank: Option<Electribe2SampleBank>,
+}
+#[derive(Debug)]
+struct PatternList<'a> {
+    pub patterns: &'a Vec<Electribe2Pattern>,
+    pub selected: usize,
+    pub offset:   usize
+}
 
 impl Electribe2TUI {
-
     pub fn new () -> Self {
         let mut section = List::default();
         section.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
@@ -47,8 +67,6 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            space:    Space::default(),
-            theme:    Theme { bg: Color::AnsiValue(232), ..Theme::default() },
             frame:    Frame { title: "Electribe 2".into(), ..Frame::default() },
             focused:  false,
             section,
@@ -56,64 +74,41 @@ impl Electribe2TUI {
             samples
         }
     }
-
     fn selected (&self) -> &dyn TUI {
         match self.section.get().unwrap() {
             Electribe2TUIFeature::Patterns => &self.patterns,
             Electribe2TUIFeature::Samples  => &self.samples,
         }
     }
-
     fn selected_mut (&mut self) -> &mut dyn TUI {
         match self.section.get().unwrap() {
             Electribe2TUIFeature::Patterns => &mut self.patterns,
             Electribe2TUIFeature::Samples  => &mut self.samples,
         }
     }
-
     fn focus_selected (&mut self) {
         self.patterns.focus(false);
         self.samples.focus(false);
         self.selected_mut().focus(true);
         self.focus(false);
     }
-
 }
 
 impl TUI for Electribe2TUI {
-
     fn size (&self) -> Size {
-        self.patterns.size() + self.samples.size()
+        self.patterns.size().add_h(self.samples.size())
     }
-
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let patterns = self.patterns.layout(&space.add(2, 0, 2, 2))?;
-        let samples  = self.samples.layout(&patterns.below(1))?;
-        self.space = patterns.join(&samples);
-        self.frame.space = self.space.add(-1, -2, 2, 3);
-        Ok(self.space)
-    }
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
-        self.patterns.offset(dx, dy);
-        self.samples.offset(dx, dy);
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { space, theme, focused, .. } = *self;
-        self.frame.render(term)?;
-        self.patterns.render(term);
-        self.samples.render(term);
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Self { focused, .. } = *self;
+        self.frame.render(term, space)?;
+        self.patterns.render(term, space)?;
+        self.samples.render(term, space)?;
         Ok(())
     }
-
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        self.layout(&self.space.clone());
         true
     }
-
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if self.selected_mut().handle(&event)? {
             self.focus(false);
@@ -121,35 +116,19 @@ impl TUI for Electribe2TUI {
         }
         if self.section.handle(event)? {
             self.focus_selected();
-            self.layout(&self.space.clone())?;
             return Ok(true)
         }
         //handle_menu_focus!(event, self, self.feature_mut(), self.focused)
         Ok(false)
     }
-
-}
-
-#[derive(Debug, Default)]
-pub struct Electribe2PatternsTUI {
-    pub space:    Space,
-    pub theme:    Theme,
-    pub focused:  bool,
-    pub bank:     Option<Electribe2PatternBank>,
-    pub entries:  List<(String, bool)>,
-    pub patterns: List<String>,
-    pub offset:   usize,
-    pub max_len:  u16
 }
 
 impl Electribe2PatternsTUI {
-
     pub fn new () -> Self {
         let mut new = Self::default();
         new.update_listing();
         return new
     }
-
     pub fn import (&mut self, bank: &std::path::Path) {
         let data = dawless_common::read(bank);
         let bank = Electribe2PatternBank::read(&data);
@@ -159,54 +138,40 @@ impl Electribe2PatternsTUI {
             .collect();
         self.patterns.items = patterns;
     }
-
     fn update_listing (&mut self) {
         let (entries, max_len) = list_current_directory();
         self.entries.items = entries;
         self.max_len = u16::max(max_len as u16, 20);
     }
-
 }
 
 impl TUI for Electribe2PatternsTUI {
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
+    fn size (&self) -> Size {
+        self.entries.size()
     }
-
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.space = Space::new(space.x, space.y, self.max_len, self.entries.len() as u16);
-        self.entries.space = Space::new(space.x + 1, space.y + 1, 0, 0);
-        Ok(self.space)
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, focused, space: Space { x, y, w, .. }, offset, .. } = *self;
-
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Self { focused, offset, .. } = *self;
+        let Space(Point(x, y), Point(w, _)) = *space;
         if let Some(bank) = &self.bank {
+            Frame { theme: THEME, focused, title: "Patterns:".into() }
+                .render(term, &Space::new(x, y, 58, 42))?;
 
-            let space = Space::new(x, y, 58, 42);
-            Frame { theme, focused, space, title: "Patterns:".into() }.render(term)?;
-
-            let space = Space::new(x + 1, y + 2, 50, 0);
             let patterns = &bank.patterns;
             let selected = self.patterns.index;
-            PatternList { theme, space, patterns, selected, offset }.render(term)?;
+            PatternList { patterns, selected, offset }
+                .render(term, &Space::new(x + 1, y + 2, 50, 0))?;
 
-            let space = Space::new(x + 59, y, 0, 0);
             let pattern = bank.patterns.get(self.patterns.index).unwrap() ;
-            Pattern { theme, space, pattern }.render(term)?;
-
+            Pattern { pattern }
+                .render(term, &Space::new(x + 59, y, 0, 0))?;
         } else {
-
             let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
             let title = "Select ALLPAT file (Esc to exit)".into();
-            Frame { theme, focused, space, title }.render(term)?;
-
-            FileList(&self.entries).render(term)?;
-
+            Frame { theme: THEME, focused, title }
+                .render(term, &space)?;
+            FileList(&self.entries)
+                .render(term, &space)?;
         }
-
         Ok(())
     }
 
@@ -243,24 +208,12 @@ impl TUI for Electribe2PatternsTUI {
     }
 }
 
-struct PatternList<'a> {
-    pub space:     Space,
-    pub theme:    Theme,
-    pub patterns: &'a Vec<Electribe2Pattern>,
-    pub selected: usize,
-    pub offset:   usize
-}
 
 impl<'a> TUI for PatternList<'a> {
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, space, patterns, selected, offset, .. } = *self;
-        let Theme { bg, fg, hi } = theme;
-        let Space { x, y, w, .. } = space;
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Self { offset, .. } = *self;
+        let Theme { bg, fg, hi } = THEME;
+        let Space(Point(x, y), Point(w, h)) = *space;
         term.queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(fg))?
             .queue(SetAttribute(Attribute::Bold))?
@@ -270,73 +223,57 @@ impl<'a> TUI for PatternList<'a> {
             )))?
             .queue(SetAttribute(Attribute::Reset))?
             .queue(SetBackgroundColor(bg))?;
-
         let height = 36;
-
         for index in 0..0+height {
-
-            Label {
-                theme,
-                focused: selected == index + offset,
-                col: x,
-                row: y + 2 + index as u16,
-                text: if let Some(pattern) = patterns.get(index+offset as usize) {
-                    format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
-                        index + offset + 1,
-                        pattern.name.trim(),
-                        pattern.bpm,
-                        pattern.length,
-                        pattern.beats,
-                        pattern.key,
-                        pattern.scale,
-                    )
-                } else {
-                    "".into()
-                }
-            }.render(term)?;
-
+            let index_offset = index + self.offset;
+            let focused = self.selected == index_offset;
+            let text = if let Some(pattern) = self.patterns.get(index_offset as usize) {
+                format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
+                    index + self.offset + 1,
+                    pattern.name.trim(),
+                    pattern.bpm,
+                    pattern.length,
+                    pattern.beats,
+                    pattern.key,
+                    pattern.scale,
+                )
+            } else {
+                "".into()
+            };
+            Label { theme: THEME, focused, text }
+                .render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
         }
-
-        let space = Space::new(x + 55, y + 2, 0, height as u16);
-        Scrollbar { theme, space, offset, length: patterns.len() }.render(term)?;
-
+        Scrollbar { theme: THEME, offset, length: self.patterns.len() }
+            .render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
         Ok(())
     }
 }
 
 struct Pattern <'a> {
-    space: Space,
-    theme: Theme,
     pattern: &'a Electribe2Pattern
 }
 
 impl <'a> TUI for Pattern <'a> {
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { space, theme, pattern, .. } = *self;
-        let Theme { bg, fg, hi } = theme;
-        let Space { x, y, .. } = space;
-        let space  = Space { x, y, w: 46, h: 30 };
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Theme { bg, fg, hi } = THEME;
+        let Space(Point(x, y), _) = *space;
         let title = "Pattern details".into();
-        Frame { theme, focused: true, space, title }.render(term)?;
+        Frame { theme: THEME, focused: true, title }
+            .render(term, &Space(Point(x, y), Point(46, 30)))?;
         term.queue(SetForegroundColor(fg))?
-            .queue(MoveTo(x +  1, y + 2))?.queue(Print(&pattern.name))?
-            .queue(MoveTo(x + 21, y + 2))?.queue(Print(&pattern.level))?
-            .queue(MoveTo(x +  1, y + 3))?.queue(Print(&pattern.bpm))?
-            .queue(MoveTo(x + 21, y + 3))?.queue(Print(&pattern.swing))?
-            .queue(MoveTo(x +  1, y + 4))?.queue(Print(&pattern.length))?
-            .queue(MoveTo(x + 21, y + 4))?.queue(Print(&pattern.beats))?
-            .queue(MoveTo(x +  1, y + 5))?.queue(Print(&pattern.key))?
-            .queue(MoveTo(x + 21, y + 5))?.queue(Print(&pattern.scale))?
-            .queue(MoveTo(x +  1, y + 6))?.queue(Print(&pattern.chord_set))?
-            .queue(MoveTo(x + 21, y + 6))?.queue(Print(&pattern.gate_arp))?
-            .queue(MoveTo(x +  1, y + 7))?.queue(Print(&pattern.mfx_type))?
-            .queue(MoveTo(x +  1, y + 8))?.queue(Print(&pattern.alt_13_14))?
-            .queue(MoveTo(x + 21, y + 8))?.queue(Print(&pattern.alt_15_16))?
+            .queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?
+            .queue(MoveTo(x + 21, y + 2))?.queue(Print(&self.pattern.level))?
+            .queue(MoveTo(x +  1, y + 3))?.queue(Print(&self.pattern.bpm))?
+            .queue(MoveTo(x + 21, y + 3))?.queue(Print(&self.pattern.swing))?
+            .queue(MoveTo(x +  1, y + 4))?.queue(Print(&self.pattern.length))?
+            .queue(MoveTo(x + 21, y + 4))?.queue(Print(&self.pattern.beats))?
+            .queue(MoveTo(x +  1, y + 5))?.queue(Print(&self.pattern.key))?
+            .queue(MoveTo(x + 21, y + 5))?.queue(Print(&self.pattern.scale))?
+            .queue(MoveTo(x +  1, y + 6))?.queue(Print(&self.pattern.chord_set))?
+            .queue(MoveTo(x + 21, y + 6))?.queue(Print(&self.pattern.gate_arp))?
+            .queue(MoveTo(x +  1, y + 7))?.queue(Print(&self.pattern.mfx_type))?
+            .queue(MoveTo(x +  1, y + 8))?.queue(Print(&self.pattern.alt_13_14))?
+            .queue(MoveTo(x + 21, y + 8))?.queue(Print(&self.pattern.alt_15_16))?
             .queue(MoveTo(x + 1, y + 10))?
             .queue(SetAttribute(Attribute::Bold))?
             .queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
@@ -345,7 +282,7 @@ impl <'a> TUI for Pattern <'a> {
             .queue(SetForegroundColor(fg))?;
         for index in 0..17 {
             term.queue(MoveTo(x + 1, y + 12 + index))?
-                .queue(if let Some(part) = pattern.parts.get(index as usize) {
+                .queue(if let Some(part) = self.pattern.parts.get(index as usize) {
                     Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
                         index + 1,
                         part.sample,
@@ -365,32 +302,17 @@ impl <'a> TUI for Pattern <'a> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Electribe2SamplesTUI {
-    pub space: Space,
-    pub theme: Theme,
-    pub bank:  Option<Electribe2SampleBank>,
-}
-
 impl TUI for Electribe2SamplesTUI {
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
+    fn size (&self) -> Size {
+        Size::from_fixed(Point(30, 28))
     }
-
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.space = space.sub(0, 0, 30, 28);
-        Ok(self.space)
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { space, theme, .. } = *self;
-        let Theme { bg, fg, .. } = theme;
-        let Space { x, y, .. } = space;
-        Frame { theme, space, title: "Samples".into(), focused: false }.render(term)?;
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        let Space(Point(x, y), _) = space;
+        Frame { theme: THEME, title: "Samples".into(), focused: false }
+            .render(term, space)?;
         for i in 1..24+1 {
-            let text = format!("{:>3} Sample", i);
-            Label { theme, focused: false, col: x + 1, row: y + 1 + i, text }.render(term)?;
+            Label { theme: THEME, focused: false, text: format!("{:>3} Sample", i) }
+                .render(term, space)?;
         }
         Ok(())
     }
