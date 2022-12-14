@@ -10,7 +10,11 @@ pub struct Frame {
 
 impl TUI for Frame {
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme: Theme { bg, fg, hi, .. }, space: Space { x, y, w, h }, .. } = *self;
+        let Self {
+            theme: Theme { bg, fg, hi, .. },
+            space: Space(Point(x, y), Point(w, h)),
+            ..
+        } = *self;
 
         term.queue(ResetColor)?
             .queue(SetForegroundColor(bg))?

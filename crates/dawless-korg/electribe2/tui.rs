@@ -170,6 +170,10 @@ impl Electribe2PatternsTUI {
 
 impl TUI for Electribe2PatternsTUI {
 
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+    }
+
     fn layout (&mut self, space: &Space) -> Result<Space> {
         self.space = Space::new(space.x, space.y, self.max_len, self.entries.len() as u16);
         self.entries.space = Space::new(space.x + 1, space.y + 1, 0, 0);
@@ -248,6 +252,11 @@ struct PatternList<'a> {
 }
 
 impl<'a> TUI for PatternList<'a> {
+
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { theme, space, patterns, selected, offset, .. } = *self;
         let Theme { bg, fg, hi } = theme;
@@ -302,6 +311,11 @@ struct Pattern <'a> {
 }
 
 impl <'a> TUI for Pattern <'a> {
+
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+    }
+
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Self { space, theme, pattern, .. } = *self;
         let Theme { bg, fg, hi } = theme;
@@ -359,6 +373,10 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
+
+    fn offset (&mut self, dx: u16, dy: u16) {
+        self.space = self.space.offset(dx, dy);
+    }
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
         self.space = space.sub(0, 0, 30, 28);

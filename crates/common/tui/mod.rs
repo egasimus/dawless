@@ -1,11 +1,8 @@
 pub mod empty;
 pub use empty::*;
 
-pub mod space;
-pub use space::*;
-
-pub mod size;
-pub use size::*;
+pub mod layout;
+pub use layout::*;
 
 pub mod theme;
 pub use theme::*;
@@ -28,7 +25,7 @@ pub use scroll::*;
 pub mod toggle;
 pub use toggle::*;
 
-pub use std::io::{Result, Write};
+pub use std::io::{Result, Error, ErrorKind, Write};
 
 pub(crate) use crossterm::{
     QueueableCommand, ExecutableCommand,

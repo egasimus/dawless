@@ -26,10 +26,10 @@ impl TUI for Label {
         self.focused = focus;
         true
     }
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        self.col = space.x;
-        self.row = space.y;
-        Ok(Space::new(space.x, space.y, self.text.len() as u16, 1))
+    fn layout (&mut self, Space(Point(x, y),_): &Space) -> Result<Space> {
+        self.col = *x;
+        self.row = *y;
+        Ok(Space(Point(*x, *y), Point(self.text.len() as u16, 1)))
     }
     fn render (&self, term: &mut dyn Write) -> Result<()> {
         let Theme { bg, fg, hi } = self.theme;

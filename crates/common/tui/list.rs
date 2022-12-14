@@ -47,7 +47,7 @@ impl <T: Sync> TUI for List <T> {
     }
 
     fn layout (&mut self, space: &Space) -> Result<Space> {
-        let Space { x, y, w, .. } = *space;
+        let Space(Point(x, y), Point(w, _)) = *space;
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
             let len = label.len();
@@ -60,8 +60,7 @@ impl <T: Sync> TUI for List <T> {
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { theme, space, .. } = *self;
-        let Space { x, y, w, .. } = space;
+        let Self { theme, space: Space(Point(x, y), Point(w, _)), .. } = *self;
         for (index, item) in self.items.iter().enumerate() {
             let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
             let row  = y + index as u16;

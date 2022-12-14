@@ -15,13 +15,12 @@ pub(crate) fn main () -> Result<()> {
         let mut term = std::io::stdout();
         setup(&mut term)?;
         let mut app = AppTUI::new(exit_thread);
-        panic!("{:?}", &app.size());
         loop {
             if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
             let (cols, rows) = size()?;
-            let space = Space::new(0, 0, cols, rows);
-            let taken = app.layout(&space)?;
-            app.offset(space.w / 2 - taken.w / 2, space.h / 2 - taken.h / 2);
+            let (cols, rows) = app.size().clip(cols, rows)?;
+            app.layout(&Space::new(0, 0, cols, rows))?;
+            app.offset(cols, rows);
             clear(&mut term)?;
             app.render(&mut term)?;
             term.flush()?;
@@ -49,18 +48,19 @@ struct AppTUI {
 
 impl AppTUI {
     fn new (exited: Arc<AtomicBool>) -> Self {
-        let mut menu = List::<Box<dyn TUI>>::default();
+        let theme = Theme::default();
+        let mut menu = List::<Box<dyn TUI>> { theme, ..List::default() };
         menu.add("Korg Electribe",      Box::new(Electribe2TUI::new()))
             .add("Korg Triton",         Box::new(EmptyTUI {}))
             .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
             .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
             .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
-        let mut frame = Frame::default();
+        let mut frame = Frame { theme, ..Frame::default() };
         frame.title = "Devices".into();
         Self {
             exited,
             space:   Space::default(),
-            theme:   Theme::default(),
+            theme,
             focused: true,
             frame,
             menu,
@@ -93,6 +93,7 @@ impl TUI for AppTUI {
 
     fn offset (&mut self, dx: u16, dy: u16) {
         self.space = self.space.offset(dx, dy);
+        self.frame.offset(dx, dy);
         self.menu.offset(dx, dy);
         self.device_mut().offset(dx, dy);
     }

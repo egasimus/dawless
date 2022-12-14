@@ -14,9 +14,13 @@ impl TUI for Scrollbar {
     }
 
     fn render (&self, term: &mut dyn Write) -> Result<()> {
-        let Self { space, theme, length, offset, .. } = *self;
-        let Theme { fg, hi, .. } = theme;
-        let Space { x, y, h, .. } = space;
+        let Self {
+            space: Space(Point(x, y), Point(h, _)),
+            theme: Theme { fg, hi, .. },
+            length,
+            offset,
+            ..
+        } = *self;
         let h = h as usize;
         for index in 0..h {
             let scroll_offset = (offset * h) / length;
