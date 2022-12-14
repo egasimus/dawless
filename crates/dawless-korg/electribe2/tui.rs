@@ -174,12 +174,10 @@ impl TUI for Electribe2PatternsTUI {
         }
         Ok(())
     }
-
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
     }
-
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Some(bank) = &self.bank {
             if self.patterns.handle(event)? {

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::io::{Result, Write};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel, Mutex};
 use dawless_common::*;
 use dawless_korg::Electribe2TUI;
 use crossterm::{
@@ -9,75 +9,86 @@ use crossterm::{
     style::Color
 };
 
-static THEME: &'static Theme = &Theme {
+static THEME: Theme = Theme {
     bg: Color::AnsiValue(232),
     fg: Color::White,
     hi: Color::Yellow
 };
 
-static CHANNEL = channel::<Event>();
+static EXITED: AtomicBool = AtomicBool::new(false);
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
+    exited:  &EXITED,
+    focused: true,
+    menu:    List { theme: THEME, index: 0, items: vec![] }
 }));
 
 struct App {
-    exited:  Arc<AtomicBool>,
+    exited:  &'static AtomicBool,
     focused: bool,
-    frame:   Frame,
     menu:    List<Box<dyn TUI>>,
 }
 
 pub(crate) fn main () -> Result<()> {
-    let (tx, rx) = channel::<Event>();
-    let exit = Arc::new(AtomicBool::new(false));
-    let exit_thread = Arc::clone(&exit);
-    std::thread::spawn(move || {
-        let mut term = std::io::stdout();
-        setup(&mut term)?;
-        let mut app = App::new(exit_thread);
-        loop {
-            if app.exited.fetch_and(true, Ordering::Relaxed) == true { break }
-            let (screen_cols, screen_rows) = size().unwrap();
-            let size = app.size().clip(Point(screen_cols, screen_rows)).unwrap();
-            let Point(cols, rows) = size;
-            let x = (screen_cols - cols) / 2;
-            let y = (screen_rows - rows) / 2;
-            let space = Space(Point(x, y), size);
-            app.render(&mut term, &space).unwrap();
-            term.flush()?;
-            app.handle(&rx.recv().unwrap())?;
-        }
-        teardown(&mut term)
-    });
-    loop {
-        if exit.fetch_and(true, Ordering::Relaxed) == true { break }
-        if poll(std::time::Duration::from_millis(100))? {
-            if tx.send(read()?).is_err() { break }
-        }
-    }
-    Ok(())
-}
 
-impl App {
-    fn new (exited: Arc<AtomicBool>) -> Self {
-        let theme = Theme::default();
-        let mut menu = List::<Box<dyn TUI>> { theme, ..List::default() };
-        menu.add("Korg Electribe",      Box::new(Electribe2TUI::new()))
+    // Init app features
+    APP.with(|app| {
+        app.borrow_mut().menu
+            .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
             .add("Korg Triton",         Box::new(EmptyTUI {}))
             .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
             .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
             .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
-        let mut frame = Frame { theme, ..Frame::default() };
-        frame.title = "Devices".into();
-        Self {
-            exited,
-            space:   Space::default(),
-            theme,
-            focused: true,
-            frame,
-            menu,
+    });
+
+    // Set up event channel
+    let (tx, rx) = channel::<Event>();
+
+    // Spawn IO thread
+    std::thread::spawn(move || {
+        loop {
+            if EXITED.fetch_and(true, Ordering::Relaxed) == true { break }
+            if poll(std::time::Duration::from_millis(100)).is_ok() {
+                if tx.send(read().unwrap()).is_err() { break }
+            }
+        }
+    });
+
+    // Setup terminal
+    let mut term = std::io::stdout();
+    setup(&mut term)?;
+
+    // Render app and listen for updates
+    loop {
+        let mut done = false;
+        APP.with(|app| {
+            {
+                let app = app.borrow();
+                if app.exited.fetch_and(true, Ordering::Relaxed) == true {
+                    done = true;
+                    return
+                }
+                let (screen_cols, screen_rows) = size().unwrap();
+                let size = app.size().clip(Point(screen_cols, screen_rows)).unwrap();
+                let Point(cols, rows) = size;
+                let x = (screen_cols - cols) / 2;
+                let y = (screen_rows - rows) / 2;
+                let space = Space(Point(x, y), size);
+                app.render(&mut term, &space).unwrap();
+            };
+            term.flush().unwrap();
+            app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
+        });
+        if done {
+            break
         }
     }
+
+    // Clean up
+    teardown(&mut term)
+}
+
+impl App {
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
@@ -90,38 +101,23 @@ impl App {
 }
 
 impl TUI for App {
-
     fn size (&self) -> Size {
-        self.menu.size() + self.device().size()
+        self.menu.size().add_w(self.device().size())
     }
-
-    fn layout (&mut self, space: &Space) -> Result<Space> {
-        let menu = self.menu.layout(&space.add(0, 2, 1, 2))?;
-        let item = self.device_mut().layout(&menu.right(1))?;
-        self.space = menu.join(&item);
-        self.frame.space = menu.clone().add(0, -2, 1, 3);
-        Ok(self.space)
-    }
-
-    fn offset (&mut self, dx: u16, dy: u16) {
-        self.space = self.space.offset(dx, dy);
-        self.frame.offset(dx, dy);
-        self.menu.offset(dx, dy);
-        self.device_mut().offset(dx, dy);
-    }
-
-    fn render (&self, term: &mut dyn Write) -> Result<()> {
-        self.frame.render(term)?;
-        self.menu.render(term)?;
-        if let Some(device) = self.menu.get() { device.render(term)?; }
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        Frame { theme: THEME, title: "Devices".into(), ..Frame::default() }
+            .render(term, space)?;
+        self.menu
+            .render(term, space)?;
+        if let Some(device) = self.menu.get() {
+            device.render(term, space)?;
+        }
         Ok(())
     }
-
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
     }
-
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
             self.exit();
@@ -137,5 +133,4 @@ impl TUI for App {
         }
         handle_menu_focus!(event, self, self.device_mut(), self.focused)
     }
-
 }
