@@ -24,7 +24,6 @@ pub struct Electribe2TUI {
     patterns: Toggle<Label, Electribe2PatternsTUI>,
     samples:  Toggle<Label, Electribe2SamplesTUI>,
     section:  List<Electribe2TUIFeature>,
-    frame:    Frame
 }
 #[derive(Debug, Default)]
 pub enum Electribe2TUIFeature {
@@ -67,7 +66,6 @@ impl Electribe2TUI {
         );
         patterns.focus(true);
         Self {
-            frame:    Frame { title: "Electribe 2".into(), ..Frame::default() },
             focused:  false,
             section,
             patterns,
@@ -100,7 +98,8 @@ impl TUI for Electribe2TUI {
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self { focused, .. } = *self;
-        self.frame.render(term, space)?;
+        Frame { title: "Electribe 2".into(), ..Frame::default() }
+            .render(term, space)?;
         Layout::column(&[
             (1, &self.patterns),
             (1, &self.samples)

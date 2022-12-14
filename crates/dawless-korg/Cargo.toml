@@ -1,6 +1,6 @@
 [package]
 name = "dawless-korg"
-version = "1.0.0"
+version = "0.1.0"
 edition = "2021"
 description = "Support for Korg Electribe and Korg Triton Rack data."
 

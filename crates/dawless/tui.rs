@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::io::{Result, Write};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel, Mutex};
 use dawless_common::*;
-use dawless_korg::Electribe2TUI;
 use crossterm::{
     event::{poll, read, Event, KeyEvent, KeyCode},
     terminal::{size},
@@ -34,11 +33,11 @@ pub(crate) fn main () -> Result<()> {
     // Init app features
     APP.with(|app| {
         app.borrow_mut().menu
-            .add("Korg Electribe",      Box::new(Electribe2TUI::new()))
-            .add("Korg Triton",         Box::new(EmptyTUI {}))
-            .add("AKAI S3000XL",        Box::new(EmptyTUI {}))
-            .add("AKAI MPC2000",        Box::new(EmptyTUI {}))
-            .add("iConnectivity mioXL", Box::new(EmptyTUI {}));
+            .add("Korg Electribe",      Box::new(dawless_korg::Electribe2TUI::new()))
+            .add("Korg Triton",         Box::new(dawless_korg::TritonTUI::new()))
+            .add("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
+            .add("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
+            .add("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
     });
 
     // Set up event channel
@@ -62,6 +61,8 @@ pub(crate) fn main () -> Result<()> {
     loop {
         let mut done = false;
         APP.with(|app| {
+
+            // Render
             clear(&mut term).unwrap();
             {
                 let app = app.borrow();
@@ -78,7 +79,10 @@ pub(crate) fn main () -> Result<()> {
                 app.render(&mut term, &space).unwrap();
             };
             term.flush().unwrap();
+
+            // Update on input
             app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
+
         });
         if done {
             break
@@ -110,7 +114,8 @@ impl TUI for App {
         }.inc_w(2).inc_h(3)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        Frame { theme: THEME, title: "Devices".into(), ..Frame::default() }
+        let title = format!("Devices");
+        Frame { theme: THEME, title, ..Frame::default() }
             .render(term, space)?;
         if self.menu.get().is_some() {
             Layout::row(&[

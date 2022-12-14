@@ -3,6 +3,7 @@ members = [
   "crates/common",
   "crates/dawless",
   "crates/dawless-akai",
+  "crates/dawless-iconnectivity",
   "crates/dawless-korg",
   "crates/brailledump",
   "crates/hfedisk",

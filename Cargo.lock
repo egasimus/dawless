@@ -245,13 +245,14 @@ dependencies = [
  "crossterm",
  "dawless-akai",
  "dawless-common",
+ "dawless-iconnectivity",
  "dawless-korg",
  "lazy_static",
 ]
 
 [[package]]
 name = "dawless-akai"
-version = "1.0.0"
+version = "0.1.0"
 dependencies = [
  "brailledump",
  "clap",
@@ -271,8 +272,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dawless-iconnectivity"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "dawless-common",
+]
+
+[[package]]
 name = "dawless-korg"
-version = "1.0.0"
+version = "0.1.0"
 dependencies = [
  "brailledump",
  "clap",

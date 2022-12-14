@@ -1,8 +1,8 @@
 [package]
 name = "dawless-akai"
-version = "1.0.0"
+version = "0.1.0"
 edition = "2021"
-description = "Support for AKAI S3000/S2000/S900 floppy disk images."
+description = "Support for AKAI sampler floppy disk images."
 
 [lib]
 path = "akai.rs"
