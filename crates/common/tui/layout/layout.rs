@@ -37,7 +37,32 @@ impl<'a> Layout<'a> {
         }
     }
     pub fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        Ok(())
+        Ok(match self {
+            Layout::Solid(point) => {
+                unimplemented!()
+            },
+            Layout::Column(elements) => {
+                let portion = (space.1.1 / elements.len() as u16).max(1);
+                for (index, element) in elements.iter().enumerate() {
+                    element.render(term, &Space(
+                        Point(space.0.0, space.0.1 + (index as u16 + 0) * portion),
+                        Point(space.1.0, (index as u16 + 1) * portion)
+                    ))?
+                }
+            },
+            Layout::Row(elements) => {
+                let portion = (space.1.0 / elements.len() as u16).max(1);
+                for (index, element) in elements.iter().enumerate() {
+                    element.render(term, &Space(
+                        Point(space.0.0 + (index as u16 + 1) * portion, space.0.1),
+                        Point((index as u16 + 1) * portion, space.1.1)
+                    ))?
+                }
+            },
+            Layout::Grid(_) => {
+                unimplemented!()
+            }
+        })
     }
 }
 
