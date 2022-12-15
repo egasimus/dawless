@@ -23,6 +23,7 @@ pub struct Electribe2TUI {
     focused:  bool,
     patterns: Toggle<Label, Electribe2PatternsTUI>,
     samples:  Toggle<Label, Electribe2SamplesTUI>,
+    frame:    Frame,
     section:  List<Electribe2TUIFeature>,
 }
 #[derive(Debug, Default)]
@@ -57,6 +58,7 @@ struct Pattern <'a> {
 
 impl Electribe2TUI {
     pub fn new () -> Self {
+        let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
         let mut section = List::default();
         section.add("Edit pattern bank".into(), Electribe2TUIFeature::Patterns)
                .add("Edit sample bank".into(),  Electribe2TUIFeature::Samples);
@@ -73,7 +75,8 @@ impl Electribe2TUI {
             focused:  false,
             section,
             patterns,
-            samples
+            samples,
+            frame
         }
     }
     fn selected (&self) -> &dyn TUI {
@@ -98,13 +101,13 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     fn layout (&self) -> Layout {
-        Layout::Column(vec![&self.patterns, &self.samples])
-    }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let Self { focused, .. } = *self;
-        Frame { title: "Electribe 2".into(), ..Frame::default() }
-            .render(term, space)?;
-        self.layout().render(term, &space.inset(1))
+        Layout::Layers(vec![
+            Layout::Item(&self.frame),
+            Layout::Column(vec![
+                Layout::Item(&self.patterns),
+                Layout::Item(&self.samples)
+            ])
+        ])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

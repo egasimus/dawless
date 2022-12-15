@@ -19,12 +19,14 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
+    frame:   Frame { theme: THEME, title: "Default".into(), ..Frame::default() },
     menu:    List { theme: THEME, index: 0, items: vec![] }
 }));
 
 struct App {
     exited:  &'static AtomicBool,
     focused: bool,
+    frame:   Frame,
     menu:    List<Box<dyn TUI>>,
 }
 
@@ -71,12 +73,12 @@ pub(crate) fn main () -> Result<()> {
                     return
                 }
                 let (screen_cols, screen_rows) = size().unwrap();
-                let size = app.layout().min_size().clip(Point(screen_cols, screen_rows));
-                let Point(cols, rows) = size;
-                let x = (screen_cols - cols) / 2;
-                let y = (screen_rows - rows) / 2;
-                let space = Space(Point(x, y), size);
-                app.render(&mut term, &space).unwrap();
+                if let Ok(Point(cols, rows)) = app.size().clip(Point(screen_cols, screen_rows)) {
+                    let x = (screen_cols - cols) / 2;
+                    let y = (screen_rows - rows) / 2;
+                    let space = Space(Point(x, y), Point(cols, rows));
+                    app.render(&mut term, &space).unwrap();
+                }
             };
             term.flush().unwrap();
 
@@ -107,16 +109,19 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Row(vec![
-            &self.menu,
-            self.device()
+        Layout::Layers(vec![
+            Layout::Item(&self.frame),
+            Layout::Row(vec![
+                Layout::Item(&self.menu),
+                Layout::Item(self.device())
+            ])
         ])
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Space(Point(x, y), Point(w, h)) = *space;
-        let title = format!("Devices {w}x{h}+{x}+{y}");
+        let title = format!("Devices"); // {w}x{h}+{x}+{y}
         Frame { theme: THEME, title, ..Frame::default() }
-            .render(term, space)?;
+            .render(term, &Space(space.0, self.menu.size().min() + Point(2, 3)))?;
         self.layout().render(term, &space.inset(1).offset(Point(0, 1)))
     }
     fn focus (&mut self, focus: bool) -> bool {

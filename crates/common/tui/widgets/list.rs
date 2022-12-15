@@ -43,9 +43,9 @@ impl <T> List <T> {
 
 impl <T: Sync> TUI for List <T> {
     fn layout (&self) -> Layout {
-        let mut items: Vec<&dyn TUI> = vec![];
+        let mut items = vec![];
         for (label, _) in self.items.iter() {
-            items.push(label);
+            items.push(Layout::Item(label));
         }
         Layout::Column(items)
     }

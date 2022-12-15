@@ -46,13 +46,17 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 }
 
 pub trait TUI: Sync {
-    /** Return minimum and maximum sizes for this component. */
+    /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
         Layout::Solid(Point(0, 0))
     }
+    /** Return the minimum/maximum size for this component. */
+    fn size (&self) -> Size {
+        self.layout().size()
+    }
     /** Draw to the terminal. */
-    fn render (&self, _term: &mut dyn Write, _space: &Space) -> Result<()> {
-        Ok(())
+    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+        self.layout().render(term, space)
     }
     /** Handle input events. */
     fn handle (&mut self, _event: &Event) -> Result<bool> {

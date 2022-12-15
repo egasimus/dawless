@@ -3,8 +3,8 @@ use super::{*, super::*};
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Size {
     pub min_w: Option<Unit>,
-    pub max_w: Option<Unit>,
     pub min_h: Option<Unit>,
+    pub max_w: Option<Unit>,
     pub max_h: Option<Unit>
 }
 
@@ -41,7 +41,6 @@ impl Size {
     }
     pub fn clip (self, Point(mut w, mut h): Point) -> Result<Point> {
         if let Some(min_w) = self.min_w && w < min_w {
-            println!("MIN {min_w} W {w}");
             return Err(Error::new(ErrorKind::Other, "too narrow"))
         }
         if let Some(min_h) = self.min_h && h < min_h {
@@ -55,9 +54,15 @@ impl Size {
         }
         Ok(Point(w, h))
     }
+    pub fn min (self) -> Point {
+        Point(
+            match self.min_w { Some(w) => w, None => Unit::MAX },
+            match self.min_h { Some(h) => h, None => Unit::MAX },
+        )
+    }
 }
 
-fn add_min (a: Option<Unit>, b: Option<Unit>) -> Option<Unit> {
+pub fn add_min (a: Option<Unit>, b: Option<Unit>) -> Option<Unit> {
     match (a, b) {
         (Some(a), Some(b)) => Some(a + b),
         (Some(a), None)    => Some(a),
@@ -66,7 +71,7 @@ fn add_min (a: Option<Unit>, b: Option<Unit>) -> Option<Unit> {
     }
 }
 
-fn add_max (a: Option<Unit>, b: Option<Unit>) -> Option<Unit> {
+pub fn add_max (a: Option<Unit>, b: Option<Unit>) -> Option<Unit> {
     match (a, b) {
         (Some(a), Some(b)) => Some(a + b),
         (Some(_), None)    => None,
