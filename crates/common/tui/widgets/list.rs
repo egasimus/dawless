@@ -4,12 +4,20 @@ use super::{*, super::{*, layout::*}};
 pub struct List <T> {
     pub theme: Theme,
     pub index: usize,
-    pub items: Vec<(String, T)>
+    pub items: Vec<(Label, T)>
 }
 
 impl <T> List <T> {
-    pub fn add (&mut self, label: &str, value: T) -> &mut Self {
-        self.items.push((label.into(), value));
+    pub fn add (&mut self, text: &str, value: T) -> &mut Self {
+        let label = Label { theme: self.theme, focused: false, text: text.into() };
+        self.items.push((label, value));
+        self
+    }
+    pub fn replace (&mut self, items: Vec<(String, T)>) -> &mut Self {
+        self.items = vec![];
+        for (text, value) in items {
+            self.add(text.as_str(), value);
+        }
         self
     }
     pub fn get (&self) -> Option<&T> {
@@ -24,7 +32,7 @@ impl <T> List <T> {
     pub fn width (&self) -> u16 {
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
-            let len = label.len();
+            let len = label.text.len();
             if len > max_len {
                 max_len = len
             }
@@ -34,33 +42,19 @@ impl <T> List <T> {
 }
 
 impl <T: Sync> TUI for List <T> {
-
-    fn size (&self) -> Size {
-        let width = self.width() as u16;
-        let len = self.len() as u16;
-        Size {
-            min_w: Some(width),
-            max_w: Some(width),
-            min_h: Some(len),
-            max_h: Some(len),
+    fn layout (&self) -> Layout {
+        let mut items: Vec<&dyn TUI> = vec![];
+        for (label, _) in self.items.iter() {
+            items.push(label);
         }
+        Layout::Column(items)
     }
-
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let Space(Point(x, y), Point(w, _)) = * space;
-        let width = self.width();
-        for (index, item) in self.items.iter().enumerate() {
-            let text = format!(" {:<0width$} ▶ ", item.0, width = (w - 3) as usize);
-            Label { theme: self.theme, focused: index == self.index, text }
-                .render(term, &Space::new(x, y + index as u16, width, 1))?;
-        }
-        Ok(())
+        self.layout().render(term, space)
     }
-
     fn handle (&mut self, event: &Event) -> Result<bool> {
         handle_list_select(event, self.items.len(), &mut self.index)
     }
-
 }
 
 pub fn handle_list_select (event: &Event, length: usize, index: &mut usize) -> Result<bool> {

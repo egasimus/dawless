@@ -5,11 +5,9 @@ pub type FileListItem = (String, bool);
 pub struct FileList<'a> (pub &'a List<FileListItem>);
 
 impl<'a> TUI for FileList<'a> {
-
-    fn size (&self) -> Size {
-        self.0.size()
+    fn layout (&self) -> Layout {
+        self.0.layout()
     }
-
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;
         let Space(Point(x, y), Point(w, ..)) = *space;
@@ -26,5 +24,4 @@ impl<'a> TUI for FileList<'a> {
         }
         Ok(())
     }
-
 }

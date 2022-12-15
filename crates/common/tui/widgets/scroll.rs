@@ -7,11 +7,9 @@ pub struct Scrollbar {
 }
 
 impl TUI for Scrollbar {
-
-    fn size (&self) -> Size {
-        Size { min_w: Some(1), max_w: Some(1), min_h: Some(3), ..Size::default() }
+    fn layout (&self) -> Layout {
+        Layout::Solid(Point(1, 1))
     }
-
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self {
             theme: Theme { fg, hi, .. },

@@ -40,7 +40,7 @@ impl Space {
     }
     pub fn inset (&self, d: Unit) -> Self {
         let Self(Point(x, y), Point(w, h)) = *self;
-        Self(Point(x + d, y + d), Point(w - 2*d, h - 2*d))
+        Self(Point(x + d, y + d), Point(w.saturating_sub(2*d), h.saturating_sub(2*d)))
     }
     pub fn inset_w (&self, d: Unit) -> Self {
         let Self(Point(x, y), Point(w, h)) = *self;

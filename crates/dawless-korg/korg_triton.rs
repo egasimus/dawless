@@ -26,8 +26,8 @@ impl TritonTUI {
     }
 }
 impl TUI for TritonTUI {
-    fn size (&self) -> Size {
-        self.menu.size()
+    fn layout (&self) -> Layout {
+        self.menu.layout()
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Frame { title: "Triton".into(), ..Frame::default() }

@@ -94,8 +94,8 @@ impl MPC2000TUI {
     }
 }
 impl TUI for MPC2000TUI {
-    fn size (&self) -> Size {
-        self.menu.size()
+    fn layout (&self) -> Layout {
+        self.menu.layout()
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Frame { title: "MPC2000".into(), ..Frame::default() }
@@ -115,8 +115,8 @@ impl S3000XLTUI {
     }
 }
 impl TUI for S3000XLTUI {
-    fn size (&self) -> Size {
-        self.menu.size()
+    fn layout (&self) -> Layout {
+        self.menu.layout()
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Frame { title: "S3000XL".into(), ..Frame::default() }

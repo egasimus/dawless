@@ -71,7 +71,7 @@ pub(crate) fn main () -> Result<()> {
                     return
                 }
                 let (screen_cols, screen_rows) = size().unwrap();
-                let size = app.size().clip(Point(screen_cols, screen_rows)).unwrap();
+                let size = app.layout().min_size().clip(Point(screen_cols, screen_rows));
                 let Point(cols, rows) = size;
                 let x = (screen_cols - cols) / 2;
                 let y = (screen_rows - rows) / 2;
@@ -106,27 +106,18 @@ impl App {
 }
 
 impl TUI for App {
-    fn size (&self) -> Size {
-        if self.menu.get().is_some() {
-            self.menu.size().add_w(self.device().size())
-        } else {
-            self.menu.size()
-        }.inc_w(2).inc_h(3)
+    fn layout (&self) -> Layout {
+        Layout::Row(vec![
+            &self.menu,
+            self.device()
+        ])
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let title = format!("Devices");
+        let Space(Point(x, y), Point(w, h)) = *space;
+        let title = format!("Devices {w}x{h}+{x}+{y}");
         Frame { theme: THEME, title, ..Frame::default() }
             .render(term, space)?;
-        if self.menu.get().is_some() {
-            Layout::row(&[
-                (1, &self.menu),
-                (1, self.device())
-            ]).render(term, &space.inset(1).offset(Point(0, 1)))
-        } else {
-            Layout::row(&[
-                (1, &self.menu),
-            ]).render(term, &space.inset(1).offset(Point(0, 1)))
-        }
+        self.layout().render(term, &space.inset(1).offset(Point(0, 1)))
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

@@ -50,6 +50,10 @@ struct PatternList<'a> {
     pub selected: usize,
     pub offset:   usize
 }
+#[derive(Debug)]
+struct Pattern <'a> {
+    pattern: &'a Electribe2Pattern
+}
 
 impl Electribe2TUI {
     pub fn new () -> Self {
@@ -93,17 +97,14 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
-    fn size (&self) -> Size {
-        self.patterns.size().add_h(self.samples.size()).inc_w(2).inc_h(3)
+    fn layout (&self) -> Layout {
+        Layout::Column(vec![&self.patterns, &self.samples])
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self { focused, .. } = *self;
         Frame { title: "Electribe 2".into(), ..Frame::default() }
             .render(term, space)?;
-        Layout::column(&[
-            (1, &self.patterns),
-            (1, &self.samples)
-        ]).render(term, &space.inset(1))
+        self.layout().render(term, &space.inset(1))
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
@@ -136,18 +137,18 @@ impl Electribe2PatternsTUI {
         let patterns: Vec<(String, String)> = self.bank.as_ref().unwrap().patterns.iter()
             .map(|pattern|(pattern.name.clone(), pattern.name.clone()))
             .collect();
-        self.patterns.items = patterns;
+        self.patterns.replace(patterns);
     }
     fn update_listing (&mut self) {
         let (entries, max_len) = list_current_directory();
-        self.entries.items = entries;
+        self.entries.replace(entries);
         self.max_len = u16::max(max_len as u16, 20);
     }
 }
 
 impl TUI for Electribe2PatternsTUI {
-    fn size (&self) -> Size {
-        self.entries.size()
+    fn layout (&self) -> Layout {
+        self.entries.layout()
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self { focused, offset, .. } = *self;
@@ -247,10 +248,6 @@ impl<'a> TUI for PatternList<'a> {
     }
 }
 
-struct Pattern <'a> {
-    pattern: &'a Electribe2Pattern
-}
-
 impl <'a> TUI for Pattern <'a> {
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Theme { bg, fg, hi } = THEME;
@@ -301,8 +298,8 @@ impl <'a> TUI for Pattern <'a> {
 }
 
 impl TUI for Electribe2SamplesTUI {
-    fn size (&self) -> Size {
-        Size::from_fixed(Point(30, 28))
+    fn layout (&self) -> Layout {
+        Layout::Solid(Point(30, 28))
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Space(Point(x, y), _) = space;

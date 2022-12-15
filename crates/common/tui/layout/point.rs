@@ -7,6 +7,9 @@ impl Point {
     pub fn null () -> Self {
         Self(0, 0)
     }
+    pub fn clip (self, other: Self) -> Self {
+        Self(self.0.min(other.0), self.1.min(other.1))
+    }
 }
 
 impl From<(u16, u16)> for Point {

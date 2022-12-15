@@ -47,8 +47,8 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 
 pub trait TUI: Sync {
     /** Return minimum and maximum sizes for this component. */
-    fn size (&self) -> Size {
-        Size::default()
+    fn layout (&self) -> Layout {
+        Layout::Solid(Point(0, 0))
     }
     /** Draw to the terminal. */
     fn render (&self, _term: &mut dyn Write, _space: &Space) -> Result<()> {

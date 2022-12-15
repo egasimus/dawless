@@ -45,7 +45,7 @@ fn main () -> Result<()> {
         APP.with(|app| {
             let app = app.borrow();
             let (screen_cols, screen_rows) = size().unwrap();
-            let size = app.size().clip(Point(screen_cols, screen_rows)).unwrap();
+            let size = app.layout().min_size().clip(Point(screen_cols, screen_rows)).unwrap();
             let Point(cols, rows) = size;
             let x = (screen_cols - cols) / 2;
             let y = (screen_rows - rows) / 2;
@@ -63,40 +63,34 @@ fn main () -> Result<()> {
 }
 
 impl TUI for App {
-    fn size (&self) -> Size {
-        self.component1.size().add_w(self.component2.size()).inc_w(3)
+    fn layout (&self) -> Layout {
+        Layout::Column(vec![&self.component1, &self.component2])
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let theme = Theme { bg: Color::AnsiValue(234), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("A {w}x{h}+{x}+{y}").into();
         Frame { theme, title, focused: false }.render(term, space)?;
-        Layout::column(&[
-            (1, &self.component1),
-            (1, &self.component2)
-        ]).render(term, &space.inset(1).offset(Point(0, 1)))
+        self.layout().render(term, &space.inset(1).offset(Point(0, 1)))
     }
 }
 
 impl TUI for Component {
-    fn size (&self) -> Size {
-        self.subcomponent1.size().add_h(self.subcomponent2.size()).inc_h(3)
+    fn layout (&self) -> Layout {
+        Layout::Row(vec![&self.subcomponent1, &self.subcomponent2])
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let theme = Theme { bg: Color::AnsiValue(235), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("B {w}x{h}+{x}+{y}").into();
         Frame { theme, title,  focused: false }.render(term, space)?;
-        Layout::row(&[
-            (1, &self.subcomponent1),
-            (1, &self.subcomponent2),
-        ]).render(term, &space.inset(1).offset(Point(0, 1)))
+        self.layout().render(term, &space.inset(1).offset(Point(0, 1)))
     }
 }
 
 impl TUI for Subcomponent {
-    fn size (&self) -> Size {
-        Size::from_fixed(Point(20, 8))
+    fn layout (&self) -> Layout {
+        Layout::Solid(Point(0, 0))
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let theme = Theme { bg: Color::AnsiValue(236), ..THEME };

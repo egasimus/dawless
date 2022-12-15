@@ -12,8 +12,8 @@ impl MioXLTUI {
     }
 }
 impl TUI for MioXLTUI {
-    fn size (&self) -> Size {
-        self.menu.size()
+    fn layout (&self) -> Layout {
+        self.menu.layout()
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Frame { title: "MioXL".into(), ..Frame::default() }
