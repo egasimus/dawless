@@ -9,7 +9,32 @@ pub enum Layout<'a> {
 
 impl<'a> Layout<'a> {
     pub fn min_size (&self) -> Point {
-        Point(0, 0)
+        match self {
+            Layout::Solid(point) => *point,
+            Layout::Column(elements) => {
+                let mut min_w = 0u16;
+                let mut min_h = 0u16;
+                for element in elements.iter() {
+                    let Point(w, h) = element.layout().min_size();
+                    min_w = min_w.max(w);
+                    min_h += h;
+                }
+                Point(min_w, min_h)
+            },
+            Layout::Row(elements) => {
+                let mut min_w = 0u16;
+                let mut min_h = 0u16;
+                for element in elements.iter() {
+                    let Point(w, h) = element.layout().min_size();
+                    min_w += w;
+                    min_h = min_h.max(h);
+                }
+                Point(min_w, min_h)
+            },
+            Layout::Grid(_) => {
+                unimplemented!()
+            }
+        }
     }
     pub fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Ok(())
