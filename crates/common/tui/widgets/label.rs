@@ -15,7 +15,7 @@ impl Label {
 
 impl TUI for Label {
     fn layout (&self) -> Layout {
-        Layout::Solid(Point(self.text.len() as u16, 1))
+        Layout::Item(Sizing::Fixed(Point(self.text.len() as u16, 1)), &EmptyTUI {})
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

@@ -3,7 +3,7 @@ use super::{*, super::{*, layout::*}};
 pub struct EmptyTUI {}
 
 impl TUI for EmptyTUI {
-    fn render (&self, _term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, _term: &mut dyn Write, _space: &Space) -> Result<()> {
         Ok(())
     }
 }

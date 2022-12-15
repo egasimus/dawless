@@ -8,7 +8,7 @@ pub struct Scrollbar {
 
 impl TUI for Scrollbar {
     fn layout (&self) -> Layout {
-        Layout::Solid(Point(1, 1))
+        Layout::Item(Sizing::Fixed(Point(1, 1)), &EmptyTUI {})
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Self {

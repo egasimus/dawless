@@ -45,9 +45,9 @@ impl <T: Sync> TUI for List <T> {
     fn layout (&self) -> Layout {
         let mut items = vec![];
         for (label, _) in self.items.iter() {
-            items.push(Layout::Item(label));
+            items.push(Layout::Item(Sizing::Auto, label));
         }
-        Layout::Column(items)
+        Layout::Column(Sizing::Auto, items)
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         self.layout().render(term, space)

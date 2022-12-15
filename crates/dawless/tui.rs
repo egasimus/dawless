@@ -108,22 +108,17 @@ impl App {
 }
 
 impl TUI for App {
+
     fn layout (&self) -> Layout {
-        Layout::Layers(vec![
-            Layout::Item(&self.frame),
-            Layout::Row(vec![
-                Layout::Item(&self.menu),
-                Layout::Item(self.device())
+        Layout::Layers(Sizing::Min, vec![
+            Layout::Item(Sizing::Auto, &self.frame),
+            Layout::Row(Sizing::Auto, vec![
+                Layout::Item(Sizing::Auto, &self.menu),
+                Layout::Item(Sizing::Max, self.device())
             ])
         ])
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let Space(Point(x, y), Point(w, h)) = *space;
-        let title = format!("Devices"); // {w}x{h}+{x}+{y}
-        Frame { theme: THEME, title, ..Frame::default() }
-            .render(term, &Space(space.0, self.menu.size().min() + Point(2, 3)))?;
-        self.layout().render(term, &space.inset(1).offset(Point(0, 1)))
-    }
+
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true

@@ -101,11 +101,11 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     fn layout (&self) -> Layout {
-        Layout::Layers(vec![
-            Layout::Item(&self.frame),
-            Layout::Column(vec![
-                Layout::Item(&self.patterns),
-                Layout::Item(&self.samples)
+        Layout::Layers(Sizing::Auto, vec![
+            Layout::Item(Sizing::Auto, &self.frame),
+            Layout::Column(Sizing::Auto, vec![
+                Layout::Item(Sizing::Auto, &self.patterns),
+                Layout::Item(Sizing::Auto, &self.samples)
             ])
         ])
     }
@@ -302,7 +302,7 @@ impl <'a> TUI for Pattern <'a> {
 
 impl TUI for Electribe2SamplesTUI {
     fn layout (&self) -> Layout {
-        Layout::Solid(Point(30, 28))
+        Layout::Item(Sizing::Fixed(Point(30, 28)), &EmptyTUI {})
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Space(Point(x, y), _) = space;

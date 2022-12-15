@@ -1,31 +1,35 @@
 use super::{*, super::*};
 
 pub enum Layout<'a> {
-    Solid(Point),
-    Stretch(Size),
-    Layers(Vec<Layout<'a>>),
-    Column(Vec<Layout<'a>>),
-    Row(Vec<Layout<'a>>),
-    Grid(Vec<(Layout<'a>, Space)>),
-    Item(&'a dyn TUI)
+    Empty(Sizing),
+    Item(Sizing, &'a dyn TUI),
+    Layers(Sizing, Vec<Layout<'a>>),
+    Column(Sizing, Vec<Layout<'a>>),
+    Row(Sizing, Vec<Layout<'a>>),
+    Grid(Sizing, Vec<(Layout<'a>, Space)>),
+}
+
+pub enum Sizing {
+    Auto,
+    Min,
+    Max,
+    Fixed(Point),
+    Stretch(Size)
 }
 
 impl<'a> TUI for Layout<'a> {
     fn layout (&self) -> Layout {
-        Layout::Stretch(self.size())
+        Layout::Item(Sizing::Stretch(self.size()), &EmptyTUI {})
     }
     fn size (&self) -> Size {
         match self {
-            Layout::Item(element) => {
+            Layout::Empty(sizing) => {
+                Size::default()
+            },
+            Layout::Item(sizing, element) => {
                 element.size()
             },
-            Layout::Solid(point) => {
-                Size::from_fixed(*point)
-            },
-            Layout::Stretch(size) => {
-                *size
-            },
-            Layout::Layers(layers) => {
+            Layout::Layers(sizing, layers) => {
                 let mut min_w = None;
                 let mut min_h = None;
                 let mut max_w = None;
@@ -39,45 +43,44 @@ impl<'a> TUI for Layout<'a> {
                 }
                 Size { min_w, max_w, min_h, max_h }
             },
-            Layout::Column(elements) => {
+            Layout::Column(sizing, elements) => {
                 let mut min_w = 0u16;
                 let mut min_h = 0u16;
                 for element in elements.iter() {
                     let Point(w, h) = element.layout().size().min();
                     min_w = min_w.max(w);
-                    min_h += h;
+                    min_h = min_h.saturating_add(h);
                 }
                 Size::from_fixed(Point(min_w, min_h))
             },
-            Layout::Row(elements) => {
+            Layout::Row(sizing, elements) => {
                 let mut min_w = 0u16;
                 let mut min_h = 0u16;
                 for element in elements.iter() {
                     let Point(w, h) = element.layout().size().min();
-                    min_w += w;
+                    min_w = min_w.saturating_add(w);
                     min_h = min_h.max(h);
                 }
                 Size::from_fixed(Point(min_w, min_h))
             },
-            Layout::Grid(_) => {
+            Layout::Grid(sizing, _) => {
                 unimplemented!()
             }
         }
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Ok(match self {
-            Layout::Solid(_) => {
-                ()
+            Layout::Empty(sizing) => {
             },
-            Layout::Stretch(_) => {
-                ()
+            Layout::Item(sizing, element) => {
+                element.render(term, space)?
             },
-            Layout::Layers(layers) => {
+            Layout::Layers(sizing, layers) => {
                 for layer in layers.iter() {
                     layer.render(term, space)?;
                 }
             },
-            Layout::Column(elements) => {
+            Layout::Column(sizing, elements) => {
                 let portion = (space.1.1 / elements.len() as u16).max(1);
                 for (index, element) in elements.iter().enumerate() {
                     element.render(term, &Space(
@@ -86,7 +89,7 @@ impl<'a> TUI for Layout<'a> {
                     ))?
                 }
             },
-            Layout::Row(elements) => {
+            Layout::Row(sizing, elements) => {
                 let portion = (space.1.0 / elements.len() as u16).max(1);
                 for (index, element) in elements.iter().enumerate() {
                     element.render(term, &Space(
@@ -95,12 +98,9 @@ impl<'a> TUI for Layout<'a> {
                     ))?
                 }
             },
-            Layout::Grid(_) => {
+            Layout::Grid(sizing, _) => {
                 unimplemented!()
             },
-            Layout::Item(element) => {
-                element.render(term, space)?
-            }
         })
     }
 }
@@ -148,3 +148,30 @@ impl<'a> TUI for Layout<'a> {
         //Ok(())
     //}
 //}
+
+/// TODO
+macro_rules! layout {
+    ($self:ident, $($layout:tt)+) => {
+        fn layout (&$self) -> Layout {
+            layout!(@ $($layout)+)
+        }
+    };
+    (@ Item($($layout:tt)+)) => {
+        Layout::Item(layout!(@ $($layout)+))
+    };
+    (@ Min($($layout:tt)+)) => {
+        Layout::Min(layout!(@ $($layout)+))
+    };
+    (@ Max($expr:expr)) => {
+        Layout::Max($expr)
+    };
+    (@ Layers($($op:ident ($($layout:tt)+)),+)) => {
+        Layout::Layers(vec![$($op($($layout)+)),+])
+    };
+    (@ Row($($expr:expr)+)) => {
+        Layout::Row(vec![$($expr),+])
+    };
+    (@ $expr:expr) => {
+        $expr
+    };
+}

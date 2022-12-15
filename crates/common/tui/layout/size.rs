@@ -56,8 +56,14 @@ impl Size {
     }
     pub fn min (self) -> Point {
         Point(
-            match self.min_w { Some(w) => w, None => Unit::MAX },
-            match self.min_h { Some(h) => h, None => Unit::MAX },
+            match self.min_w { Some(w) => w, None => 0 },
+            match self.min_h { Some(h) => h, None => 0 },
+        )
+    }
+    pub fn max (self) -> Point {
+        Point(
+            match self.max_w { Some(w) => w, None => Unit::MAX },
+            match self.max_h { Some(h) => h, None => Unit::MAX },
         )
     }
 }

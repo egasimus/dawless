@@ -48,7 +48,7 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 pub trait TUI: Sync {
     /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
-        Layout::Solid(Point(0, 0))
+        Layout::Empty(Sizing::Fixed(Point(0, 0)))
     }
     /** Return the minimum/maximum size for this component. */
     fn size (&self) -> Size {
