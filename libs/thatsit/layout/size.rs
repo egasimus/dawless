@@ -89,10 +89,12 @@ impl Size {
     pub fn clip (self, Point(mut w, mut h): Point) -> Result<Point> {
         let Size { min: Point(min_w, min_h), max: Point(max_w, max_h) } = self;
         if w < min_w {
-            return Err(Error::new(ErrorKind::Other, "too narrow"))
+            let message = format!("too small: {}x{} < {}x{}", w, h, min_w, min_h);
+            return Err(Error::new(ErrorKind::Other, message))
         }
         if h < min_h {
-            return Err(Error::new(ErrorKind::Other, "too short"))
+            let message = format!("too small: {}x{} < {}x{}", w, h, min_w, min_h);
+            return Err(Error::new(ErrorKind::Other, message))
         }
         if w > max_w {
             w = max_w

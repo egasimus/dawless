@@ -78,7 +78,9 @@ pub(crate) fn main () -> Result<()> {
                     let x = (screen_cols - cols) / 2;
                     let y = (screen_rows - rows) / 2;
                     let space = Space(Point(x, y), Point(cols, rows));
-                    app.render(&mut term, &space).unwrap();
+                    if let Err(e) = app.render(&mut term, &space) {
+                        write_error(&mut term, format!("{e}").as_str()).unwrap();
+                    }
                 }
             };
             term.flush().unwrap();
@@ -93,7 +95,9 @@ pub(crate) fn main () -> Result<()> {
     }
 
     // Clean up
-    teardown(&mut term)
+    teardown(&mut term)?;
+
+    Ok(())
 }
 
 impl App {

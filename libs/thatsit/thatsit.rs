@@ -44,6 +44,14 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
     Ok(())
 }
 
+pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
+    clear(term)?;
+    term.queue(SetForegroundColor(Color::Red))?
+        .queue(MoveTo(0, 0))?
+        .queue(Print(msg))?;
+    Ok(())
+}
+
 pub trait TUI: Sync {
     /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
