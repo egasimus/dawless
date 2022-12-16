@@ -55,7 +55,7 @@ pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
 pub trait TUI: Sync {
     /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
-        Layout::Blank(Sizing::Fixed(Point(0, 0)))
+        Layout::None
     }
     /** Return the minimum/maximum size for this component. */
     fn size (&self) -> Size {

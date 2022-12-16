@@ -65,8 +65,10 @@ pub(crate) fn main () -> Result<()> {
         let mut done = false;
         APP.with(|app| {
 
-            // Render
+            // Clear screen
             clear(&mut term).unwrap();
+
+            // Render to output buffer
             {
                 let app = app.borrow();
                 if app.exited.fetch_and(true, Ordering::Relaxed) == true {
@@ -74,18 +76,25 @@ pub(crate) fn main () -> Result<()> {
                     return
                 }
                 let (screen_cols, screen_rows) = size().unwrap();
-                if let Ok(Point(cols, rows)) = app.size().clip(Point(screen_cols, screen_rows)) {
-                    let x = (screen_cols - cols) / 2;
-                    let y = (screen_rows - rows) / 2;
-                    let space = Space(Point(x, y), Point(cols, rows));
-                    if let Err(e) = app.render(&mut term, &space) {
+                match app.size().clip(Point(screen_cols, screen_rows)) {
+                    Ok(Point(cols, rows)) => {
+                        let x = (screen_cols - cols) / 2;
+                        let y = (screen_rows - rows) / 2;
+                        let space = Space(Point(x, y), Point(cols, rows));
+                        if let Err(e) = app.render(&mut term, &space) {
+                            write_error(&mut term, format!("{e} {:?}", space).as_str()).unwrap();
+                        }
+                    },
+                    Err(e) => {
                         write_error(&mut term, format!("{e}").as_str()).unwrap();
                     }
                 }
             };
+
+            // Flush output buffer
             term.flush().unwrap();
 
-            // Update on input
+            // Wait for input and update
             app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
 
         });
@@ -117,14 +126,21 @@ impl TUI for App {
         Layout::Layers(Sizing::Auto, vec![
             Layout::Item(Sizing::Auto, &self.frame),
             Layout::Row(Sizing::Auto, vec![
-                Layout::Item(Sizing::Min, &self.menu),
-                if self.open {
-                    Layout::Item(Sizing::Auto, self.device())
-                } else {
-                    Layout::None
-                }
+                Layout::Item(Sizing::Auto, &self.menu),
+                Layout::None
             ])
         ])
+        //Layout::Layers(Sizing::Auto, vec![
+            //Layout::Item(Sizing::Auto, &self.frame),
+            //Layout::Row(Sizing::Auto, vec![
+                //Layout::Item(Sizing::Min, &self.menu),
+                //if self.open {
+                    //Layout::Item(Sizing::Auto, self.device())
+                //} else {
+                    //Layout::None
+                //}
+            //])
+        //])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
