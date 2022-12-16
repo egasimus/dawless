@@ -1,6 +1,7 @@
 use crate::*;
 
 opt_mod::module_flat!(space);
+opt_mod::module_flat!(display);
 
 pub type Unit = u16;
 
@@ -59,13 +60,6 @@ impl Point {
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
     pub fn clip (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.1))
-    }
-}
-
-impl std::fmt::Display for Size {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let Size { min: Point(min_w, min_h), max: Point(max_w, max_h) } = self;
-        write!(f, "[between {min_w:?}x{min_h:?} and {max_w:?}x{max_h:?}]")
     }
 }
 
@@ -235,20 +229,6 @@ impl<'a> TUI for Layout<'a> {
             Self::Grid(_sizing, _) => {
                 unimplemented!()
             },
-        })
-    }
-}
-
-impl<'a> std::fmt::Debug for Layout<'a> {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Layout::{}", match self {
-            Self::None        => "None",
-            Self::Blank(_)    => "Blank",
-            Self::Item(_,_)   => "Item",
-            Self::Layers(_,_) => "Layers",
-            Self::Column(_,_) => "Column",
-            Self::Row(_,_)    => "Row",
-            Self::Grid(_,_)   => "Grid"
         })
     }
 }
