@@ -1,7 +1,17 @@
 use super::{*, super::*};
 
+#[derive(Copy, Clone, Debug, Default)]
+pub enum Sizing {
+    #[default] Auto,
+    Min,
+    Max,
+    Fixed(Point),
+    Stretch(Size)
+}
+
 pub enum Layout<'a> {
-    Empty(Sizing),
+    None,
+    Blank(Sizing),
     Item(Sizing, &'a dyn TUI),
     Layers(Sizing, Vec<Layout<'a>>),
     Column(Sizing, Vec<Layout<'a>>),
@@ -9,98 +19,225 @@ pub enum Layout<'a> {
     Grid(Sizing, Vec<(Layout<'a>, Space)>),
 }
 
-pub enum Sizing {
-    Auto,
-    Min,
-    Max,
-    Fixed(Point),
-    Stretch(Size)
+impl<'a> std::fmt::Debug for Layout<'a> {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Layout::{}", match self {
+            Self::None        => "None",
+            Self::Blank(_)    => "Blank",
+            Self::Item(_,_)   => "Item",
+            Self::Layers(_,_) => "Layers",
+            Self::Column(_,_) => "Column",
+            Self::Row(_,_)    => "Row",
+            Self::Grid(_,_)   => "Grid"
+        })
+    }
 }
 
 impl<'a> TUI for Layout<'a> {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Stretch(self.size()), &EmptyTUI {})
+        Self::Item(Sizing::Auto, &EmptyTUI {})
     }
     fn size (&self) -> Size {
         match self {
-            Layout::Empty(_sizing) => {
-                Size::default()
+            Self::None => {
+                Size::MIN
+            }
+            Self::Blank(sizing) => {
+                Size::ANY.resolve(sizing)
             },
-            Layout::Item(_sizing, element) => {
-                element.size()
+            Self::Item(sizing, element) => {
+                element.size().resolve(sizing)
             },
-            Layout::Layers(_sizing, layers) => {
-                let mut min_w = None;
-                let mut min_h = None;
-                let mut max_w = None;
-                let mut max_h = None;
+            Self::Layers(sizing, layers) => {
+                let mut size = Size::MIN;
                 for layer in layers.iter() {
-                    let size = layer.size();
-                    min_w = add_min(min_w, size.min_w);
-                    min_h = add_min(min_h, size.min_h);
-                    max_w = add_max(max_w, size.max_w);
-                    max_h = add_max(max_h, size.max_h);
+                    size = size.stretch(layer.size())
                 }
-                Size { min_w, max_w, min_h, max_h }
+                size.resolve(sizing)
             },
-            Layout::Column(_sizing, elements) => {
-                let mut min_w = 0u16;
-                let mut min_h = 0u16;
+            Self::Column(sizing, elements) => {
+                let mut size = Size::MIN;
                 for element in elements.iter() {
-                    let Point(w, h) = element.layout().size().min();
-                    min_w = min_w.max(w);
-                    min_h = min_h.saturating_add(h);
+                    size = size.add_to_column(element.size());
                 }
-                Size::from_fixed(Point(min_w, min_h))
+                size.resolve(sizing)
             },
-            Layout::Row(_sizing, elements) => {
-                let mut min_w = 0u16;
-                let mut min_h = 0u16;
+            Self::Row(sizing, elements) => {
+                let mut size = Size::default();
                 for element in elements.iter() {
-                    let Point(w, h) = element.layout().size().min();
-                    min_w = min_w.saturating_add(w);
-                    min_h = min_h.max(h);
+                    size = size.add_to_row(element.size());
                 }
-                Size::from_fixed(Point(min_w, min_h))
+                size.resolve(sizing)
             },
-            Layout::Grid(_sizing, _) => {
+            Self::Grid(_sizing, _) => {
                 unimplemented!()
             }
         }
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         Ok(match self {
-            Layout::Empty(_sizing) => {
+            Self::None => {
             },
-            Layout::Item(_sizing, element) => {
+            Self::Blank(_sizing) => {
+            },
+            Self::Item(_sizing, element) => {
                 element.render(term, space)?
             },
-            Layout::Layers(_sizing, layers) => {
+            Self::Layers(_sizing, layers) => {
                 for layer in layers.iter() {
                     layer.render(term, space)?;
                 }
             },
-            Layout::Column(_sizing, elements) => {
-                let portion = (space.1.1 / elements.len() as u16).max(1);
+            Self::Column(_sizing, elements) => {
+                let Point(x, y) = space.0;
+                let Point(w, h) = self.size().clip(space.1)?;
+                let portion = (h / elements.len() as u16).max(1);
                 for (index, element) in elements.iter().enumerate() {
                     element.render(term, &Space(
-                        Point(space.0.0, space.0.1 + (index as u16 + 0) * portion),
-                        Point(space.1.0, portion)
+                        Point(x, y + (index as u16 + 0) * portion),
+                        Point(w, portion)
                     ))?
                 }
             },
-            Layout::Row(_sizing, elements) => {
-                let portion = (space.1.0 / elements.len() as u16).max(1);
+            Self::Row(_sizing, elements) => {
+                let Point(x, y) = space.0;
+                let Point(w, h) = self.size().clip(space.1)?;
+                let portion = (w / elements.len() as u16).max(1);
                 for (index, element) in elements.iter().enumerate() {
                     element.render(term, &Space(
-                        Point(space.0.0 + (index as u16 + 0) * portion, space.0.1),
-                        Point(portion, space.1.1)
+                        Point(x + (index as u16 + 0) * portion, y),
+                        Point(portion, h)
                     ))?
                 }
             },
-            Layout::Grid(_sizing, _) => {
+            Self::Grid(_sizing, _) => {
                 unimplemented!()
             },
         })
     }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_layout () {
+        let item = Layout::None;
+
+        // Minimum size of empty item is global minimum size
+        assert_eq!(
+            Layout::Item(Sizing::Min, &item).size(),
+            Size::MIN
+        );
+        // Auto size of empty item is any size
+        assert_eq!(
+            Layout::Item(Sizing::Auto, &item).size(),
+            Size::ANY
+        );
+        // Maximum size of empty item is global maximum size
+        assert_eq!(
+            Layout::Item(Sizing::Max, &item).size(),
+            Size::MAX
+        );
+
+        // Min size of column containing 1 1x1 item is 1x1
+        assert_eq!(
+            Layout::Column(Sizing::Min, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 1))
+        );
+        // Auto size of column containing 1 1x1 item is 1x1
+        assert_eq!(
+            Layout::Column(Sizing::Auto, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 1))
+        );
+        // Max size of column containing 1 1x1 item is 1x1
+        assert_eq!(
+            Layout::Column(Sizing::Max, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 1))
+        );
+
+        assert_eq!(
+            Layout::Column(Sizing::Min, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item),
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 2))
+        );
+        assert_eq!(
+            Layout::Column(Sizing::Auto, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item),
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 2))
+        );
+        assert_eq!(
+            Layout::Column(Sizing::Max, vec![
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item),
+                Layout::Item(Sizing::Fixed(Point(1, 1)), &item)
+            ]).size(),
+            Size::fixed(Point(1, 2))
+        );
+
+        assert_eq!(
+            Layout::Column(Sizing::Auto, vec![
+                Layout::Item(Sizing::Auto, &item),
+                Layout::Item(Sizing::Auto, &item),
+                Layout::Item(Sizing::Auto, &item),
+                Layout::Item(Sizing::Auto, &item),
+                Layout::Item(Sizing::Auto, &item),
+            ]).size(),
+            Size::ANY
+        );
+
+        assert_eq!(
+            Layout::Layers(Sizing::Auto, vec![
+                Layout::Item(Sizing::Auto, &item),
+                Layout::Column(Sizing::Auto, vec![
+                    Layout::Item(Sizing::Fixed(Point(10, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(12, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(14, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(13, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(11, 1)), &item)
+                ]),
+            ]).size(),
+            Size { min: Point(14,5), max: Point::MAX }
+        );
+
+        assert_eq!(
+            Layout::Layers(Sizing::Auto, vec![
+                Layout::Column(Sizing::Auto, vec![
+                    Layout::Item(Sizing::Fixed(Point(10, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(12, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(14, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(13, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(11, 1)), &item)
+                ]),
+            ]).size().clip(Point(100, 100)).unwrap(),
+            Point(14,5)
+        );
+
+        assert_eq!(
+            Layout::Layers(Sizing::Auto, vec![
+                Layout::Item(Sizing::Min, &item),
+                Layout::Column(Sizing::Auto, vec![
+                    Layout::Item(Sizing::Fixed(Point(10, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(12, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(14, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(13, 1)), &item),
+                    Layout::Item(Sizing::Fixed(Point(11, 1)), &item)
+                ]),
+            ]).size().clip(Point(100, 100)).unwrap(),
+            Point(14,5)
+        )
+
+    }
+
 }

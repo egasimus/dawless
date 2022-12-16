@@ -1,10 +1,9 @@
 use std::cell::RefCell;
-use dawless_common::*;
-use crossterm::{
+use thatsit::{*, crossterm::{
     event::{poll, read, Event, KeyEvent, KeyCode},
     terminal::{size},
     style::{Color}
-};
+}};
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     frame: bg(234),
@@ -103,7 +102,7 @@ impl TUI for Component {
 
 impl TUI for Subcomponent {
     fn layout (&self) -> Layout {
-        Layout::Empty(Sizing::Fixed(Point(30, 20)))
+        Layout::Blank(Sizing::Fixed(Point(30, 20)))
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let theme = Theme { bg: Color::AnsiValue(236), ..THEME };

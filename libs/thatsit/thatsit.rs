@@ -47,7 +47,7 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 pub trait TUI: Sync {
     /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
-        Layout::Empty(Sizing::Fixed(Point(0, 0)))
+        Layout::Blank(Sizing::Fixed(Point(0, 0)))
     }
     /** Return the minimum/maximum size for this component. */
     fn size (&self) -> Size {
@@ -64,5 +64,11 @@ pub trait TUI: Sync {
     /** Handle focus changes. */
     fn focus (&mut self, _focus: bool) -> bool {
         false
+    }
+}
+
+impl std::fmt::Debug for dyn TUI {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "TUI {}", self.size())
     }
 }

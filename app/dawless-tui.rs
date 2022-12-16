@@ -19,7 +19,8 @@ thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
     frame:   Frame { theme: THEME, title: "Default".into(), ..Frame::default() },
-    menu:    List { theme: THEME, index: 0, items: vec![] }
+    menu:    List { theme: THEME, index: 0, items: vec![] },
+    open:    false
 }));
 
 struct App {
@@ -27,6 +28,7 @@ struct App {
     focused: bool,
     frame:   Frame,
     menu:    List<Box<dyn TUI>>,
+    open:    bool
 }
 
 pub(crate) fn main () -> Result<()> {
@@ -111,8 +113,12 @@ impl TUI for App {
         Layout::Layers(Sizing::Auto, vec![
             Layout::Item(Sizing::Auto, &self.frame),
             Layout::Row(Sizing::Auto, vec![
-                Layout::Item(Sizing::Auto, &self.menu),
-                Layout::Item(Sizing::Auto, self.device())
+                Layout::Item(Sizing::Min, &self.menu),
+                if self.open {
+                    Layout::Item(Sizing::Auto, self.device())
+                } else {
+                    Layout::None
+                }
             ])
         ])
     }
