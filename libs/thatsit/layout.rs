@@ -1,13 +1,33 @@
 use crate::*;
 
-opt_mod::module_flat!(space);
-opt_mod::module_flat!(display);
-
 pub type Unit = u16;
 
 /// A pair of coordinates
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Point(pub Unit, pub Unit);
+pub struct Point (
+    /// Column
+    pub Unit,
+    /// Row
+    pub Unit
+);
+
+/// A pair of dimensions
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
+pub struct Area (
+    /// Width
+    pub Unit,
+    /// Height
+    pub Unit
+);
+
+/// (minimum, maximum) area
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
+pub struct AreaRange (
+    /// Minimum
+    pub Area,
+    /// Maximum
+    pub Area
+);
 
 /// A range of sizes
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
@@ -19,26 +39,20 @@ pub struct Size {
 }
 
 /// How flexible is the sizing of a layout item
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub enum Sizing {
-    #[default] Auto,
-    Min,
-    Max,
-    Fixed(Point),
-    Stretch(Size)
+    Grow(Unit),
+    Fixed(Area)
 }
 
 /// A layout item
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub enum Layout<'a> {
-    #[default]
-    None,
-    Blank(Sizing),
     Item(Sizing, &'a dyn TUI),
     Layers(Sizing, Vec<Layout<'a>>),
     Column(Sizing, Vec<Layout<'a>>),
     Row(Sizing, Vec<Layout<'a>>),
-    Grid(Sizing, Vec<(Layout<'a>, Space)>),
+    Grid(Sizing, Vec<(Layout<'a>, Area)>),
 }
 
 impl std::ops::Add for Point {
@@ -63,174 +77,149 @@ impl Point {
     }
 }
 
-impl Size {
+impl Area {
+    pub const MIN: Self = Self(0, 0);
+    pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
 
-    /// Any size between minimum and maximum
-    pub const ANY: Self = Self { min: Point::MIN, max: Point::MAX };
-
-    /// The minimum size
-    pub const MIN: Self = Self { min: Point::MIN, max: Point::MIN };
-
-    /// The maximum size
-    pub const MAX: Self = Self { min: Point::MAX, max: Point::MAX };
-
-    /// Create a fixed size
-    pub fn fixed (size: Point) -> Self {
-        Self { min: size, max: size }
+    /// Increase own size to fit other
+    pub fn stretch (self, other: Self) -> Self {
+        Self(self.0.max(other.0), self.1.max(other.1))
     }
 
-    /// Increment size to fit other
-    pub fn stretch (self, other: Size) -> Self {
-        let Size { min: Point(old_min_x, old_min_y), max: Point(old_max_x, old_max_y) } = self;
-        let Size { min: Point(new_min_x, new_min_y), max: Point(new_max_x, new_max_y) } = other;
-        Self {
-            min: Point(old_min_x.max(new_min_x), old_min_y.max(new_min_y)),
-            max: Point(old_max_x.max(new_max_x), old_max_y.max(new_max_y))
-        }
-    }
-    /// Stretch width and append height
-    pub fn add_to_column (self, other: Size) -> Self {
-        let Size { min: Point(old_min_x, old_min_y), max: Point(old_max_x, old_max_y) } = self;
-        let Size { min: Point(new_min_x, new_min_y), max: Point(new_max_x, new_max_y) } = other;
-        Self {
-            min: Point(old_min_x.max(new_min_x), old_min_y.saturating_add(new_min_y)),
-            max: Point(old_max_x.max(new_max_x), old_max_y.saturating_add(new_max_y))
-        }
-    }
-    /// Stretch height and append width
-    pub fn add_to_row (self, other: Size) -> Self {
-        let Size { min: Point(old_min_x, old_min_y), max: Point(old_max_x, old_max_y) } = self;
-        let Size { min: Point(new_min_x, new_min_y), max: Point(new_max_x, new_max_y) } = other;
-        Self {
-            min: Point(old_min_x.saturating_add(new_min_x), old_min_y.max(new_min_y)),
-            max: Point(old_max_x.saturating_add(new_max_x), old_max_y.max(new_max_y))
-        }
+    /// Grow width, stretch height
+    pub fn expand_row (self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0), self.1.max(other.1))
     }
 
-    pub fn clip (self, max_size: Point) -> Result<Point> {
-        let Point(mut w, mut h) = max_size;
-        let Size { min: Point(min_w, min_h), max: Point(max_w, max_h) } = self;
-        println!("clip: {w}x{h}, min: {min_w}x{min_h}, max: {max_w}x{max_h}");
-        if w < min_w {
-            let message = format!("{}x{} < {}x{}", w, h, min_w, min_h);
+    /// Stretch width, grow height
+    pub fn expand_column (self, other: Self) -> Self {
+        Self(self.0.max(other.0), self.1.saturating_add(other.1))
+    }
+
+    /// Return an error if the other area is too small
+    pub fn fits (self, other: Self) -> Result<()> {
+        if self.0 > other.0 {
+            let message = format!("need {} columns", self.0);
             return Err(Error::new(ErrorKind::Other, message))
         }
-        if h < min_h {
-            let message = format!("{}x{} < {}x{}", w, h, min_w, min_h);
+        if self.1 > other.1 {
+            let message = format!("need {} rows", self.0);
             return Err(Error::new(ErrorKind::Other, message))
         }
-        if w > max_w {
-            w = max_w
-        }
-        if h > max_h {
-            h = max_h
-        }
-        Ok(Point(w, h))
+        Ok(())
     }
 
-    pub fn resolve (self, sizing: &Sizing) -> Self {
-        match sizing {
-            Sizing::Auto          => self,
-            Sizing::Min           => Size::fixed(self.min),
-            Sizing::Max           => Size::fixed(self.max),
-            Sizing::Fixed(point)  => Size::fixed(*point),
-            Sizing::Stretch(size) => *size
-        }
+    pub fn width (self) -> Unit {
+        self.0
     }
-
+    pub fn height (self) -> Unit {
+        self.1
+    }
 }
 
 impl<'a> TUI for Layout<'a> {
-    fn layout (&self) -> Layout {
-        Self::Item(Sizing::Auto, &EmptyTUI {})
-    }
-    fn size (&self) -> Size {
+    fn min_size (&self) -> Area {
         match self {
-            Self::None => {
-                Size::ANY
-            }
-            Self::Blank(sizing) => {
-                Size::ANY.resolve(sizing)
+            Self::Item(_, item) => item.min_size(),
+            Self::Layers(_, layers) => {
+                let mut size = Area::MIN;
+                for layer in layers.iter() { size = size.stretch(layer.min_size()); }
+                size
             },
-            Self::Item(sizing, element) => {
-                element.size().resolve(sizing)
+            Self::Row(_, items) => {
+                let mut size = Area::MIN;
+                for item in items.iter() { size = size.expand_row(item.min_size()); }
+                size
             },
-            Self::Layers(sizing, layers) => {
-                let mut size = Size::MIN;
-                for layer in layers.iter() {
-                    match layer {
-                        Self::None => {},
-                        _ => size = size.stretch(layer.size())
-                    }
-                }
-                size.resolve(sizing)
+            Self::Column(_, items) => {
+                let mut size = Area::MIN;
+                for item in items.iter() { size = size.expand_column(item.min_size()); }
+                size
             },
-            Self::Column(sizing, elements) => {
-                let mut size = Size::MIN;
-                for element in elements.iter() {
-                    match element {
-                        Self::None => {},
-                        _ => size = size.add_to_column(element.size())
-                    };
-                }
-                size.resolve(sizing)
-            },
-            Self::Row(sizing, elements) => {
-                let mut size = Size::default();
-                for element in elements.iter() {
-                    match element {
-                        Self::None => {},
-                        _ => size = size.add_to_row(element.size())
-                    };
-                }
-                size.resolve(sizing)
-            },
-            Self::Grid(_sizing, _) => {
-                unimplemented!()
-            }
+            Self::Grid(_, _) => unimplemented!()
         }
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn max_size (&self) -> Area {
+        match self {
+            Self::Item(_, item) => item.max_size(),
+            Self::Layers(_, layers) => {
+                let mut size = Area::MIN;
+                for layer in layers.iter() { size = size.stretch(layer.max_size()); }
+                size
+            },
+            Self::Row(_, items) => {
+                let mut size = Area::MIN;
+                for item in items.iter() { size = size.expand_row(item.max_size()); }
+                size
+            },
+            Self::Column(_, items) => {
+                let mut size = Area::MIN;
+                for item in items.iter() { size = size.expand_column(item.max_size()); }
+                size
+            },
+            Self::Grid(_, _) => unimplemented!()
+        }
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         Ok(match self {
             Self::None => {
             },
             Self::Blank(_) => {
             },
             Self::Item(_sizing, element) => {
-                element.render(term, space)?
+                element.render(term, area)?
             },
-            Self::Layers(_sizing, layers) => {
+            Self::Layers(_, layers) => {
                 for layer in layers.iter() {
-                    layer.render(term, space)?;
+                    layer.render(term, area)?;
                 }
             },
-            Self::Column(_sizing, elements) => {
-                let Point(x, y) = space.0;
-                let Point(w, h) = self.size().clip(space.1)?;
-                let portion = (h / elements.len() as u16).max(1);
-                for (index, element) in elements.iter().enumerate() {
-                    element.render(term, &Space(
-                        Point(x, y + (index as u16 + 0) * portion),
-                        Point(w, portion)
-                    ))?
-                }
+            Self::Column(_, elements) => {
+                let sizes = flex(space.1.0, *elements, Area::height)
+                unimplemented!()
             },
-            Self::Row(_sizing, elements) => {
-                let Point(x, y) = space.0;
-                let Point(w, h) = self.size().clip(space.1)?;
-                let portion = (w / elements.len() as u16).max(1);
-                for (index, element) in elements.iter().enumerate() {
-                    element.render(term, &Space(
-                        Point(x + (index as u16 + 0) * portion, y),
-                        Point(portion, h)
-                    ))?
-                }
+            Self::Row(_, elements) => {
+                let sizes = flex(space.1.0, *elements, Area::width)
+                unimplemented!()
             },
             Self::Grid(_sizing, _) => {
                 unimplemented!()
             },
         })
     }
+}
+
+/// Distribute space between widgets
+pub fn flex <'a, F: Fn(Area)->Unit> (
+    mut remaining: Unit, sizings: Vec<Sizing>, axis: F
+) -> Result<Vec<Unit>> {
+    let mut denominator = 0;
+    for sizing in sizings {
+        match sizing {
+            Sizing::Fixed(area) => {
+                let size = axis(area);
+                if size > remaining {
+                    return Err(Error::new(ErrorKind::Other, "not enough space"))
+                }
+                remaining = remaining - size
+            },
+            Sizing::Grow(proportion) => {
+                denominator += proportion
+            }
+        }
+    }
+    let sizes = vec![];
+    for sizing in sizings {
+        match sizing {
+            Sizing::Fixed(area) => {
+                sizes.push(axis(area))
+            },
+            Sizing::Grow(proportion) => {
+                sizes.push(remaining * proportion / denominator)
+            }
+        }
+    }
+    Ok(sizes)
 }
 
 #[cfg(test)]
@@ -240,6 +229,34 @@ mod test {
 
     const ITEM: &'static Layout = &Layout::None;
     const SCREEN: Point = Point(100, 100);
+
+    #[test]
+    fn test_min_size () {
+        let layout = Layout::None;
+        assert_eq!(get_min_size(layout), Point(0, 0));
+
+        let layout = Layout::Item(Sizing::Auto, ITEM);
+        assert_eq!(get_min_size(layout), Point(0, 0));
+
+        let layout = Layout::Item(Sizing::Fixed(Point(10, 20)), ITEM);
+        assert_eq!(get_min_size(layout), Point(10, 20));
+
+        let layout = Layout::Column(Sizing::Auto, vec![
+            Layout::Item(Sizing::Fixed(Point(10, 20)), ITEM),
+            Layout::Item(Sizing::Fixed(Point(20, 10)), ITEM)
+        ]);
+        assert_eq!(get_min_size(layout), Point(20, 30));
+
+        let layout = Layout::Row(Sizing::Auto, vec![
+            Layout::Item(Sizing::Fixed(Point(10, 20)), ITEM),
+            Layout::Item(Sizing::Fixed(Point(20, 10)), ITEM)
+        ]);
+        assert_eq!(get_min_size(layout), Point(30, 20));
+    }
+
+    #[test]
+    fn test_flex () {
+    }
 
     #[test]
     fn test_layout () {

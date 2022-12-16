@@ -8,9 +8,15 @@ pub struct Scrollbar {
 
 impl TUI for Scrollbar {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Point(1, 1)), &EmptyTUI {})
+        Layout::Item(Sizing::Fixed(Area(1, 1)), &Blank {})
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn min_size (&self) -> Area {
+        Area(1, 3)
+    }
+    fn max_size (&self) -> Area {
+        Area(1, Unit::MAX)
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self {
             theme: Theme { fg, hi, .. },
             length,

@@ -49,7 +49,13 @@ impl <T: Sync> TUI for List <T> {
         }
         Layout::Column(Sizing::Auto, items)
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn min_size (&self) -> Area {
+        Area(self.width(), 3)
+    }
+    fn max_size (&self) -> Area {
+        Area(self.width(), self.len() as u16)
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.layout().render(term, space)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

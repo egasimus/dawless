@@ -15,13 +15,13 @@ impl Label {
 
 impl TUI for Label {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Point(self.text.len() as u16, 1)), &EmptyTUI {})
+        Layout::Item(Sizing::Fixed(Point(self.text.len() as u16, 1)), &Blank {})
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Theme { bg, fg, hi } = self.theme;
         let Space(Point(x, y), _) = *space;
         term.queue(SetBackgroundColor(bg))?

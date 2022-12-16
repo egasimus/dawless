@@ -104,11 +104,11 @@ impl TUI for Subcomponent {
     fn layout (&self) -> Layout {
         Layout::Blank(Sizing::Fixed(Point(30, 20)))
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let theme = Theme { bg: Color::AnsiValue(236), ..THEME };
         let Space(Point(x, y), Point(w, h)) = *space;
         let title = format!("C {w}x{h}+{x}+{y}").into();
-        Frame { theme, title, focused: false }.render(term, space)
+        Frame { theme, title, focused: false }.render(term, area)
     }
 }
 

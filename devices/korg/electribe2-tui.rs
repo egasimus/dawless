@@ -154,7 +154,7 @@ impl TUI for Electribe2PatternsTUI {
     fn layout (&self) -> Layout {
         self.entries.layout()
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, offset, .. } = *self;
         let Space(Point(x, y), Point(w, _)) = *space;
         if let Some(bank) = &self.bank {
@@ -303,7 +303,7 @@ impl <'a> TUI for Pattern <'a> {
 
 impl TUI for Electribe2SamplesTUI {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Point(30, 28)), &EmptyTUI {})
+        Layout::Item(Sizing::Fixed(Point(30, 28)), &Blank {})
     }
     fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
         let Space(Point(x, y), _) = space;

@@ -19,7 +19,7 @@ impl<'a> TUI for FileList<'a> {
     fn layout (&self) -> Layout {
         self.0.layout()
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;
         let Space(Point(x, y), Point(w, ..)) = *space;
         for (index, (_, (path, is_dir))) in self.0.items.iter().enumerate() {

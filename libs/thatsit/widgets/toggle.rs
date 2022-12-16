@@ -2,7 +2,6 @@ use crate::{*, layout::*};
 
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
-    pub space:  Space,
     pub theme:  Theme,
     pub toggle: bool,
     pub closed: T,
@@ -12,7 +11,6 @@ pub struct Toggle<T: TUI, U: TUI> {
 impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
-            space:   Space::default(),
             theme:  Theme::default(),
             toggle: false,
             closed,
@@ -36,11 +34,11 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.focus(focus)
         }
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         if self.toggle {
-            self.open.render(term, space)
+            self.open.render(term, area)
         } else {
-            self.closed.render(term, space)
+            self.closed.render(term, area)
         }
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

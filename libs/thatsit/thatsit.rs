@@ -1,6 +1,8 @@
 opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(layout);
 opt_mod::module_flat!(themes);
+opt_mod::module_flat!(display);
+opt_mod::module_flat!(default);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 
@@ -55,15 +57,19 @@ pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
 pub trait TUI: Sync {
     /** Return the layout of the children of this component. */
     fn layout (&self) -> Layout {
-        Layout::None
+        Layout::default()
     }
-    /** Return the minimum/maximum size for this component. */
-    fn size (&self) -> Size {
-        self.layout().size()
+    /** Return the minimum size for this component. */
+    fn min_size (&self) -> Area {
+        self.layout().min_size()
+    }
+    /** Return the minimum size for this component. */
+    fn max_size (&self) -> Area {
+        self.layout().max_size()
     }
     /** Draw to the terminal. */
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        self.layout().render(term, space)
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.layout().render(term, area)
     }
     /** Handle input events. */
     fn handle (&mut self, _event: &Event) -> Result<bool> {
@@ -72,11 +78,5 @@ pub trait TUI: Sync {
     /** Handle focus changes. */
     fn focus (&mut self, _focus: bool) -> bool {
         false
-    }
-}
-
-impl std::fmt::Debug for dyn TUI {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "TUI {}", self.size())
     }
 }

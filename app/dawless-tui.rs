@@ -123,24 +123,17 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::Auto, vec![
-            Layout::Item(Sizing::Auto, &self.frame),
-            Layout::Row(Sizing::Auto, vec![
-                Layout::Item(Sizing::Auto, &self.menu),
-                Layout::None
+        Layout::Layers(Sizing::Min, vec![
+            Layout::Item(Sizing::Pad(1), &self.frame),
+            Layout::Row(Sizing::Min, vec![
+                Layout::Item(Sizing::Min, &self.menu),
+                if self.open {
+                    Layout::Item(Sizing::Grow(1), self.device())
+                } else {
+                    Layout::None
+                }
             ])
         ])
-        //Layout::Layers(Sizing::Auto, vec![
-            //Layout::Item(Sizing::Auto, &self.frame),
-            //Layout::Row(Sizing::Auto, vec![
-                //Layout::Item(Sizing::Min, &self.menu),
-                //if self.open {
-                    //Layout::Item(Sizing::Auto, self.device())
-                //} else {
-                    //Layout::None
-                //}
-            //])
-        //])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

@@ -8,7 +8,7 @@ pub struct Frame {
 }
 
 impl TUI for Frame {
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { theme: Theme { bg, fg, hi, .. }, .. } = *self;
         let Space(Point(x, y), Point(w, h)) = *space;
 
