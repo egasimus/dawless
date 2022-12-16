@@ -1,0 +1,18 @@
+[package]
+name = "thatsit-fs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "thatsit-fs.rs"
+
+[[example]]
+name = "thatsit-fs-example"
+path = "examples/fs.rs"
+
+[dependencies]
+crossterm = "0.25"
+pathdiff  = "0.2"
+thatsit   = { path = "../thatsit" }
+
+[features]

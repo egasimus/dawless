@@ -1,11 +1,18 @@
 [workspace]
 members = [
-  "crates/common",
-  "crates/dawless",
-  "crates/dawless-akai",
-  "crates/dawless-iconnectivity",
-  "crates/dawless-korg",
-  "crates/brailledump",
-  "crates/hfedisk",
-  "crates/laterna",
+  # UI framework
+  "libs/thatsit",
+  "libs/thatsit-fs",
+
+  # Data formats
+  "libs/opt-mod",
+  "libs/brailledump",
+  "libs/hfedisk",
+  "libs/laterna",
+
+  # App modules
+  "app",
+  "devices/akai",
+  "devices/iconnectivity",
+  "devices/korg",
 ]
