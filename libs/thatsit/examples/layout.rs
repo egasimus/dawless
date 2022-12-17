@@ -58,13 +58,18 @@ fn main () -> Result<()> {
     loop {
         APP.with(|app| {
             let app = app.borrow();
-            let (screen_cols, screen_rows) = size().unwrap();
-            let size = app.layout().size().clip(Point(screen_cols, screen_rows)).unwrap();
-            let Point(cols, rows) = size;
-            let x = (screen_cols - cols) / 2;
-            let y = (screen_rows - rows) / 2;
-            let space = Space(Point(x, y), size);
-            app.render(&mut term, &space).unwrap();
+            let layout = app.layout();
+            let min_size = layout.min_size();
+            let screen_size: Size = size().unwrap().into();
+            if let Err(e) = min_size.fits_in(screen_size) {
+                write_error(&mut term, format!("{e}").as_str()).unwrap();
+            } else {
+                let max_size = layout.max_size();
+                let size = screen_size.crop_to(max_size);
+                let x = (screen_size.0 - size.0) / 2;
+                let y = (screen_size.0 - size.0) / 2;
+                app.render(&mut term, Area(Point(x, y), size)).unwrap();
+            }
         });
         term.flush()?;
         if poll(std::time::Duration::from_millis(100))? {
@@ -78,11 +83,11 @@ fn main () -> Result<()> {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::Auto, vec![
-            Layout::Item(Sizing::Auto, &self.frame),
-            Layout::Column(Sizing::Auto, vec![
-                Layout::Item(Sizing::Auto, &self.component1),
-                Layout::Item(Sizing::Auto, &self.component2)
+        Layout::Layers(Sizing::AUTO, vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Column(Sizing::AUTO, vec![
+                Layout::Item(Sizing::AUTO, &self.component1),
+                Layout::Item(Sizing::AUTO, &self.component2)
             ])
         ])
     }
@@ -90,11 +95,11 @@ impl TUI for App {
 
 impl TUI for Component {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::Auto, vec![
-            Layout::Item(Sizing::Auto, &self.frame),
-            Layout::Column(Sizing::Auto, vec![
-                Layout::Item(Sizing::Auto, &self.subcomponent1),
-                Layout::Item(Sizing::Auto, &self.subcomponent2)
+        Layout::Layers(Sizing::AUTO, vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Column(Sizing::AUTO, vec![
+                Layout::Item(Sizing::AUTO, &self.subcomponent1),
+                Layout::Item(Sizing::AUTO, &self.subcomponent2)
             ])
         ])
     }
@@ -102,13 +107,7 @@ impl TUI for Component {
 
 impl TUI for Subcomponent {
     fn layout (&self) -> Layout {
-        Layout::Blank(Sizing::Fixed(Point(30, 20)))
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let theme = Theme { bg: Color::AnsiValue(236), ..THEME };
-        let Space(Point(x, y), Point(w, h)) = *space;
-        let title = format!("C {w}x{h}+{x}+{y}").into();
-        Frame { theme, title, focused: false }.render(term, area)
+        Layout::Item(Sizing::AUTO, &self.frame)
     }
 }
 

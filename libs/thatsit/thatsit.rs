@@ -60,11 +60,11 @@ pub trait TUI: Sync {
         Layout::default()
     }
     /** Return the minimum size for this component. */
-    fn min_size (&self) -> Area {
+    fn min_size (&self) -> Size {
         self.layout().min_size()
     }
     /** Return the minimum size for this component. */
-    fn max_size (&self) -> Area {
+    fn max_size (&self) -> Size {
         self.layout().max_size()
     }
     /** Draw to the terminal. */

@@ -16,10 +16,5 @@ impl TUI for MPC2000TUI {
     fn layout (&self) -> Layout {
         self.menu.layout()
     }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Frame { title: "MPC2000".into(), ..Frame::default() }
-            .render(term, space)?;
-        self.menu.render(term, &space.inset(1))
-    }
 }
 

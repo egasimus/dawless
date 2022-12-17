@@ -38,7 +38,7 @@ impl std::ops::Add for Point {
     }
 }
 
-impl From<(Unit, Unit)> for Point {
+impl From<(u16, u16)> for Point {
     fn from ((a, b): (u16, u16)) -> Self {
         Self(a, b)
     }
@@ -85,7 +85,6 @@ impl Size {
         Ok(())
     }
 
-    /// Limit the size to the other size
     pub fn crop_to (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.0))
     }
@@ -111,10 +110,6 @@ impl Area {
     pub fn height (self) -> Unit {
         self.1.height()
     }
-}
-
-impl Sizing {
-    pub const AUTO: Self = Self::Grow(1);
 }
 
 impl<'a> Layout<'a> {

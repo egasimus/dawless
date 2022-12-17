@@ -8,34 +8,32 @@ pub struct Frame {
 }
 
 impl TUI for Frame {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Self { theme: Theme { bg, fg, hi, .. }, .. } = *self;
-        let Space(Point(x, y), Point(w, h)) = *space;
-
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
+        let Self { theme: Theme { bg, fg, hi, .. }, title, focused } = self;
         term.queue(ResetColor)?
-            .queue(SetForegroundColor(bg))?
+            .queue(SetForegroundColor(*bg))?
             .queue(MoveTo(x, y))?
             .queue(Print("▄".repeat(w as usize)))?
             .queue(ResetColor)?
-            .queue(SetBackgroundColor(bg))?;
+            .queue(SetBackgroundColor(*bg))?;
 
         let background = " ".repeat(w as usize);
         for row in y+1..y+h {
             term.queue(MoveTo(x, row))?.queue(Print(&background))?;
         }
 
-        term.queue(SetBackgroundColor(if self.focused { hi } else { bg }))?
-            .queue(SetForegroundColor(if self.focused { bg } else { fg }))?
+        term.queue(SetBackgroundColor(if *focused { *hi } else { *bg }))?
+            .queue(SetForegroundColor(if *focused { *bg } else { *fg }))?
             .queue(MoveTo(x, y))?
             .queue(Print(" "))?
             .queue(MoveTo(x+1, y))?
             .queue(SetAttribute(Attribute::Bold))?
             .queue(SetAttribute(Attribute::Underlined))?
-            .queue(Print(&self.title))?
+            .queue(Print(&title))?
             .queue(SetAttribute(Attribute::Reset))?
-            .queue(MoveTo(x+1+self.title.len() as u16, y))?
-            .queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?
+            .queue(MoveTo(x+1+title.len() as u16, y))?
+            .queue(SetBackgroundColor(*bg))?
+            .queue(SetForegroundColor(*fg))?
             .queue(Print(" "))?;
 
         Ok(())

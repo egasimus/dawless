@@ -20,6 +20,6 @@ impl Default for Sizing {
 
 impl<'a> Default for Layout<'a> {
     fn default () -> Self {
-        Self::Item(Sizing::Fixed(Area::MIN), &Blank {})
+        Self::Item(Sizing::Fixed(Size::MIN), &Blank {})
     }
 }

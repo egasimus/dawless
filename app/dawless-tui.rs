@@ -123,15 +123,11 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::Min, vec![
-            Layout::Item(Sizing::Pad(1), &self.frame),
-            Layout::Row(Sizing::Min, vec![
-                Layout::Item(Sizing::Min, &self.menu),
-                if self.open {
-                    Layout::Item(Sizing::Grow(1), self.device())
-                } else {
-                    Layout::None
-                }
+        Layout::Layers(Sizing::AUTO, vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Row(Sizing::AUTO, vec![
+                Layout::Item(Sizing::AUTO, &self.menu),
+                Layout::Item(Sizing::AUTO, if self.open { self.device() } else { &Blank {} })
             ])
         ])
     }

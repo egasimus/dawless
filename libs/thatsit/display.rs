@@ -20,17 +20,10 @@ impl Display for Point {
     }
 }
 
-impl Display for Area {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let Area(w, h) = self;
-        write!(f, "{w}x{h}")
-    }
-}
-
 impl Display for Size {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let Size { min: Point(min_w, min_h), max: Point(max_w, max_h) } = self;
-        write!(f, "[between {min_w:?}x{min_h:?} and {max_w:?}x{max_h:?}]")
+        let Size(w, h) = self;
+        write!(f, "{w}x{h}")
     }
 }
 

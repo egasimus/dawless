@@ -16,9 +16,4 @@ impl TUI for S3000XLTUI {
     fn layout (&self) -> Layout {
         self.menu.layout()
     }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Frame { title: "S3000XL".into(), ..Frame::default() }
-            .render(term, space)?;
-        self.menu.render(term, &space.inset(1))
-    }
 }

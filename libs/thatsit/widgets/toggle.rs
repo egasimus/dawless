@@ -34,11 +34,11 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.focus(focus)
         }
     }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         if self.toggle {
-            self.open.render(term, area)
+            self.open.render(term, rect)
         } else {
-            self.closed.render(term, area)
+            self.closed.render(term, rect)
         }
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

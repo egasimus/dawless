@@ -3,13 +3,13 @@ use super::super::{*, layout::*};
 pub struct Blank {}
 
 impl TUI for Blank {
-    fn min_size (&self) -> Area {
-        Area::MIN
+    fn min_size (&self) -> Size {
+        Size::MIN
     }
-    fn max_size (&self) -> Area {
-        Area::MAX
+    fn max_size (&self) -> Size {
+        Size::MAX
     }
-    fn render (&self, _term: &mut dyn Write, _area: Area) -> Result<()> {
+    fn render (&self, _: &mut dyn Write, _: Area) -> Result<()> {
         Ok(())
     }
 }
