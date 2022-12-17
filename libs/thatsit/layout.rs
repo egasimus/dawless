@@ -48,6 +48,8 @@ impl Point {
     pub const NUL: Self = Self(0, 0);
     pub const MIN: Self = Self(Unit::MIN, Unit::MIN);
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
+    #[inline] pub fn x (self) -> Unit { self.0 }
+    #[inline] pub fn y (self) -> Unit { self.1 }
     pub fn clip (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.1))
     }
@@ -56,6 +58,8 @@ impl Point {
 impl Size {
     pub const MIN: Self = Self(0, 0);
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
+    #[inline] pub fn width  (self) -> Unit { self.0 }
+    #[inline] pub fn height (self) -> Unit { self.1 }
 
     /// Increase own size to fit other
     pub fn stretch (self, other: Self) -> Self {
@@ -89,13 +93,6 @@ impl Size {
     pub fn crop_to (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.0))
     }
-
-    pub fn width (self) -> Unit {
-        self.0
-    }
-    pub fn height (self) -> Unit {
-        self.1
-    }
 }
 
 impl From<(Unit, Unit)> for Size {
@@ -105,12 +102,10 @@ impl From<(Unit, Unit)> for Size {
 }
 
 impl Area {
-    pub fn width (self) -> Unit {
-        self.1.width()
-    }
-    pub fn height (self) -> Unit {
-        self.1.height()
-    }
+    #[inline] pub fn x (self) -> Unit { self.0.x() }
+    #[inline] pub fn y (self) -> Unit { self.0.y() }
+    #[inline] pub fn width (self) -> Unit { self.1.width() }
+    #[inline] pub fn height (self) -> Unit { self.1.height() }
 }
 
 impl Sizing {
@@ -183,12 +178,22 @@ impl<'a> TUI for Layout<'a> {
                 }
             },
             Self::Column(_, elements) => {
-                let sizes = flex(rect.height(), elements, Size::height);
-                unimplemented!()
+                let sizes = flex(rect.height(), elements, Size::height)?;
+                let mut y = rect.y();
+                for (index, element) in elements.iter().enumerate() {
+                    let h = sizes[index];
+                    element.render(term, Area(Point(rect.x(), y), Size(rect.width(), h)))?;
+                    y = y + h;
+                }
             },
             Self::Row(_, elements) => {
-                let sizes = flex(rect.width(), elements, Size::width);
-                unimplemented!()
+                let sizes = flex(rect.width(), elements, Size::width)?;
+                let mut x = rect.x();
+                for (index, element) in elements.iter().enumerate() {
+                    let w = sizes[index];
+                    element.render(term, Area(Point(x, rect.y()), Size(w, rect.height())))?;
+                    x = x + w;
+                }
             },
             Self::Grid(_, _) => {
                 unimplemented!()

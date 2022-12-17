@@ -75,19 +75,17 @@ pub(crate) fn main () -> Result<()> {
                     done = true;
                     return
                 }
-                let (screen_cols, screen_rows) = size().unwrap();
-                match app.size().clip(Point(screen_cols, screen_rows)) {
-                    Ok(Point(cols, rows)) => {
-                        let x = (screen_cols - cols) / 2;
-                        let y = (screen_rows - rows) / 2;
-                        let space = Space(Point(x, y), Point(cols, rows));
-                        if let Err(e) = app.render(&mut term, &space) {
-                            write_error(&mut term, format!("{e} {:?}", space).as_str()).unwrap();
-                        }
-                    },
-                    Err(e) => {
-                        write_error(&mut term, format!("{e}").as_str()).unwrap();
-                    }
+                let layout = app.layout();
+                let min_size = layout.min_size();
+                let screen_size: Size = size().unwrap().into();
+                if let Err(e) = min_size.fits_in(screen_size) {
+                    write_error(&mut term, format!("{e}").as_str()).unwrap();
+                } else {
+                    let max_size = layout.max_size();
+                    let size = screen_size.crop_to(max_size);
+                    let x = (screen_size.0 - size.0) / 2;
+                    let y = (screen_size.0 - size.0) / 2;
+                    app.render(&mut term, Area(Point(x, y), size)).unwrap();
                 }
             };
 
@@ -123,12 +121,16 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::AUTO, vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Row(Sizing::AUTO, vec![
+        Layout::Row(Sizing::AUTO, vec![
+            Layout::Layers(Sizing::AUTO, vec![
+                Layout::Item(Sizing::AUTO, &self.frame),
                 Layout::Item(Sizing::AUTO, &self.menu),
-                Layout::Item(Sizing::AUTO, if self.open { self.device() } else { &Blank {} })
-            ])
+            ]),
+            Layout::Item(Sizing::AUTO, if self.open {
+                self.device()
+            } else {
+                &Blank {}
+            })
         ])
     }
     fn focus (&mut self, focus: bool) -> bool {

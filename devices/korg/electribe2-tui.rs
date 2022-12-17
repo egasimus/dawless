@@ -102,11 +102,11 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::Auto, vec![
-            Layout::Item(Sizing::Auto, &self.frame),
-            Layout::Column(Sizing::Auto, vec![
-                Layout::Item(Sizing::Auto, &self.patterns),
-                Layout::Item(Sizing::Auto, &self.samples)
+        Layout::Layers(Sizing::AUTO, vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Column(Sizing::AUTO, vec![
+                Layout::Item(Sizing::AUTO, &self.patterns),
+                Layout::Item(Sizing::AUTO, &self.samples)
             ])
         ])
     }
@@ -156,26 +156,26 @@ impl TUI for Electribe2PatternsTUI {
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, offset, .. } = *self;
-        let Space(Point(x, y), Point(w, _)) = *space;
+        let Area(Point(x, y), Size(w, _)) = area;
         if let Some(bank) = &self.bank {
             Frame { theme: THEME, focused, title: "Patterns:".into() }
-                .render(term, &Space::new(x, y, 58, 42))?;
+                .render(term, area)?; //&Space::new(x, y, 58, 42))?;
 
             let patterns = &bank.patterns;
             let selected = self.patterns.index;
             PatternList { patterns, selected, offset }
-                .render(term, &Space::new(x + 1, y + 2, 50, 0))?;
+                .render(term, area)?; //&Space::new(x + 1, y + 2, 50, 0))?;
 
             let pattern = bank.patterns.get(self.patterns.index).unwrap() ;
             Pattern { pattern }
-                .render(term, &Space::new(x + 59, y, 0, 0))?;
+                .render(term, area)?; //&Space::new(x + 59, y, 0, 0))?;
         } else {
-            let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
+            //let space = Space::new(x, y, 4 + self.max_len, 4 + self.entries.items.len() as u16);
             let title = "Select ALLPAT file (Esc to exit)".into();
             Frame { theme: THEME, focused, title }
-                .render(term, &space)?;
+                .render(term, area)?;
             FileList(&self.entries)
-                .render(term, &space)?;
+                .render(term, area)?;
         }
         Ok(())
     }
@@ -213,10 +213,9 @@ impl TUI for Electribe2PatternsTUI {
 
 
 impl<'a> TUI for PatternList<'a> {
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
         let Self { offset, .. } = *self;
         let Theme { bg, fg, hi } = THEME;
-        let Space(Point(x, y), Point(w, h)) = *space;
         term.queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(fg))?
             .queue(SetAttribute(Attribute::Bold))?
@@ -243,22 +242,22 @@ impl<'a> TUI for PatternList<'a> {
             } else {
                 "".into()
             };
-            Label { theme: THEME, focused, text }
-                .render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
+            //Label { theme: THEME, focused, text }
+                //.render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
         }
-        Scrollbar { theme: THEME, offset, length: self.patterns.len() }
-            .render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
+        //Scrollbar { theme: THEME, offset, length: self.patterns.len() }
+            //.render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
         Ok(())
     }
 }
 
 impl <'a> TUI for Pattern <'a> {
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { bg, fg, hi } = THEME;
-        let Space(Point(x, y), _) = *space;
-        let title = "Pattern details".into();
-        Frame { theme: THEME, focused: true, title }
-            .render(term, &Space(Point(x, y), Point(46, 30)))?;
+        //let  = *space;
+        let title = String::from("Pattern details");
+        //Frame { theme: THEME, focused: true, title }
+            //.render(term, &Space(Point(x, y), Point(46, 30)))?;
         term.queue(SetForegroundColor(fg))?
             .queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?
             .queue(MoveTo(x + 21, y + 2))?.queue(Print(&self.pattern.level))?
@@ -303,17 +302,6 @@ impl <'a> TUI for Pattern <'a> {
 
 impl TUI for Electribe2SamplesTUI {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Point(30, 28)), &Blank {})
+        Layout::Item(Sizing::Fixed(Size(30, 28)), &Blank {})
     }
-    fn render (&self, term: &mut dyn Write, space: &Space) -> Result<()> {
-        let Space(Point(x, y), _) = space;
-        Frame { theme: THEME, title: "Samples".into(), focused: false }
-            .render(term, space)?;
-        for i in 1..24+1 {
-            Label { theme: THEME, focused: false, text: format!("{:>3} Sample", i) }
-                .render(term, space)?;
-        }
-        Ok(())
-    }
-
 }
