@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::io::{Result, Write};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::channel, Mutex};
+use std::sync::{atomic::{AtomicBool, Ordering}, mpsc::channel};
 use thatsit::{*, crossterm::{
     event::{poll, read, Event, KeyEvent, KeyCode},
     terminal::{size},
@@ -126,11 +126,11 @@ impl TUI for App {
                 Layout::Item(Sizing::AUTO, &self.frame),
                 Layout::Item(Sizing::AUTO, &self.menu),
             ]),
-            Layout::Item(Sizing::AUTO, if self.open {
-                self.device()
+            if self.open {
+                Layout::Item(Sizing::AUTO, self.device())
             } else {
-                &Blank {}
-            })
+                Layout::None
+            }
         ])
     }
     fn focus (&mut self, focus: bool) -> bool {

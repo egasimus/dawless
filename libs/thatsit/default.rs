@@ -14,7 +14,7 @@ impl Default for Box<dyn TUI> {
 
 impl Default for Sizing {
     fn default () -> Self {
-        Self::Grow(1)
+        Self::AUTO
     }
 }
 

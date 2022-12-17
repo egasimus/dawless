@@ -17,6 +17,7 @@ pub struct Area (/** Position */ pub Point, /** Size */ pub Size);
 /// How flexible is the sizing of a layout item
 #[derive(Copy, Clone, Debug)]
 pub enum Sizing {
+    None,
     Grow(Unit),
     Fixed(Size)
 }
@@ -24,6 +25,7 @@ pub enum Sizing {
 /// A layout item
 #[derive(Clone)]
 pub enum Layout<'a> {
+    None,
     Item(Sizing, &'a dyn TUI),
     Layers(Sizing, Vec<Layout<'a>>),
     Column(Sizing, Vec<Layout<'a>>),
@@ -115,6 +117,7 @@ impl Sizing {
 impl<'a> Layout<'a> {
     fn sizing (&self) -> Sizing {
         *match self {
+            Self::None              => &Sizing::None,
             Self::Item(sizing, _)   => sizing,
             Self::Layers(sizing, _) => sizing,
             Self::Row(sizing, _)    => sizing,
@@ -127,6 +130,7 @@ impl<'a> Layout<'a> {
 impl<'a> TUI for Layout<'a> {
     fn min_size (&self) -> Size {
         match self {
+            Self::None => Size(0, 0),
             Self::Item(_, item) => item.min_size(),
             Self::Layers(_, layers) => {
                 let mut size = Size::MIN;
@@ -148,6 +152,7 @@ impl<'a> TUI for Layout<'a> {
     }
     fn max_size (&self) -> Size {
         match self {
+            Self::None => Size(0, 0),
             Self::Item(_, item) => item.max_size(),
             Self::Layers(_, layers) => {
                 let mut size = Size::MIN;
@@ -169,6 +174,7 @@ impl<'a> TUI for Layout<'a> {
     }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         Ok(match self {
+            Self::None => (),
             Self::Item(_, element) => {
                 element.render(term, rect)?
             },
@@ -209,6 +215,7 @@ pub fn flex <'a, F: Fn(Size)->Unit> (
     let mut denominator = 0;
     for layout in layouts.iter() {
         match layout.sizing() {
+            Sizing::None => {},
             Sizing::Fixed(area) => {
                 let size = axis(area);
                 if size > remaining {
@@ -223,14 +230,11 @@ pub fn flex <'a, F: Fn(Size)->Unit> (
     }
     let mut sizes = vec![];
     for layout in layouts.iter() {
-        match layout.sizing() {
-            Sizing::Fixed(area) => {
-                sizes.push(axis(area))
-            },
-            Sizing::Grow(proportion) => {
-                sizes.push(remaining * proportion / denominator)
-            }
-        }
+        sizes.push(match layout.sizing() {
+            Sizing::None             => 0,
+            Sizing::Fixed(area)      => axis(area),
+            Sizing::Grow(proportion) => remaining * proportion / denominator
+        })
     }
     Ok(sizes)
 }
