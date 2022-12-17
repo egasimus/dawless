@@ -104,11 +104,12 @@ impl TUI for Electribe2TUI {
     fn layout (&self) -> Layout {
         Layout::Layers(Sizing::AUTO, vec![
             Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Column(Sizing::AUTO, vec![
+            Layout::Column(Sizing::Pad(1, &Sizing::AUTO), vec![
                 Layout::Item(Sizing::AUTO, &self.patterns),
                 Layout::Item(Sizing::AUTO, &self.samples)
             ])
         ])
+        //])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

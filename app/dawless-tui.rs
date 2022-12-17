@@ -139,7 +139,8 @@ impl TUI for App {
                 Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
             ]),
             if self.open {
-                Layout::Item(Sizing::AUTO, self.device())
+                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) })
+                Layout::Item(Sizing::Min, self.device())
             } else {
                 Layout::None
             }
@@ -162,6 +163,10 @@ impl TUI for App {
         if self.menu.handle(event)? {
             return Ok(true)
         }
-        handle_menu_focus!(event, self, self.device_mut(), self.focused)
+        let result = handle_menu_focus!(event, self, self.device_mut(), self.focused);
+        if let Ok(true) = result {
+            self.open = !self.focused
+        }
+        result
     }
 }

@@ -57,27 +57,27 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 
 /// A terminal UI widget
 pub trait TUI: Sync {
-    /** Return the layout of the children of this component. */
+    /// Return the layout of the children of this component.
     fn layout (&self) -> Layout {
         Layout::default()
     }
-    /** Return the minimum size for this component. */
+    /// Return the minimum size for this component.
     fn min_size (&self) -> Size {
         self.layout().min_size()
     }
-    /** Return the minimum size for this component. */
+    /// Return the minimum size for this component.
     fn max_size (&self) -> Size {
         self.layout().max_size()
     }
-    /** Draw to the terminal. */
+    /// Draw to the terminal.
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.layout().render(term, area)
     }
-    /** Handle input events. */
+    /// Handle input events.
     fn handle (&mut self, _event: &Event) -> Result<bool> {
         Ok(false)
     }
-    /** Handle focus changes. */
+    /// Handle focus changes.
     fn focus (&mut self, _focus: bool) -> bool {
         false
     }
@@ -153,23 +153,19 @@ impl Size {
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
     #[inline] pub fn width  (self) -> Unit { self.0 }
     #[inline] pub fn height (self) -> Unit { self.1 }
-
     /// Increase own size to fit other
     pub fn stretch (self, other: Self) -> Self {
         Self(self.0.max(other.0), self.1.max(other.1))
     }
-
     /// Grow width, stretch height
     pub fn expand_row (self, other: Self) -> Self {
         Self(self.0.saturating_add(other.0), self.1.max(other.1))
     }
-
     /// Stretch width, grow height
     pub fn expand_column (self, other: Self) -> Self {
         Self(self.0.max(other.0), self.1.saturating_add(other.1))
     }
-
-    /// Return an error if the other area is too small
+    /// Return error if the other area is too small
     pub fn fits_in (self, other: Self) -> Result<()> {
         if self.0 > other.0 {
             let message = format!("need {} columns", self.0);
@@ -181,7 +177,6 @@ impl Size {
         }
         Ok(())
     }
-
     /// Limit the size to the other size
     pub fn crop_to (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.1))
@@ -249,9 +244,13 @@ impl<'a> TUI for Layout<'a> {
                 for item in items.iter() { size = size.expand_row(item.min_size()); }
                 size
             },
-            Self::Column(_, items) => {
+            Self::Column(sizing, items) => {
                 let mut size = Size::MIN;
                 for item in items.iter() { size = size.expand_column(item.min_size()); }
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
                 size
             },
             Self::Grid(_, _) => unimplemented!()
@@ -268,19 +267,31 @@ impl<'a> TUI for Layout<'a> {
                 }
                 size
             },
-            Self::Layers(_, layers) => {
+            Self::Layers(sizing, layers) => {
                 let mut size = Size::MIN;
                 for layer in layers.iter() { size = size.stretch(layer.max_size()); }
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
                 size
             },
-            Self::Row(_, items) => {
+            Self::Row(sizing, items) => {
                 let mut size = Size::MIN;
                 for item in items.iter() { size = size.expand_row(item.max_size()); }
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
                 size
             },
-            Self::Column(_, items) => {
+            Self::Column(sizing, items) => {
                 let mut size = Size::MIN;
                 for item in items.iter() { size = size.expand_column(item.max_size()); }
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
                 size
             },
             Self::Grid(_, _) => unimplemented!()
@@ -307,12 +318,19 @@ impl<'a> TUI for Layout<'a> {
             Self::Column(sizing, elements) => {
                 let mut flex = Flex::new(Size::height, rect.height());
                 let sizes = flex.apply(elements)?;
-                let mut y = rect.y();
                 let width = match sizing {
                     Sizing::Min => self.min_size().width(),
                     Sizing::Max => self.max_size().width(),
                     _ => rect.height()
                 };
+                let mut rect = rect;
+                if let Sizing::Pad(padding, _) = sizing {
+                    rect.0.0 += padding;
+                    rect.0.1 += padding;
+                    rect.1.0 += padding * 2;
+                    rect.1.1 += padding * 2;
+                }
+                let mut y = rect.y();
                 for (index, element) in elements.iter().enumerate() {
                     let h = sizes[index];
                     element.render(term, Area(Point(rect.x(), y), Size(width, h)))?;
@@ -322,12 +340,19 @@ impl<'a> TUI for Layout<'a> {
             Self::Row(sizing, elements) => {
                 let mut flex = Flex::new(Size::width, rect.width());
                 let sizes = flex.apply(elements)?;
-                let mut x = rect.x();
                 let height = match sizing {
                     Sizing::Min => self.min_size().height(),
                     Sizing::Max => self.max_size().height(),
                     _ => rect.height()
                 };
+                let mut rect = rect;
+                if let Sizing::Pad(padding, _) = sizing {
+                    rect.0.0 += padding;
+                    rect.0.1 += padding;
+                    rect.1.0 += padding * 2;
+                    rect.1.1 += padding * 2;
+                }
+                let mut x = rect.x();
                 for (index, element) in elements.iter().enumerate() {
                     let w = sizes[index];
                     element.render(term, Area(Point(x, rect.y()), Size(w, height)))?;
