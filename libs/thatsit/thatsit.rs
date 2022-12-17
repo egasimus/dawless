@@ -110,7 +110,7 @@ pub enum Sizing<'a> {
     Grow(Unit),
     Fixed(Size),
     Range(Size, Size),
-    Padded(Unit, &'a Sizing<'a>)
+    Pad(Unit, &'a Sizing<'a>)
 }
 
 /// A layout item
@@ -231,7 +231,14 @@ impl<'a> TUI for Layout<'a> {
     fn min_size (&self) -> Size {
         match self {
             Self::None => Size(0, 0),
-            Self::Item(_, item) => item.min_size(),
+            Self::Item(sizing, item) => {
+                let mut size = item.min_size();
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
+                size
+            },
             Self::Layers(_, layers) => {
                 let mut size = Size::MIN;
                 for layer in layers.iter() { size = size.stretch(layer.min_size()); }
@@ -253,7 +260,14 @@ impl<'a> TUI for Layout<'a> {
     fn max_size (&self) -> Size {
         match self {
             Self::None => Size(0, 0),
-            Self::Item(_, item) => item.max_size(),
+            Self::Item(sizing, item) => {
+                let mut size = item.max_size();
+                if let Sizing::Pad(padding, _) = sizing {
+                    size.0 += padding * 2;
+                    size.1 += padding * 2;
+                }
+                size
+            },
             Self::Layers(_, layers) => {
                 let mut size = Size::MIN;
                 for layer in layers.iter() { size = size.stretch(layer.max_size()); }
@@ -275,7 +289,14 @@ impl<'a> TUI for Layout<'a> {
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         Ok(match self {
             Self::None => (),
-            Self::Item(_, element) => {
+            Self::Item(sizing, element) => {
+                let mut rect = rect;
+                if let Sizing::Pad(padding, _) = sizing {
+                    rect.0.0 += padding;
+                    rect.0.1 += padding;
+                    rect.1.0 += padding * 2;
+                    rect.1.1 += padding * 2;
+                }
                 element.render(term, rect)?
             },
             Self::Layers(_, layers) => {
@@ -334,7 +355,7 @@ impl<A: Fn(Size)->Unit> Flex<A> {
     fn prepare (&mut self, layout: &Layout<'_>) -> Result<Unit> {
         let mut taken = 0;
         let mut sizing = layout.sizing();
-        if let Sizing::Padded(padding, actual_sizing) = sizing {
+        if let Sizing::Pad(padding, actual_sizing) = sizing {
             taken  = taken + padding * 2;
             sizing = *actual_sizing;
         }
@@ -345,7 +366,7 @@ impl<A: Fn(Size)->Unit> Flex<A> {
             Sizing::Fixed(size) => taken += (self.axis)(size),
             Sizing::Range(min, _) => taken += (self.axis)(min),
             Sizing::Grow(proportion) => self.denominator += proportion,
-            Sizing::Padded(_, _) => return Err(Error::new(ErrorKind::Other, "don't nest padding")),
+            Sizing::Pad(_, _) => return Err(Error::new(ErrorKind::Other, "don't nest padding")),
         };
         Ok(taken)
     }
@@ -361,7 +382,7 @@ impl<A: Fn(Size)->Unit> Flex<A> {
         for layout in layouts.iter() {
             let mut sizing = layout.sizing();
             let mut size = 0;
-            if let Sizing::Padded(padding, actual_sizing) = sizing {
+            if let Sizing::Pad(padding, actual_sizing) = sizing {
                 size  = size + padding * 2;
                 sizing = *actual_sizing;
             }
@@ -372,7 +393,7 @@ impl<A: Fn(Size)->Unit> Flex<A> {
                 Sizing::Fixed(area)      => (self.axis)(area),
                 Sizing::Range(min, _)    => (self.axis)(min),
                 Sizing::Grow(proportion) => self.remaining * proportion / self.denominator,
-                Sizing::Padded(_, _) => {
+                Sizing::Pad(_, _) => {
                     return Err(Error::new(ErrorKind::Other, "don't nest padding"))
                 }
             };

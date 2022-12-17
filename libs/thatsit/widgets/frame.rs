@@ -14,15 +14,17 @@ impl TUI for Frame {
         term.queue(ResetColor)?
             .queue(SetForegroundColor(*bg))?
             .queue(MoveTo(x, y))?
-            .queue(Print("▄".repeat(w as usize)))?
+            .queue(Print("▄".repeat(w as usize)))?;
+        let background = "▀".repeat(w as usize);
+        term.queue(MoveTo(x, y+h-1))?
+            .queue(Print(&background))?
             .queue(ResetColor)?
             .queue(SetBackgroundColor(*bg))?;
-
         let background = " ".repeat(w as usize);
-        for row in y+1..y+h {
-            term.queue(MoveTo(x, row))?.queue(Print(&background))?;
+        for row in y+1..y+h-1 {
+            term.queue(MoveTo(x, row))?
+                .queue(Print(&background))?;
         }
-
         term.queue(SetBackgroundColor(if *focused { *hi } else { *bg }))?
             .queue(SetForegroundColor(if *focused { *bg } else { *fg }))?
             .queue(MoveTo(x, y))?
@@ -36,7 +38,6 @@ impl TUI for Frame {
             .queue(SetBackgroundColor(*bg))?
             .queue(SetForegroundColor(*fg))?
             .queue(Print(" "))?;
-
         Ok(())
     }
 }

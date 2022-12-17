@@ -128,15 +128,15 @@ impl App {
 impl TUI for App {
     fn layout (&self) -> Layout {
         Layout::Row(Sizing::Min, vec![
-            Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
-            Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(125) }),
-            Layout::Column(Sizing::Min, vec![
-                Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) }),
-                Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(175) }),
-            ]),
+            //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
+            //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(125) }),
+            //Layout::Column(Sizing::Min, vec![
+                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) }),
+                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(175) }),
+            //]),
             Layout::Layers(Sizing::AUTO, vec![
                 Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Item(Sizing::Padded(1, &Sizing::AUTO), &self.menu)
+                Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
             ]),
             if self.open {
                 Layout::Item(Sizing::AUTO, self.device())
