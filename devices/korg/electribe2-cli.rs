@@ -76,7 +76,7 @@ impl std::fmt::Display for Electribe2Pattern {
 
 impl std::fmt::Display for Electribe2Part {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.sample);
+        write!(f, "{}", self.sample)?;
         for step in self.steps.iter() {
             write!(f, "\n    {}", step)?;
         }

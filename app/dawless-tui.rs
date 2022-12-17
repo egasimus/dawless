@@ -68,6 +68,9 @@ pub(crate) fn main () -> Result<()> {
             // Clear screen
             clear(&mut term).unwrap();
 
+            // Get screen size
+            let screen_size: Size = size().unwrap().into();
+
             // Render to output buffer
             {
                 let app = app.borrow();
@@ -77,14 +80,18 @@ pub(crate) fn main () -> Result<()> {
                 }
                 let layout = app.layout();
                 let min_size = layout.min_size();
-                let screen_size: Size = size().unwrap().into();
                 if let Err(e) = min_size.fits_in(screen_size) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 } else {
-                    let max_size = layout.max_size();
-                    let size = screen_size.crop_to(max_size);
+                    let size = screen_size.crop_to(match layout.size() {
+                        Some(size) => size,
+                        None => layout.max_size()
+                    });
                     let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
-                    app.render(&mut term, Area(xy, size)).unwrap();
+                    //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
+                    if let Err(e) = app.render(&mut term, Area(xy, size)) {
+                        write_error(&mut term, format!("{e}").as_str()).unwrap();
+                    };
                 }
             };
 
@@ -120,10 +127,16 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Row(Sizing::AUTO, vec![
+        Layout::Row(Sizing::Min, vec![
+            Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
+            Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(125) }),
+            Layout::Column(Sizing::Min, vec![
+                Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) }),
+                Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(175) }),
+            ]),
             Layout::Layers(Sizing::AUTO, vec![
                 Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Item(Sizing::AUTO, &self.menu)
+                Layout::Item(Sizing::Padded(1, &Sizing::AUTO), &self.menu)
             ]),
             if self.open {
                 Layout::Item(Sizing::AUTO, self.device())

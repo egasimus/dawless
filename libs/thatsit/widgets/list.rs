@@ -50,7 +50,7 @@ impl <T: Sync> TUI for List <T> {
         Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
     }
     fn min_size (&self) -> Size {
-        Size(self.width(), 3)
+        Size(self.width(), self.len() as u16)
     }
     fn max_size (&self) -> Size {
         Size(self.width(), self.len() as u16)

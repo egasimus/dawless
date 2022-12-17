@@ -12,7 +12,7 @@ impl Default for Box<dyn TUI> {
     }
 }
 
-impl Default for Sizing {
+impl<'a> Default for Sizing<'a> {
     fn default () -> Self {
         Self::AUTO
     }

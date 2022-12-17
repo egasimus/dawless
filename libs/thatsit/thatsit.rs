@@ -35,24 +35,23 @@ pub fn setup (term: &mut dyn Write) -> Result<()> {
 }
 
 pub fn teardown (term: &mut dyn Write) -> Result<()> {
-    term.execute(ResetColor)?
-        .execute(Show)?
-        .execute(LeaveAlternateScreen)?;
+    term.execute(ResetColor)?.execute(Show)?.execute(LeaveAlternateScreen)?;
     disable_raw_mode()
 }
 
 pub fn clear (term: &mut dyn Write) -> Result<()> {
-    term.queue(ResetColor)?
-        .queue(Clear(ClearType::All))?
-        .queue(Hide)?;
+    term.queue(ResetColor)?.queue(Clear(ClearType::All))? .queue(Hide)?;
     Ok(())
 }
 
 pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
     clear(term)?;
-    term.queue(SetForegroundColor(Color::Red))?
-        .queue(MoveTo(0, 0))?
-        .queue(Print(msg))?;
+    term.queue(SetForegroundColor(Color::Red))?;
+    write_text(term, 0, 0, msg)
+}
+
+pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result<()> {
+    term.execute(MoveTo(x, y))?.execute(Print(text))?;
     Ok(())
 }
 
@@ -101,22 +100,28 @@ pub struct Area (/** Position */ pub Point, /** Size */ pub Size);
 
 /// How flexible is the sizing of a layout item
 #[derive(Copy, Clone, Debug)]
-pub enum Sizing {
+pub enum Sizing<'a> {
+    /// Allocate no space for this item
     None,
+    /// Always use the item's minimum size
+    Min,
+    /// Always use the item's maximum size
+    Max,
     Grow(Unit),
     Fixed(Size),
-    Range(Size, Size)
+    Range(Size, Size),
+    Padded(Unit, &'a Sizing<'a>)
 }
 
 /// A layout item
 #[derive(Clone)]
 pub enum Layout<'a> {
     None,
-    Item(Sizing, &'a dyn TUI),
-    Layers(Sizing, Vec<Layout<'a>>),
-    Column(Sizing, Vec<Layout<'a>>),
-    Row(Sizing, Vec<Layout<'a>>),
-    Grid(Sizing, Vec<(Layout<'a>, Size)>),
+    Item(Sizing<'a>, &'a dyn TUI),
+    Layers(Sizing<'a>, Vec<Layout<'a>>),
+    Column(Sizing<'a>, Vec<Layout<'a>>),
+    Row(Sizing<'a>, Vec<Layout<'a>>),
+    Grid(Sizing<'a>, Vec<(Layout<'a>, Size)>),
 }
 
 impl std::ops::Add for Point {
@@ -179,7 +184,7 @@ impl Size {
 
     /// Limit the size to the other size
     pub fn crop_to (self, other: Self) -> Self {
-        Self(self.0.min(other.0), self.1.min(other.0))
+        Self(self.0.min(other.0), self.1.min(other.1))
     }
 }
 
@@ -196,12 +201,12 @@ impl Area {
     #[inline] pub fn height (self) -> Unit { self.1.height() }
 }
 
-impl Sizing {
+impl<'a> Sizing<'a> {
     pub const AUTO: Self = Self::Grow(1);
 }
 
 impl<'a> Layout<'a> {
-    fn sizing (&self) -> Sizing {
+    pub fn sizing (&self) -> Sizing {
         *match self {
             Self::None              => &Sizing::None,
             Self::Item(sizing, _)   => sizing,
@@ -209,6 +214,15 @@ impl<'a> Layout<'a> {
             Self::Row(sizing, _)    => sizing,
             Self::Column(sizing, _) => sizing,
             Self::Grid(sizing, _)   => sizing
+        }
+    }
+    pub fn size (&self) -> Option<Size> {
+        match self.sizing() {
+            Sizing::None => Some(Size::MIN),
+            Sizing::Min => Some(self.min_size()),
+            Sizing::Max => Some(self.max_size()),
+            Sizing::Fixed(size) => Some(size),
+            _ => None
         }
     }
 }
@@ -269,21 +283,33 @@ impl<'a> TUI for Layout<'a> {
                     layer.render(term, rect)?;
                 }
             },
-            Self::Column(_, elements) => {
-                let sizes = flex(rect.height(), elements, Size::height)?;
+            Self::Column(sizing, elements) => {
+                let mut flex = Flex::new(Size::height, rect.height());
+                let sizes = flex.apply(elements)?;
                 let mut y = rect.y();
+                let width = match sizing {
+                    Sizing::Min => self.min_size().width(),
+                    Sizing::Max => self.max_size().width(),
+                    _ => rect.height()
+                };
                 for (index, element) in elements.iter().enumerate() {
                     let h = sizes[index];
-                    element.render(term, Area(Point(rect.x(), y), Size(rect.width(), h)))?;
+                    element.render(term, Area(Point(rect.x(), y), Size(width, h)))?;
                     y = y + h;
                 }
             },
-            Self::Row(_, elements) => {
-                let sizes = flex(rect.width(), elements, Size::width)?;
+            Self::Row(sizing, elements) => {
+                let mut flex = Flex::new(Size::width, rect.width());
+                let sizes = flex.apply(elements)?;
                 let mut x = rect.x();
+                let height = match sizing {
+                    Sizing::Min => self.min_size().height(),
+                    Sizing::Max => self.max_size().height(),
+                    _ => rect.height()
+                };
                 for (index, element) in elements.iter().enumerate() {
                     let w = sizes[index];
-                    element.render(term, Area(Point(x, rect.y()), Size(w, rect.height())))?;
+                    element.render(term, Area(Point(x, rect.y()), Size(w, height)))?;
                     x = x + w;
                 }
             },
@@ -294,43 +320,66 @@ impl<'a> TUI for Layout<'a> {
     }
 }
 
-/// Distribute space between widgets
-pub fn flex <'a, F: Fn(Size)->Unit> (
-    mut remaining: Unit, layouts: &Vec<Layout>, axis: F
-) -> Result<Vec<Unit>> {
-    let mut denominator = 0;
-    for layout in layouts.iter() {
-        match layout.sizing() {
-            Sizing::None => {},
-            Sizing::Fixed(area) => {
-                let size = axis(area);
-                if size > remaining {
-                    return Err(Error::new(ErrorKind::Other, "not enough space"))
-                }
-                remaining = remaining - size
-            },
-            Sizing::Range(min, _) => {
-                let size = axis(min);
-                if size > remaining {
-                    return Err(Error::new(ErrorKind::Other, "not enough space"))
-                }
-                remaining = remaining - size
-            }
-            Sizing::Grow(proportion) => {
-                denominator += proportion
-            },
+/// Distributes space between widgets
+struct Flex<A: Fn(Size) -> Unit> {
+    axis:        A,
+    remaining:   Unit,
+    denominator: Unit
+}
+
+impl<A: Fn(Size)->Unit> Flex<A> {
+    fn new (axis: A, remaining: Unit) -> Self {
+        Self { axis, remaining, denominator: 0 }
+    }
+    fn prepare (&mut self, layout: &Layout<'_>) -> Result<Unit> {
+        let mut taken = 0;
+        let mut sizing = layout.sizing();
+        if let Sizing::Padded(padding, actual_sizing) = sizing {
+            taken  = taken + padding * 2;
+            sizing = *actual_sizing;
         }
+        match sizing {
+            Sizing::None => {},
+            Sizing::Min => taken += (self.axis)(layout.min_size()),
+            Sizing::Max => taken += (self.axis)(layout.max_size()),
+            Sizing::Fixed(size) => taken += (self.axis)(size),
+            Sizing::Range(min, _) => taken += (self.axis)(min),
+            Sizing::Grow(proportion) => self.denominator += proportion,
+            Sizing::Padded(_, _) => return Err(Error::new(ErrorKind::Other, "don't nest padding")),
+        };
+        Ok(taken)
     }
-    let mut sizes = vec![];
-    for layout in layouts.iter() {
-        sizes.push(match layout.sizing() {
-            Sizing::None             => 0,
-            Sizing::Fixed(area)      => axis(area),
-            Sizing::Range(min, max)  => axis(min),
-            Sizing::Grow(proportion) => remaining * proportion / denominator
-        })
+    fn apply (&mut self, layouts: &Vec<Layout>) -> Result<Vec<Unit>> {
+        for layout in layouts.iter() {
+            let taken = self.prepare(layout)?;
+            if taken > self.remaining {
+                return Err(Error::new(ErrorKind::Other, "not enough space"))
+            }
+            self.remaining = self.remaining - taken;
+        }
+        let mut sizes = vec![];
+        for layout in layouts.iter() {
+            let mut sizing = layout.sizing();
+            let mut size = 0;
+            if let Sizing::Padded(padding, actual_sizing) = sizing {
+                size  = size + padding * 2;
+                sizing = *actual_sizing;
+            }
+            size = size + match sizing {
+                Sizing::None             => 0,
+                Sizing::Min              => (self.axis)(layout.min_size()),
+                Sizing::Max              => (self.axis)(layout.max_size()),
+                Sizing::Fixed(area)      => (self.axis)(area),
+                Sizing::Range(min, _)    => (self.axis)(min),
+                Sizing::Grow(proportion) => self.remaining * proportion / self.denominator,
+                Sizing::Padded(_, _) => {
+                    return Err(Error::new(ErrorKind::Other, "don't nest padding"))
+                }
+            };
+            sizes.push(size);
+        }
+        Ok(sizes)
     }
-    Ok(sizes)
 }
 
 #[cfg(test)]

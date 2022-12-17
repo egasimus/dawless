@@ -1,7 +1,7 @@
 use crate::*;
 
 /// An empty widget
-pub struct Blank {}
+pub struct Blank;
 
 impl TUI for Blank {
     fn min_size (&self) -> Size {
