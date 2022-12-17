@@ -1,5 +1,6 @@
-use super::super::{*, layout::*};
+use crate::*;
 
+/// A window border widget
 #[derive(Default, Debug)]
 pub struct Frame {
     pub theme:   Theme,

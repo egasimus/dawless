@@ -1,4 +1,4 @@
-use super::{*, super::{*, layout::*}};
+use crate::*;
 
 #[derive(Default, Debug)]
 pub struct List <T> {
@@ -45,18 +45,15 @@ impl <T: Sync> TUI for List <T> {
     fn layout (&self) -> Layout {
         let mut items = vec![];
         for (label, _) in self.items.iter() {
-            items.push(Layout::Item(Sizing::Grow(1), label));
+            items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
         }
-        Layout::Column(Sizing::Grow(1), items)
+        Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
     }
     fn min_size (&self) -> Size {
         Size(self.width(), 3)
     }
     fn max_size (&self) -> Size {
         Size(self.width(), self.len() as u16)
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.layout().render(term, area)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         handle_list_select(event, self.items.len(), &mut self.index)

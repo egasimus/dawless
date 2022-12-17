@@ -83,9 +83,8 @@ pub(crate) fn main () -> Result<()> {
                 } else {
                     let max_size = layout.max_size();
                     let size = screen_size.crop_to(max_size);
-                    let x = (screen_size.0 - size.0) / 2;
-                    let y = (screen_size.0 - size.0) / 2;
-                    app.render(&mut term, Area(Point(x, y), size)).unwrap();
+                    let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
+                    app.render(&mut term, Area(xy, size)).unwrap();
                 }
             };
 
@@ -124,7 +123,7 @@ impl TUI for App {
         Layout::Row(Sizing::AUTO, vec![
             Layout::Layers(Sizing::AUTO, vec![
                 Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Item(Sizing::AUTO, &self.menu),
+                Layout::Item(Sizing::AUTO, &self.menu)
             ]),
             if self.open {
                 Layout::Item(Sizing::AUTO, self.device())

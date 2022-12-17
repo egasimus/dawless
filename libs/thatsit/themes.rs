@@ -1,5 +1,6 @@
 use crate::*;
 
+/// A selection of colors to use for rendering
 #[derive(Copy, Clone, Debug)]
 pub struct Theme {
     pub bg: Color,

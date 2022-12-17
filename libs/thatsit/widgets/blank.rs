@@ -1,5 +1,6 @@
-use super::super::{*, layout::*};
+use crate::*;
 
+/// An empty widget
 pub struct Blank {}
 
 impl TUI for Blank {
