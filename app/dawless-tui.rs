@@ -18,7 +18,7 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
-    frame:   Frame { theme: THEME, title: "Default".into(), ..Frame::default() },
+    frame:   Frame { theme: THEME, title: "Select device:".into(), ..Frame::default() },
     menu:    List { theme: THEME, index: 0, items: vec![] },
     open:    false
 }));

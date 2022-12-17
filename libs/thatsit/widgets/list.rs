@@ -9,7 +9,7 @@ pub struct List <T> {
 
 impl <T> List <T> {
     pub fn add (&mut self, text: &str, value: T) -> &mut Self {
-        let label = Label { theme: self.theme, focused: false, text: text.into() };
+        let label = Label { theme: self.theme, focused: self.items.len() == 0, text: text.into() };
         self.items.push((label, value));
         self
     }
@@ -56,30 +56,30 @@ impl <T: Sync> TUI for List <T> {
         Size(self.width(), self.len() as u16)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        handle_list_select(event, self.items.len(), &mut self.index)
+        Ok(match event {
+            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+                self.items[self.index].0.focus(false);
+                self.index = if self.index == 0 {
+                    self.items.len() - 1
+                } else {
+                    self.index - 1
+                };
+                self.items[self.index].0.focus(true);
+                true
+            },
+            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+                self.items[self.index].0.focus(false);
+                self.index = if self.index >= self.items.len() - 1 {
+                    0
+                } else {
+                    self.index + 1
+                };
+                self.items[self.index].0.focus(true);
+                true
+            },
+            _ => false
+        })
     }
-}
-
-pub fn handle_list_select (event: &Event, length: usize, index: &mut usize) -> Result<bool> {
-    Ok(match event {
-        Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
-            *index = if *index == 0 {
-                length - 1
-            } else {
-                *index - 1
-            };
-            true
-        },
-        Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
-            *index = if *index >= length - 1 {
-                0
-            } else {
-                *index + 1
-            };
-            true
-        },
-        _ => false
-    })
 }
 
 #[macro_export] macro_rules! handle_menu_focus {
