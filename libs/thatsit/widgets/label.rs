@@ -15,7 +15,13 @@ impl Label {
 
 impl TUI for Label {
     fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Size(self.text.len() as u16, 1)), &Blank {})
+        Layout::Item(Sizing::Fixed(self.min_size()), &Blank {})
+    }
+    fn min_size (&self) -> Size {
+        Size(self.text.len() as u16, 1)
+    }
+    fn max_size (&self) -> Size {
+        self.min_size()
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

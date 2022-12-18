@@ -27,6 +27,20 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.layout()
         }
     }
+    fn min_size (&self) -> Size {
+        if self.toggle {
+            self.open.min_size()
+        } else {
+            self.closed.min_size()
+        }
+    }
+    fn max_size (&self) -> Size {
+        if self.toggle {
+            self.open.max_size()
+        } else {
+            self.closed.max_size()
+        }
+    }
     fn focus (&mut self, focus: bool) -> bool {
         if self.toggle {
             self.open.focus(focus)

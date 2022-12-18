@@ -333,7 +333,10 @@ impl<'a> TUI for Layout<'a> {
                 let mut x = rect.x();
                 for (index, element) in elements.iter().enumerate() {
                     let w = sizes[index];
-                    element.render(term, Area(Point(x, rect.y()), Size(w, height)))?;
+                    element.render(term, Area(Point(x, rect.y()), Size(w, match element.sizing() {
+                        Sizing::Min => element.min_size().height(),
+                        _ => height
+                    })))?;
                     x = x + w;
                 }
             },

@@ -18,8 +18,8 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
-    frame:   Frame { theme: THEME, title: "Select device:".into(), ..Frame::default() },
-    menu:    List { theme: THEME, index: 0, items: vec![] },
+    frame:   Frame { theme: THEME, title: "Select device:".into(), focused: true, ..Frame::default() },
+    menu:    List { theme: THEME, ..List::default() },
     open:    false
 }));
 
@@ -134,12 +134,12 @@ impl TUI for App {
                 //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) }),
                 //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(175) }),
             //]),
-            Layout::Layers(Sizing::AUTO, vec![
+            Layout::Layers(Sizing::Min, vec![
+                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
                 Layout::Item(Sizing::AUTO, &self.frame),
                 Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
             ]),
             if self.open {
-                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) })
                 Layout::Item(Sizing::Min, self.device())
             } else {
                 Layout::None
@@ -148,6 +148,7 @@ impl TUI for App {
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
+        self.frame.focused = focus;
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

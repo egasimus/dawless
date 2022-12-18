@@ -21,9 +21,9 @@ impl TUI for DebugBox {
         }
         let text = format!("{w}x{h}+{x}+{y}");
         let pad = w.saturating_sub(text.len() as u16) / 2;
-        term.queue(MoveTo(x+pad, y+1))?
+        //term.queue(MoveTo(x+pad, y+1))?
+        term.queue(MoveTo(x, y))?
             .queue(Print(&text))?;
         Ok(())
     }
 }
-

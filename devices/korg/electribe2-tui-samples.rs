@@ -1,5 +1,5 @@
 use crate::electribe2::*;
-use thatsit::*;
+use thatsit::{*, crossterm::style::Color};
 use thatsit_fs::*;
 
 #[derive(Debug, Default)]

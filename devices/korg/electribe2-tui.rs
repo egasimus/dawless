@@ -73,17 +73,19 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     fn layout (&self) -> Layout {
-        Layout::Layers(Sizing::AUTO, vec![
+        Layout::Layers(Sizing::Min, vec![
             Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Column(Sizing::Pad(1, &Sizing::AUTO), vec![
-                Layout::Item(Sizing::AUTO, &self.patterns),
-                Layout::Item(Sizing::AUTO, &self.samples)
+            Layout::Column(Sizing::Pad(1, &Sizing::Min), vec![
+                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
+                Layout::Item(Sizing::Min, &self.patterns),
+                Layout::Item(Sizing::Min, &self.samples)
             ])
         ])
         //])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
+        self.frame.focused = focus;
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

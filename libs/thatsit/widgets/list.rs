@@ -4,7 +4,8 @@ use crate::*;
 pub struct List <T> {
     pub theme: Theme,
     pub index: usize,
-    pub items: Vec<(Label, T)>
+    pub items: Vec<(Label, T)>,
+    pub focused: bool
 }
 
 impl <T> List <T> {
