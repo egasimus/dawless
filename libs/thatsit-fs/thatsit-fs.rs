@@ -13,11 +13,18 @@ use crossterm::{
 
 pub type FileListItem = (String, bool);
 
-pub struct FileList<'a> (pub &'a List<FileListItem>);
+#[derive(Debug, Default)]
+pub struct FileList (pub List<FileListItem>);
 
-impl<'a> TUI for FileList<'a> {
+impl TUI for FileList {
     fn layout (&self) -> Layout {
         self.0.layout()
+    }
+    fn min_size (&self) -> Size {
+        self.0.min_size()
+    }
+    fn max_size (&self) -> Size {
+        self.0.max_size()
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, ..)): Area) -> Result<()> {
         let Theme { bg, fg, hi } = self.0.theme;

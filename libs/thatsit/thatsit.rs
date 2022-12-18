@@ -5,6 +5,7 @@ opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(themes);
 opt_mod::module_flat!(display);
 opt_mod::module_flat!(default);
+opt_mod::module_flat!(ops);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 
@@ -58,29 +59,19 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 /// A terminal UI widget
 pub trait TUI: Sync {
     /// Return the layout of the children of this component.
-    fn layout (&self) -> Layout {
-        Layout::default()
-    }
+    fn layout (&self) -> Layout { Layout::default() }
     /// Return the minimum size for this component.
-    fn min_size (&self) -> Size {
-        self.layout().min_size()
-    }
+    fn min_size (&self) -> Size { self.layout().min_size() }
     /// Return the minimum size for this component.
-    fn max_size (&self) -> Size {
-        self.layout().max_size()
-    }
+    fn max_size (&self) -> Size { self.layout().max_size() }
     /// Draw to the terminal.
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.layout().render(term, area)
     }
     /// Handle input events.
-    fn handle (&mut self, _event: &Event) -> Result<bool> {
-        Ok(false)
-    }
+    fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
     /// Handle focus changes.
-    fn focus (&mut self, _focus: bool) -> bool {
-        false
-    }
+    fn focus (&mut self, _focus: bool) -> bool { false }
 }
 
 /// The unit of the coordinate system
@@ -116,25 +107,18 @@ pub enum Sizing<'a> {
 /// A layout item
 #[derive(Clone)]
 pub enum Layout<'a> {
+    /// Empty layout slot
     None,
+    /// A single item
     Item(Sizing<'a>, &'a dyn TUI),
+    /// Render items on top of each other
     Layers(Sizing<'a>, Vec<Layout<'a>>),
+    /// Render items in a vertical column
     Column(Sizing<'a>, Vec<Layout<'a>>),
+    /// Render items in a horizontal row
     Row(Sizing<'a>, Vec<Layout<'a>>),
+    /// Render items in a grid
     Grid(Sizing<'a>, Vec<(Layout<'a>, Size)>),
-}
-
-impl std::ops::Add for Point {
-    type Output = Self;
-    fn add (self, other: Self) -> Self {
-        Self(self.0 + other.0, self.1 + other.1)
-    }
-}
-
-impl From<(Unit, Unit)> for Point {
-    fn from ((a, b): (u16, u16)) -> Self {
-        Self(a, b)
-    }
 }
 
 impl Point {
@@ -180,12 +164,6 @@ impl Size {
     /// Limit the size to the other size
     pub fn crop_to (self, other: Self) -> Self {
         Self(self.0.min(other.0), self.1.min(other.1))
-    }
-}
-
-impl From<(Unit, Unit)> for Size {
-    fn from ((w, h): (Unit, Unit)) -> Size {
-        Size(w, h)
     }
 }
 

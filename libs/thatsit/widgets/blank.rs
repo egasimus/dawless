@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Debug, Default)]
 /// An empty widget
 pub struct Blank;
 
