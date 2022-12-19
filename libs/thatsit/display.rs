@@ -4,8 +4,6 @@ use std::fmt::{Debug, Display};
 impl<'a> Debug for Layout<'a> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Layout::{}", match self {
-            Self::None =>
-                String::from("None"),
             Self::Item(sizing, _) =>
                 format!("Item({sizing:?})"),
             Self::Layers(_,_) =>

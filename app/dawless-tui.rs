@@ -125,7 +125,7 @@ impl TUI for App {
         let item = if self.open {
             Layout::Item(Sizing::Min, self.device())
         } else {
-            Layout::None
+            Layout::NIL
         };
         Layout::Row(Sizing::Min, vec![menu, item])
     }

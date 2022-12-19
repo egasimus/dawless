@@ -148,6 +148,9 @@ pub enum Sizing<'a> {
 }
 
 impl<'a> Sizing<'a> {
+    /// Default sizing
+    pub const AUTO: Self = Self::Grow(1);
+    /// Get the size along the significant axis
     pub fn get_size (&self, axis: impl Fn(Size)->Unit, layout: &Layout) -> Option<Unit> {
         match self {
             Self::Min  =>
@@ -160,7 +163,17 @@ impl<'a> Sizing<'a> {
                 Some(axis(*min)),
             Self::Pad(padding, sizing) =>
                 Some(padding * 2 + sizing.get_size(axis, layout).unwrap_or(0)),
+            Self::Scroll(_, sizing) =>
+                sizing.get_size(axis, layout),
             _ => None
+        }
+    }
+    /// Check whether the sizing contains a scroll
+    pub fn can_scroll (sizing: Sizing<'a>) -> bool {
+        match sizing {
+            Self::Scroll(_, _) => true,
+            Self::Pad(_, sizing) => Self::can_scroll(*sizing),
+            _ => false
         }
     }
 }
@@ -168,8 +181,6 @@ impl<'a> Sizing<'a> {
 /// A layout item
 #[derive(Clone)]
 pub enum Layout<'a> {
-    /// Empty layout slot
-    None,
     /// A single item
     Item(Sizing<'a>, &'a dyn TUI),
     /// Render items on top of each other
@@ -182,8 +193,13 @@ pub enum Layout<'a> {
     Grid(Sizing<'a>, Vec<(Layout<'a>, Size)>),
 }
 
+impl<'a> Layout<'a> {
+    /// Empty layout slot
+    pub const NIL: Self = Layout::Item(Sizing::None, BLANK);
+}
+
 impl Point {
-    pub const NUL: Self = Self(0, 0);
+    pub const NIL: Self = Self(0, 0);
     pub const MIN: Self = Self(Unit::MIN, Unit::MIN);
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
     #[inline] pub fn x (self) -> Unit { self.0 }
@@ -199,16 +215,20 @@ impl Size {
     #[inline] pub fn width  (self) -> Unit { self.0 }
     #[inline] pub fn height (self) -> Unit { self.1 }
     /// Increase own size to fit other
-    pub fn stretch (self, other: Self) -> Self {
+    #[inline] pub fn stretch (self, other: Self) -> Self {
         Self(self.0.max(other.0), self.1.max(other.1))
     }
     /// Grow width, stretch height
-    pub fn expand_row (self, other: Self) -> Self {
+    #[inline] pub fn expand_row (self, other: Self) -> Self {
         Self(self.0.saturating_add(other.0), self.1.max(other.1))
     }
     /// Stretch width, grow height
-    pub fn expand_column (self, other: Self) -> Self {
+    #[inline] pub fn expand_column (self, other: Self) -> Self {
         Self(self.0.max(other.0), self.1.saturating_add(other.1))
+    }
+    /// Limit the size to the other size
+    #[inline] pub fn crop_to (self, other: Self) -> Self {
+        Self(self.0.min(other.0), self.1.min(other.1))
     }
     /// Return error if the other area is too small
     pub fn fits_in (self, other: Self) -> Result<()> {
@@ -221,10 +241,6 @@ impl Size {
             return Err(Error::new(ErrorKind::Other, message))
         }
         Ok(())
-    }
-    /// Limit the size to the other size
-    pub fn crop_to (self, other: Self) -> Self {
-        Self(self.0.min(other.0), self.1.min(other.1))
     }
     /// Apply padding
     pub fn apply_padding (mut self, sizing: &Sizing) -> Self {
@@ -253,15 +269,10 @@ impl Area {
     }
 }
 
-impl<'a> Sizing<'a> {
-    pub const AUTO: Self = Self::Grow(1);
-}
-
 impl<'a> Layout<'a> {
     /// Get the sizing option of a layout (None if the layout is None)
-    pub fn sizing (&self) -> Sizing {
+    #[inline] pub fn sizing (&self) -> Sizing {
         *match self {
-            Self::None              => &Sizing::None,
             Self::Item(sizing, _)   => sizing,
             Self::Layers(sizing, _) => sizing,
             Self::Row(sizing, _)    => sizing,
@@ -270,7 +281,7 @@ impl<'a> Layout<'a> {
         }
     }
     /// Get the preferred size for a layout
-    pub fn size (&self) -> Option<Size> {
+    #[inline] pub fn size (&self) -> Option<Size> {
         match self.sizing() {
             Sizing::None => Some(Size::MIN),
             Sizing::Min => Some(self.min_size()),
@@ -284,77 +295,60 @@ impl<'a> Layout<'a> {
 impl<'a> TUI for Layout<'a> {
     fn min_size (&self) -> Size {
         match self {
-            Self::None => Size(0, 0),
-            Self::Item(sizing, item) => {
-                item.min_size().apply_padding(sizing)
+            Self::Item(_, item) => {
+                item.min_size()
             },
-            Self::Layers(sizing, layers) => {
-                let mut size = Size::MIN;
-                for layer in layers.iter() { size = size.stretch(layer.min_size()); }
-                size.apply_padding(sizing)
+            Self::Layers(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.stretch(layer.min_size()))
             },
-            Self::Row(sizing, items) => {
-                let mut size = Size::MIN;
-                for item in items.iter() { size = size.expand_row(item.min_size()); }
-                size.apply_padding(sizing)
+            Self::Row(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.expand_row(layer.min_size()))
             },
-            Self::Column(sizing, items) => {
-                let mut size = Size::MIN;
-                for item in items.iter() { size = size.expand_column(item.min_size()); }
-                size.apply_padding(sizing)
+            Self::Column(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.expand_column(layer.min_size()))
             },
             Self::Grid(_, _) => unimplemented!()
-        }
+        }.apply_padding(&self.sizing())
     }
     fn max_size (&self) -> Size {
         match self {
-            Self::None => Size(0, 0),
-            Self::Item(sizing, item) => {
-                item.max_size().apply_padding(sizing)
+            Self::Item(_, item) => {
+                item.max_size()
             },
-            Self::Layers(sizing, layers) => {
-                let mut size = Size::MIN;
-                for layer in layers.iter() { size = size.stretch(layer.max_size()); }
-                size.apply_padding(sizing)
+            Self::Layers(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.stretch(layer.max_size()))
             },
-            Self::Row(sizing, items) => {
-                let mut size = Size::MIN;
-                for item in items.iter() { size = size.expand_row(item.max_size()); }
-                size.apply_padding(sizing)
+            Self::Row(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.expand_row(layer.max_size()))
             },
-            Self::Column(sizing, items) => {
-                let mut size = Size::MIN;
-                for item in items.iter() { size = size.expand_column(item.max_size()); }
-                size.apply_padding(sizing)
+            Self::Column(_, items) => {
+                items.iter().fold(Size::MIN, |size, layer|size.expand_column(layer.max_size()))
             },
             Self::Grid(_, _) => unimplemented!()
-        }
-
+        }.apply_padding(&self.sizing())
     }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
+        let rect = rect.apply_padding(&self.sizing());
         Ok(match self {
-            Self::None => (),
-            Self::Item(sizing, element) => {
-                element.render(term, rect.apply_padding(sizing))?
+            Self::Item(_, item) => {
+                item.render(term, rect)?
             },
-            Self::Layers(sizing, layers) => {
-                for layer in layers.iter() {
-                    layer.render(term, rect.apply_padding(sizing))?;
-                }
+            Self::Layers(_, items) => {
+                for item in items.iter() { item.render(term, rect)?; }
             },
             Self::Column(sizing, elements) => {
                 let mut flex = Flex::new(Size::height, rect.height());
                 let sizes = flex.apply(elements)?;
                 let width = match sizing {
-                    Sizing::Min => self.min_size(),
-                    Sizing::Max => self.max_size(),
-                    _ => rect.1
+                    Sizing::Min => self.min_size(), Sizing::Max => self.max_size(), _ => rect.1
                 }.width();
-                let rect = rect.apply_padding(sizing);
                 let mut y = rect.y();
                 for (index, element) in elements.iter().enumerate() {
                     let h = sizes[index];
-                    element.render(term, Area(Point(rect.x(), y), Size(width, h)))?;
+                    element.render(term, Area(Point(rect.x(), y), Size(match element.sizing() {
+                        Sizing::Min => element.min_size().width(),
+                        _ => width
+                    }, h)))?;
                     y = y + h;
                 }
             },
@@ -362,11 +356,8 @@ impl<'a> TUI for Layout<'a> {
                 let mut flex = Flex::new(Size::width, rect.width());
                 let sizes = flex.apply(elements)?;
                 let height = match sizing {
-                    Sizing::Min => self.min_size(),
-                    Sizing::Max => self.max_size(),
-                    _ => rect.1
+                    Sizing::Min => self.min_size(), Sizing::Max => self.max_size(), _ => rect.1
                 }.height();
-                let rect = rect.apply_padding(sizing);
                 let mut x = rect.x();
                 for (index, element) in elements.iter().enumerate() {
                     let w = sizes[index];
