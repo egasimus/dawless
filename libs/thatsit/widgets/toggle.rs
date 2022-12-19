@@ -84,16 +84,21 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
         }
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match event {
-            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-                self.state = !self.state;
-                true
-            },
-            Event::Key(KeyEvent { code: KeyCode::Char(' '), .. }) => {
-                self.state = !self.state;
-                true
-            },
-            _ => false
-        })
+        if self.state {
+            self.open.handle(event)
+        } else {
+            self.closed.handle(event)
+        }
+        //Ok(match event {
+            //Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                //self.state = !self.state;
+                //true
+            //},
+            //Event::Key(KeyEvent { code: KeyCode::Char(' '), .. }) => {
+                //self.state = !self.state;
+                //true
+            //},
+            //_ => false
+        //})
     }
 }

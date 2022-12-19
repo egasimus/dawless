@@ -5,7 +5,8 @@ pub struct Accordion <T: TUI> {
     pub theme: Theme,
     pub index: usize,
     pub items: Vec<Toggle<Label, T>>,
-    pub focused: bool
+    pub focused: bool,
+    pub entered: bool
 }
 
 impl <T: TUI> Accordion <T> {
@@ -13,6 +14,12 @@ impl <T: TUI> Accordion <T> {
         let label = Label { theme: self.theme, focused: self.items.len() == 0, text: text.into() };
         self.items.push(Toggle::new(label, item));
         self
+    }
+    pub fn get (&self) -> &Toggle<Label, T> {
+        &self.items[self.index]
+    }
+    pub fn get_mut (&mut self) -> &mut Toggle<Label, T> {
+        &mut self.items[self.index]
     }
 }
 
@@ -39,31 +46,44 @@ impl <T: TUI> TUI for Accordion <T> {
         size
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match_key!(event => [
-            KeyCode::Up => {
-                self.items[self.index].focus(false);
-                self.index = if self.index == 0 {
-                    self.items.len() - 1
-                } else {
-                    self.index - 1
-                };
-                self.items[self.index].focus(true);
+        Ok(if self.entered {
+            is_key!(event => KeyCode::Esc => {
+                self.items[self.index].set(false);
+                self.entered = false;
                 true
-            },
-            KeyCode::Down => {
-                self.items[self.index].focus(false);
-                self.index = if self.index >= self.items.len() - 1 {
-                    0
-                } else {
-                    self.index + 1
-                };
-                self.items[self.index].focus(true);
-                true
-            },
-            KeyCode::Enter => {
-                self.items[self.index].toggle();
-                true
-            }
-        ]))
+            }) || self.items[self.index].handle(event)?
+        } else {
+            match_key!((event) {
+
+                KeyCode::Up => {
+                    self.items[self.index].focus(false);
+                    self.index = if self.index == 0 {
+                        self.items.len() - 1
+                    } else {
+                        self.index - 1
+                    };
+                    self.items[self.index].focus(true);
+                    true
+                },
+
+                KeyCode::Down => {
+                    self.items[self.index].focus(false);
+                    self.index = if self.index >= self.items.len() - 1 {
+                        0
+                    } else {
+                        self.index + 1
+                    };
+                    self.items[self.index].focus(true);
+                    true
+                },
+
+                KeyCode::Enter => {
+                    self.items[self.index].set(true);
+                    self.entered = true;
+                    true
+                }
+
+            })
+        })
     }
 }

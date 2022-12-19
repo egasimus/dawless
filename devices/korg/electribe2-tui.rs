@@ -48,9 +48,6 @@ impl Electribe2TUI {
         //panic!("{:#?}",self.selector.get_mut().unwrap());//.toggle();
         //self.selected_mut().focus(true);
     }
-    fn handle_child (&mut self, event: &Event) -> Result<bool> {
-        Ok(false)
-    }
 }
 
 impl TUI for Electribe2TUI {
@@ -59,7 +56,6 @@ impl TUI for Electribe2TUI {
             Layout::Item(Sizing::AUTO, &self.frame),
             Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
         ])
-        //])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
@@ -67,9 +63,6 @@ impl TUI for Electribe2TUI {
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(
-            self.handle_child(event)? ||
-            self.selector.handle(event)?//.map(|_|{self.focus_selected();true})?
-        )
+        self.selector.handle(event)
     }
 }

@@ -15,6 +15,7 @@ use thatsit_fs::*;
 pub struct Electribe2PatternsTUI {
     pub focused: bool,
     pub frame: Frame,
+    pub label: Label,
     pub file_list: FileList,
     pub bank: Option<Electribe2PatternBank>,
     pub patterns: List<String>,
@@ -38,6 +39,7 @@ pub struct Pattern {
 impl Electribe2PatternsTUI {
     pub fn new () -> Self {
         let mut new = Self::default();
+        new.label.text = "Select pattern bank:".into();
         new.update_listing();
         return new
     }
@@ -59,24 +61,27 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
     fn layout (&self) -> Layout {
         let Self { focused, offset, .. } = *self;
-        if let Some(bank) = &self.bank {
-            Layout::Layers(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Column(Sizing::AUTO, vec![
+        Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Column(Sizing::AUTO, if let Some(bank) = &self.bank {
+                vec![
                     Layout::Item(Sizing::AUTO, &self.pattern_list),
                     Layout::Item(Sizing::AUTO, &self.pattern),
-                ])
-            ])
-        } else {
-            Layout::Layers(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.frame),//Frame { theme: THEME, focused, title: "Select ALLPAT file (Esc to exit)".into() }),
-                Layout::Item(Sizing::AUTO, &self.file_list),//FileList(&self.entries))
-            ])
-        }
+                ]
+            } else {
+                vec![
+                    Layout::Item(Sizing::Min, &self.label),
+                    Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
+                ]
+            })
+        ])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
+    }
+    fn focused (&self) -> bool {
+        self.focused
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Some(bank) = &self.bank {

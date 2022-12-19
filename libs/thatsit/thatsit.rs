@@ -260,42 +260,26 @@ impl<'a> TUI for Layout<'a> {
         match self {
             Self::None => Size(0, 0),
             Self::Item(sizing, item) => {
-                let mut size = item.max_size();
-                if let Sizing::Pad(padding, _) = sizing {
-                    size.0 += padding * 2;
-                    size.1 += padding * 2;
-                }
-                size
+                apply_padding(*sizing, &mut item.max_size())
             },
             Self::Layers(sizing, layers) => {
                 let mut size = Size::MIN;
                 for layer in layers.iter() { size = size.stretch(layer.max_size()); }
-                if let Sizing::Pad(padding, _) = sizing {
-                    size.0 += padding * 2;
-                    size.1 += padding * 2;
-                }
-                size
+                apply_padding(*sizing, &mut size)
             },
             Self::Row(sizing, items) => {
                 let mut size = Size::MIN;
                 for item in items.iter() { size = size.expand_row(item.max_size()); }
-                if let Sizing::Pad(padding, _) = sizing {
-                    size.0 += padding * 2;
-                    size.1 += padding * 2;
-                }
-                size
+                apply_padding(*sizing, &mut size)
             },
             Self::Column(sizing, items) => {
                 let mut size = Size::MIN;
                 for item in items.iter() { size = size.expand_column(item.max_size()); }
-                if let Sizing::Pad(padding, _) = sizing {
-                    size.0 += padding * 2;
-                    size.1 += padding * 2;
-                }
-                size
+                apply_padding(*sizing, &mut size)
             },
             Self::Grid(_, _) => unimplemented!()
         }
+
     }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         Ok(match self {
@@ -367,6 +351,14 @@ impl<'a> TUI for Layout<'a> {
             },
         })
     }
+}
+
+fn apply_padding (sizing: Sizing, size: &mut Size) -> Size {
+    if let Sizing::Pad(padding, _) = sizing {
+        size.0 = size.0.saturating_add(padding * 2);
+        size.1 = size.1.saturating_add(padding * 2);
+    }
+    *size
 }
 
 /// Distributes space between widgets
