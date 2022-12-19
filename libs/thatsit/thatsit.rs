@@ -77,6 +77,9 @@ pub trait TUI: Sync {
     fn focused (&self) -> bool { false }
 }
 
+impl TUI for Box<dyn TUI> {
+}
+
 /// The unit of the coordinate system
 pub type Unit = u16;
 

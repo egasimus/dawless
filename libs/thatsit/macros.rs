@@ -8,6 +8,17 @@
     }
 }
 
+#[macro_export] macro_rules! match_key {
+    ($event: expr => [ $($code:pat => $block:block),+ ]) => {
+        {
+            match $event {
+                $(Event::Key(KeyEvent { code: $code, .. }) => $block),*,
+                _ => false
+            }
+        }
+    }
+}
+
 // TODO:
 /*
 macro_rules! layout {

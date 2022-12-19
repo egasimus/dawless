@@ -17,27 +17,21 @@ pub struct Electribe2TUI {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: List<Electribe2TUIFeature>,
+    selector: Accordion<Box<dyn TUI>>,
 }
 
 impl Electribe2TUI {
     pub fn new () -> Self {
         let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
-        let mut selector = List::default();
+        let mut selector = Accordion::default();
         selector
             .add(
                 "Edit pattern bank".into(),
-                Electribe2TUIFeature::Patterns(Toggle::new(
-                    Label::new("Load pattern bank..."),
-                    Electribe2PatternsTUI::new()
-                ))
+                Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
             )
             .add(
                 "Edit sample bank".into(),
-                Electribe2TUIFeature::Samples(Toggle::new(
-                    Label::new("Load sample bank..."),
-                    Electribe2SamplesTUI::new()
-                ))
+                Box::new(Electribe2SamplesTUI::new())
             );
         Self {
             focused: false,
@@ -48,8 +42,8 @@ impl Electribe2TUI {
     }
     fn enter (&mut self) {
         self.entered = true;
-        let selected = self.selector.get_mut().unwrap();
-        selected.toggle();
+        //let selected = self.selector.get_mut().unwrap();
+        //selected.toggle();
         //panic!("{:?}", selected.state());
         //panic!("{:#?}",self.selector.get_mut().unwrap());//.toggle();
         //self.selected_mut().focus(true);
@@ -75,47 +69,7 @@ impl TUI for Electribe2TUI {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(
             self.handle_child(event)? ||
-            is_key!(event => KeyCode::Enter => {self.enter();true}) ||
             self.selector.handle(event)?//.map(|_|{self.focus_selected();true})?
         )
-    }
-}
-
-#[derive(Debug, Default)]
-pub enum Electribe2TUIFeature {
-    #[default]
-    None,
-    Patterns(Toggle<Label, Electribe2PatternsTUI>),
-    Samples(Toggle<Label, Electribe2SamplesTUI>)
-}
-
-impl Electribe2TUIFeature {
-    fn selected <T> (&self) -> Option<&dyn TUI> {
-        match self {
-            Self::None => None,
-            Self::Patterns(toggle) => Some(&toggle.open),
-            Self::Samples(toggle)  => Some(&toggle.open),
-        }
-    }
-    fn selected_mut (&mut self) -> Option<&mut dyn TUI> {
-        match self {
-            Self::None => None,
-            Self::Patterns(toggle) => Some(toggle.open_mut()),
-            Self::Samples(toggle)  => Some(toggle.open_mut()),
-        }
-    }
-    fn toggle (&mut self) {
-        match self {
-            Self::None => {},
-            Self::Patterns(toggle) => toggle.toggle(),
-            Self::Samples(toggle)  => toggle.toggle(),
-        }
-    }
-    fn state (&mut self) -> Option<bool> {
-        match self {
-            Self::None => None,
-            Self::Patterns(toggle) => Some(toggle.get()),
-            Self::Samples(toggle)  => Some(toggle.get()),
-        }
     }
 }

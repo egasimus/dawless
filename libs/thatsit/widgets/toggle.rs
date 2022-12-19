@@ -78,7 +78,6 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         if self.state {
-            panic!("open");
             self.open.render(term, rect)
         } else {
             self.closed.render(term, rect)

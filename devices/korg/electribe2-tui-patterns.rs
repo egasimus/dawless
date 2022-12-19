@@ -89,19 +89,19 @@ impl TUI for Electribe2PatternsTUI {
                 Ok(false)
             }
         } else {
-            if let Event::Key(KeyEvent { code: KeyCode::Enter, .. }) = event {
-                let (path, is_dir) = &self.file_list.0.items.get(self.file_list.0.index).unwrap().1;
-                if *is_dir {
-                    std::env::set_current_dir(path)?;
-                    self.update_listing();
-                } else {
-                    let path = std::path::PathBuf::from(path);
-                    self.import(&path);
-                }
-                Ok(true)
-            } else {
-                self.file_list.handle(event)
-            }
+            Ok(
+                is_key!(event => KeyCode::Enter => {
+                    let (path, is_dir) = &self.file_list.0.items.get(self.file_list.0.index).unwrap().1;
+                    if *is_dir {
+                        std::env::set_current_dir(path)?;
+                        self.update_listing();
+                    } else {
+                        let path = std::path::PathBuf::from(path);
+                        self.import(&path);
+                    }
+                    true
+                }) || self.file_list.handle(event)?
+            )
         }
     }
 }

@@ -57,8 +57,8 @@ impl <T: Sync> TUI for List <T> {
         Size(self.width(), self.len() as u16)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match event {
-            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+        Ok(match_key!(event => [
+            KeyCode::Up => {
                 self.items[self.index].0.focus(false);
                 self.index = if self.index == 0 {
                     self.items.len() - 1
@@ -68,7 +68,7 @@ impl <T: Sync> TUI for List <T> {
                 self.items[self.index].0.focus(true);
                 true
             },
-            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+            KeyCode::Down => {
                 self.items[self.index].0.focus(false);
                 self.index = if self.index >= self.items.len() - 1 {
                     0
@@ -77,9 +77,8 @@ impl <T: Sync> TUI for List <T> {
                 };
                 self.items[self.index].0.focus(true);
                 true
-            },
-            _ => false
-        })
+            }
+        ]))
     }
 }
 
