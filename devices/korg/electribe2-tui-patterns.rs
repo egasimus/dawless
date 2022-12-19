@@ -103,10 +103,12 @@ pub struct PatternList(List<Electribe2Pattern>);
 
 impl TUI for PatternList {
     fn layout (&self) -> Layout {
-        self.0.layout()
-        //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(102) })
+        Layout::Item(Sizing::Range(self.min_size(), self.max_size()), &self.0)
     }
     fn min_size (&self) -> Size {
+        Size(24, 10)
+    }
+    fn max_size (&self) -> Size {
         Size(24, 10)
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {

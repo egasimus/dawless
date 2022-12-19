@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Debug, Default)]
 pub struct Scrollbar {
     pub theme:  Theme,
     pub length: usize,

@@ -1,11 +1,18 @@
 use crate::*;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct List <T> {
     pub theme: Theme,
     pub index: usize,
     pub items: Vec<(Label, T)>,
-    pub focused: bool
+    pub scrollbar: Scrollbar,
+    pub focused: bool,
+}
+
+impl<T> Default for List<T> {
+    fn default () -> Self {
+        Self::empty()
+    }
 }
 
 impl <T> List <T> {
@@ -14,7 +21,8 @@ impl <T> List <T> {
             theme: Theme::default(),
             index: 0,
             items: vec![],
-            focused: false
+            focused: false,
+            scrollbar: Scrollbar { length: 1, ..Scrollbar::default() }
         }
     }
     pub fn add (&mut self, text: &str, value: T) -> &mut Self {
@@ -53,10 +61,20 @@ impl <T> List <T> {
 impl <T: Sync> TUI for List <T> {
     fn layout (&self) -> Layout {
         let mut items = vec![];
-        for (label, _) in self.items.iter() {
+        for (index, (label, _)) in self.items.iter().enumerate() {
             items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
+            if index >= 9 {
+                break
+            }
         }
-        Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
+        //Layout::Column(
+            //Sizing::Scroll(&self.scrollbar, &Sizing::Min),
+            //items
+        //)
+        Layout::Row(Sizing::AUTO, vec![
+            Layout::Item(Sizing::Min, &self.scrollbar),
+            Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
+        ])
     }
     fn min_size (&self) -> Size {
         Size(self.width(), u16::max(1, self.len() as u16))

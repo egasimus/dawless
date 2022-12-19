@@ -143,7 +143,26 @@ pub enum Sizing<'a> {
     Grow(Unit),
     Fixed(Size),
     Range(Size, Size),
-    Pad(Unit, &'a Sizing<'a>)
+    Pad(Unit, &'a Sizing<'a>),
+    Scroll(&'a Scrollbar, &'a Sizing<'a>)
+}
+
+impl<'a> Sizing<'a> {
+    pub fn get_size (&self, axis: impl Fn(Size)->Unit, layout: &Layout) -> Option<Unit> {
+        match self {
+            Self::Min  =>
+                Some(axis(layout.min_size())),
+            Self::Max  =>
+                Some(axis(layout.max_size())),
+            Self::Fixed(size) =>
+                Some(axis(*size)),
+            Self::Range(min, _) =>
+                Some(axis(*min)),
+            Self::Pad(padding, sizing) =>
+                Some(padding * 2 + sizing.get_size(axis, layout).unwrap_or(0)),
+            _ => None
+        }
+    }
 }
 
 /// A layout item
@@ -327,10 +346,10 @@ impl<'a> TUI for Layout<'a> {
                 let mut flex = Flex::new(Size::height, rect.height());
                 let sizes = flex.apply(elements)?;
                 let width = match sizing {
-                    Sizing::Min => self.min_size().width(),
-                    Sizing::Max => self.max_size().width(),
-                    _ => rect.height()
-                };
+                    Sizing::Min => self.min_size(),
+                    Sizing::Max => self.max_size(),
+                    _ => rect.1
+                }.width();
                 let rect = rect.apply_padding(sizing);
                 let mut y = rect.y();
                 for (index, element) in elements.iter().enumerate() {
@@ -343,10 +362,10 @@ impl<'a> TUI for Layout<'a> {
                 let mut flex = Flex::new(Size::width, rect.width());
                 let sizes = flex.apply(elements)?;
                 let height = match sizing {
-                    Sizing::Min => self.min_size().height(),
-                    Sizing::Max => self.max_size().height(),
-                    _ => rect.height()
-                };
+                    Sizing::Min => self.min_size(),
+                    Sizing::Max => self.max_size(),
+                    _ => rect.1
+                }.height();
                 let rect = rect.apply_padding(sizing);
                 let mut x = rect.x();
                 for (index, element) in elements.iter().enumerate() {
@@ -377,52 +396,38 @@ impl<A: Fn(Size)->Unit> Flex<A> {
         Self { axis, remaining, denominator: 0 }
     }
     fn prepare (&mut self, layout: &Layout<'_>) -> Result<Unit> {
-        let mut taken = 0;
-        let mut sizing = layout.sizing();
-        if let Sizing::Pad(padding, actual_sizing) = sizing {
-            taken  = taken + padding * 2;
-            sizing = *actual_sizing;
-        }
-        match sizing {
-            Sizing::None => {},
-            Sizing::Min => taken += (self.axis)(layout.min_size()),
-            Sizing::Max => taken += (self.axis)(layout.max_size()),
-            Sizing::Fixed(size) => taken += (self.axis)(size),
-            Sizing::Range(min, _) => taken += (self.axis)(min),
-            Sizing::Grow(proportion) => self.denominator += proportion,
-            Sizing::Pad(_, _) => return Err(Error::new(ErrorKind::Other, "don't nest padding")),
-        };
-        Ok(taken)
+        let sizing = layout.sizing();
+        Ok(match sizing.get_size(&self.axis, layout) {
+            Some(size) => size,
+            None => {
+                if let Sizing::Grow(proportion) = sizing {
+                    self.denominator += proportion;
+                }
+                0
+            }
+        })
     }
     fn apply (&mut self, layouts: &Vec<Layout>) -> Result<Vec<Unit>> {
         for layout in layouts.iter() {
             let taken = self.prepare(layout)?;
             if taken > self.remaining {
-                panic!("{taken} > {}, {:?}", self.remaining, layout.sizing());
                 return Err(Error::new(ErrorKind::Other, "not enough space"))
             }
             self.remaining = self.remaining - taken;
         }
         let mut sizes = vec![];
         for layout in layouts.iter() {
-            let mut sizing = layout.sizing();
-            let mut size = 0;
-            if let Sizing::Pad(padding, actual_sizing) = sizing {
-                size  = size + padding * 2;
-                sizing = *actual_sizing;
-            }
-            size = size + match sizing {
-                Sizing::None             => 0,
-                Sizing::Min              => (self.axis)(layout.min_size()),
-                Sizing::Max              => (self.axis)(layout.max_size()),
-                Sizing::Fixed(area)      => (self.axis)(area),
-                Sizing::Range(min, _)    => (self.axis)(min),
-                Sizing::Grow(proportion) => self.remaining * proportion / self.denominator,
-                Sizing::Pad(_, _) => {
-                    return Err(Error::new(ErrorKind::Other, "don't nest padding"))
+            let sizing = layout.sizing();
+            sizes.push(match sizing.get_size(&self.axis, layout) {
+                Some(size) => size,
+                None => {
+                    if let Sizing::Grow(proportion) = sizing {
+                        self.remaining * proportion / self.denominator
+                    } else {
+                        0
+                    }
                 }
-            };
-            sizes.push(size);
+            });
         }
         Ok(sizes)
     }
