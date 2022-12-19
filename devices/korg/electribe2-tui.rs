@@ -28,11 +28,11 @@ impl Electribe2TUI {
             .add(
                 "Edit pattern bank".into(),
                 Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
-            )
-            .add(
-                "Edit sample bank".into(),
-                Box::new(Electribe2SamplesTUI::new())
             );
+            //.add(
+                //"Edit sample bank".into(),
+                //Box::new(Electribe2SamplesTUI::new())
+            //);
         Self {
             focused: false,
             entered: false,

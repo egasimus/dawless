@@ -18,22 +18,9 @@ pub struct Electribe2PatternsTUI {
     pub label: Label,
     pub file_list: FileList,
     pub bank: Option<Electribe2PatternBank>,
-    pub patterns: List<String>,
-    pub pattern_list: PatternList,
+    pub patterns: PatternList,
     pub pattern: Pattern,
     pub offset: usize,
-}
-
-#[derive(Debug, Default)]
-pub struct PatternList {
-    pub patterns: Vec<Electribe2Pattern>,
-    pub selected: usize,
-    pub offset:   usize
-}
-
-#[derive(Debug, Default)]
-pub struct Pattern {
-    pattern: Electribe2Pattern
 }
 
 impl Electribe2PatternsTUI {
@@ -47,10 +34,10 @@ impl Electribe2PatternsTUI {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        let patterns: Vec<(String, String)> = self.bank.as_ref().unwrap().patterns.iter()
-            .map(|pattern|(pattern.name.clone(), pattern.name.clone()))
+        let patterns: Vec<(String, Electribe2Pattern)> = self.bank.as_ref().unwrap().patterns.iter()
+            .map(|pattern|(pattern.name.clone(), pattern.clone()))
             .collect();
-        self.patterns.replace(patterns);
+        self.patterns.0.replace(patterns);
     }
     fn update_listing (&mut self) {
         let (entries, _) = list_current_directory();
@@ -63,17 +50,17 @@ impl TUI for Electribe2PatternsTUI {
         let Self { focused, offset, .. } = *self;
         Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
             Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Column(Sizing::AUTO, if let Some(bank) = &self.bank {
-                vec![
-                    Layout::Item(Sizing::AUTO, &self.pattern_list),
+            if let Some(bank) = &self.bank {
+                Layout::Row(Sizing::AUTO, vec![
+                    Layout::Item(Sizing::AUTO, &self.patterns),
                     Layout::Item(Sizing::AUTO, &self.pattern),
-                ]
+                ])
             } else {
-                vec![
+                Layout::Column(Sizing::AUTO, vec![
                     Layout::Item(Sizing::Min, &self.label),
                     Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
-                ]
-            })
+                ])
+            }
         ])
     }
     fn focus (&mut self, focus: bool) -> bool {
@@ -85,9 +72,9 @@ impl TUI for Electribe2PatternsTUI {
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         if let Some(bank) = &self.bank {
-            if self.patterns.handle(event)? {
+            if self.patterns.0.handle(event)? {
                 self.offset = handle_scroll(
-                    self.patterns.items.len(), self.patterns.index, 36, self.offset
+                    self.patterns.0.items.len(), self.patterns.0.index, 36, self.offset
                 );
                 Ok(true)
             } else {
@@ -111,48 +98,69 @@ impl TUI for Electribe2PatternsTUI {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct PatternList(List<Electribe2Pattern>);
 
 impl TUI for PatternList {
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let Self { offset, .. } = *self;
-        let Theme { bg, fg, hi } = THEME;
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?
-            .queue(SetAttribute(Attribute::Bold))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
-                "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
-            )))?
-            .queue(SetAttribute(Attribute::Reset))?
-            .queue(SetBackgroundColor(bg))?;
-        let height = 36;
-        for index in 0..0+height {
-            let index_offset = index + self.offset;
-            let focused = self.selected == index_offset;
-            let text = if let Some(pattern) = self.patterns.get(index_offset as usize) {
-                format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
-                    index + self.offset + 1,
-                    pattern.name.trim(),
-                    pattern.bpm,
-                    pattern.length,
-                    pattern.beats,
-                    pattern.key,
-                    pattern.scale,
-                )
-            } else {
-                "".into()
-            };
-            //Label { theme: THEME, focused, text }
-                //.render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
-        }
-        //Scrollbar { theme: THEME, offset, length: self.patterns.len() }
-            //.render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
-        Ok(())
+    fn layout (&self) -> Layout {
+        self.0.layout()
+        //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(102) })
+    }
+    fn min_size (&self) -> Size {
+        Size(24, 10)
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        return self.layout().render(term, area);
+        //let Area(Point(x, y), Size(w, h)) = area;
+        //let Self { offset, .. } = *self;
+        //let Theme { bg, fg, hi } = THEME;
+        //term.queue(SetBackgroundColor(bg))?
+            //.queue(SetForegroundColor(fg))?
+            //.queue(SetAttribute(Attribute::Bold))?
+            //.queue(MoveTo(x, y))?
+            //.queue(Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
+                //"#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
+            //)))?
+            //.queue(SetAttribute(Attribute::Reset))?
+            //.queue(SetBackgroundColor(bg))?;
+        //let height = 36;
+        //for index in 0..0+height {
+            //let index_offset = index + self.offset;
+            //let focused = self.selected == index_offset;
+            //let text = if let Some(pattern) = self.patterns.get(index_offset as usize) {
+                //format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
+                    //index + self.offset + 1,
+                    //pattern.name.trim(),
+                    //pattern.bpm,
+                    //pattern.length,
+                    //pattern.beats,
+                    //pattern.key,
+                    //pattern.scale,
+                //)
+            //} else {
+                //"".into()
+            //};
+            ////Label { theme: THEME, focused, text }
+                ////.render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
+        //}
+        ////Scrollbar { theme: THEME, offset, length: self.patterns.len() }
+            ////.render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
+        //Ok(())
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Pattern {
+    pattern: Electribe2Pattern
+}
+
 impl TUI for Pattern {
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+    fn layout (&self) -> Layout {
+        Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        return self.layout().render(term, area);
+        let Area(Point(x, y), Size(w, h)) = area;
         let Theme { bg, fg, hi } = THEME;
         //let  = *space;
         let title = String::from("Pattern details");

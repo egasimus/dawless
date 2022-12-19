@@ -9,6 +9,14 @@ pub struct List <T> {
 }
 
 impl <T> List <T> {
+    pub fn empty () -> Self {
+        List {
+            theme: Theme::default(),
+            index: 0,
+            items: vec![],
+            focused: false
+        }
+    }
     pub fn add (&mut self, text: &str, value: T) -> &mut Self {
         let label = Label { theme: self.theme, focused: self.items.len() == 0, text: text.into() };
         self.items.push((label, value));
@@ -51,10 +59,10 @@ impl <T: Sync> TUI for List <T> {
         Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
     }
     fn min_size (&self) -> Size {
-        Size(self.width(), self.len() as u16)
+        Size(self.width(), u16::max(1, self.len() as u16))
     }
     fn max_size (&self) -> Size {
-        Size(self.width(), self.len() as u16)
+        Size(self.width(), u16::max(1, self.len() as u16))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(match_key!((event) {

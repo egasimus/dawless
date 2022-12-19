@@ -394,6 +394,7 @@ impl<A: Fn(Size)->Unit> Flex<A> {
         for layout in layouts.iter() {
             let taken = self.prepare(layout)?;
             if taken > self.remaining {
+                panic!("{taken} > {}, {:?}", self.remaining, layout.sizing());
                 return Err(Error::new(ErrorKind::Other, "not enough space"))
             }
             self.remaining = self.remaining - taken;
