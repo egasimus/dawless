@@ -14,34 +14,29 @@ impl <T: TUI> Accordion <T> {
         self.items.push(Toggle::new(label, item));
         self
     }
-    pub fn len (&self) -> usize {
-        self.items.len()
-    }
-    pub fn width (&self) -> u16 {
-        let mut max_len = 0;
-        for item in self.items.iter() {
-            let len = item.closed.text.len();
-            if len > max_len {
-                max_len = len
-            }
-        }
-        max_len as u16
-    }
 }
 
 impl <T: TUI> TUI for Accordion <T> {
     fn layout (&self) -> Layout {
         let mut items = vec![];
         for item in self.items.iter() {
-            items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), item));
+            items.push(Layout::Item(Sizing::Min, item));
         }
         Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
     }
     fn min_size (&self) -> Size {
-        Size(self.width(), self.len() as u16)
+        let mut size = Size::MIN;
+        for item in self.items.iter() {
+            size = size.expand_column(item.min_size())
+        }
+        size
     }
     fn max_size (&self) -> Size {
-        Size(self.width(), self.len() as u16)
+        let mut size = Size::MIN;
+        for item in self.items.iter() {
+            size = size.expand_column(item.max_size())
+        }
+        size
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(match_key!(event => [

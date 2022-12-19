@@ -77,7 +77,23 @@ pub trait TUI: Sync {
     fn focused (&self) -> bool { false }
 }
 
+use std::ops::{Deref, DerefMut};
+
 impl TUI for Box<dyn TUI> {
+    fn layout (&self)
+        -> Layout { (*self).deref().layout() }
+    fn min_size (&self)
+        -> Size { (*self).deref().min_size() }
+    fn max_size (&self)
+        -> Size { (*self).deref().max_size() }
+    fn render (&self, term: &mut dyn Write, area: Area)
+        -> Result<()> { (*self).deref().render(term, area) }
+    fn handle (&mut self, event: &Event)
+        -> Result<bool> { (*self).deref_mut().handle(event) }
+    fn focus (&mut self, focus: bool)
+        -> bool { (*self).deref_mut().focus(focus) }
+    fn focused (&self)
+        -> bool { (*self).deref().focused() }
 }
 
 /// The unit of the coordinate system

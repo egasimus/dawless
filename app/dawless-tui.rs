@@ -133,24 +133,16 @@ impl App {
 
 impl TUI for App {
     fn layout (&self) -> Layout {
-        Layout::Row(Sizing::Min, vec![
-            //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
-            //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(125) }),
-            //Layout::Column(Sizing::Min, vec![
-                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(150) }),
-                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(175) }),
-            //]),
-            Layout::Layers(Sizing::Min, vec![
-                //Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) }),
-                Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
-            ]),
-            if self.open {
-                Layout::Item(Sizing::Min, self.device())
-            } else {
-                Layout::None
-            }
-        ])
+        let menu = Layout::Layers(Sizing::Min, vec![
+            Layout::Item(Sizing::AUTO, &self.frame),
+            Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
+        ]);
+        let item = if self.open {
+            Layout::Item(Sizing::Min, self.device())
+        } else {
+            Layout::None
+        };
+        Layout::Row(Sizing::Min, vec![menu, item])
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
