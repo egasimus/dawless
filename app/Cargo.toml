@@ -17,8 +17,6 @@ clap = { optional = true, version = "4.0.18", features = ["derive"] }
 
 thatsit = { optional = true, path = "../libs/thatsit" }
 
-better-panic = "0.3.0"
-
 [features]
 default = ["cli", "tui"]
 cli = [ "clap", "dawless-akai/cli", "dawless-korg/cli", "dawless-iconnectivity/cli" ]

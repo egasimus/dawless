@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::io::{Result, Write};
 use std::sync::{atomic::{AtomicBool, Ordering}, mpsc::channel};
 use thatsit::{*, crossterm::{
-    event::{poll, read, Event, KeyEvent, KeyCode},
+    event::{Event, KeyEvent, KeyCode},
     terminal::{size},
     style::Color
 }};
@@ -43,28 +43,13 @@ pub(crate) fn main () -> Result<()> {
             .add("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
     });
 
-    // Set up event channel
+    // Set up event channel and input thread
     let (tx, rx) = channel::<Event>();
+    spawn_input_thread(tx, &EXITED);
 
-    // Spawn IO thread
-    std::thread::spawn(move || {
-        loop {
-            if EXITED.fetch_and(true, Ordering::Relaxed) == true { break }
-            if poll(std::time::Duration::from_millis(100)).is_ok() {
-                if tx.send(read().unwrap()).is_err() { break }
-            }
-        }
-    });
-
-    // Setup terminal
+    // Setup terminal and panic hook
     let mut term = std::io::stdout();
-    setup(&mut term)?;
-
-    // Setup panic hook
-    std::panic::set_hook(Box::new(|panic_info| {
-        teardown(&mut std::io::stdout()).unwrap();
-        better_panic::Settings::auto().create_panic_handler()(panic_info);
-    }));
+    setup(&mut term, true)?;
 
     // Render app and listen for updates
     loop {

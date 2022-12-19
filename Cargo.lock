@@ -294,7 +294,6 @@ dependencies = [
 name = "dawless"
 version = "0.1.0"
 dependencies = [
- "better-panic",
  "clap",
  "dawless-akai",
  "dawless-iconnectivity",
@@ -860,6 +859,7 @@ dependencies = [
 name = "thatsit"
 version = "0.1.0"
 dependencies = [
+ "better-panic",
  "crossterm",
  "opt-mod",
 ]
