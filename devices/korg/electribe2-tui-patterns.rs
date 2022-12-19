@@ -61,10 +61,10 @@ impl TUI for Electribe2PatternsTUI {
         let Self { focused, offset, .. } = *self;
         if let Some(bank) = &self.bank {
             Layout::Layers(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.frame),//Frame { theme: THEME, focused, title: "Patterns:".into() }),
+                Layout::Item(Sizing::AUTO, &self.frame),
                 Layout::Column(Sizing::AUTO, vec![
-                    Layout::Item(Sizing::AUTO, &self.pattern_list),//PatternList { patterns: &bank.patterns, selected: self.patterns.index, offset }),
-                    Layout::Item(Sizing::AUTO, &self.pattern),//Pattern { pattern: bank.patterns.get(self.patterns.index).unwrap() })
+                    Layout::Item(Sizing::AUTO, &self.pattern_list),
+                    Layout::Item(Sizing::AUTO, &self.pattern),
                 ])
             ])
         } else {

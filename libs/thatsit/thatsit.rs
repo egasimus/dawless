@@ -6,6 +6,7 @@ opt_mod::module_flat!(themes);
 opt_mod::module_flat!(display);
 opt_mod::module_flat!(default);
 opt_mod::module_flat!(ops);
+opt_mod::module_flat!(macros);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 
@@ -72,6 +73,8 @@ pub trait TUI: Sync {
     fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
     /// Handle focus changes.
     fn focus (&mut self, _focus: bool) -> bool { false }
+    /// Is this widget focused?
+    fn focused (&self) -> bool { false }
 }
 
 /// The unit of the coordinate system

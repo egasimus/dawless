@@ -60,6 +60,12 @@ pub(crate) fn main () -> Result<()> {
     let mut term = std::io::stdout();
     setup(&mut term)?;
 
+    // Setup panic hook
+    std::panic::set_hook(Box::new(|panic_info| {
+        teardown(&mut std::io::stdout()).unwrap();
+        better_panic::Settings::auto().create_panic_handler()(panic_info);
+    }));
+
     // Render app and listen for updates
     loop {
         let mut done = false;

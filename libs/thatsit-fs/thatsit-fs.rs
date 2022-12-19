@@ -8,7 +8,8 @@ use std::{
 use crossterm::{
     QueueableCommand,
     style::{SetAttribute, Attribute, SetBackgroundColor, SetForegroundColor, Print},
-    cursor::MoveTo
+    cursor::MoveTo,
+    event::Event
 };
 
 pub type FileListItem = (String, bool);
@@ -17,6 +18,9 @@ pub type FileListItem = (String, bool);
 pub struct FileList (pub List<FileListItem>);
 
 impl TUI for FileList {
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.0.handle(event)
+    }
     fn layout (&self) -> Layout {
         self.0.layout()
     }

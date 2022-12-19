@@ -1,4 +1,15 @@
-/// TODO:
+#[macro_export] macro_rules! is_key {
+    ($event:expr => $code:pat => $block:block) => {
+        if let Event::Key(KeyEvent { code: $code, .. }) = $event {
+            $block
+        } else {
+            false
+        }
+    }
+}
+
+// TODO:
+/*
 macro_rules! layout {
     ($self:ident, $($layout:tt)+) => {
         fn layout (&$self) -> Layout {
@@ -24,3 +35,4 @@ macro_rules! layout {
         $expr
     };
 }
+*/

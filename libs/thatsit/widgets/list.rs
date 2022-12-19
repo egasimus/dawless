@@ -85,42 +85,45 @@ impl <T: Sync> TUI for List <T> {
 
 #[macro_export] macro_rules! handle_menu_focus {
     ($event:expr, $parent:expr, $child:expr, $focused:expr) => {
-        Ok(match $event {
-            Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
-                if $focused {
-                    false
-                } else {
-                    if $child.focus(false) {
-                        $parent.focus(true);
+        {
+            use ::thatsit::crossterm::event::{Event, KeyEvent, KeyCode};
+            Ok(match $event {
+                Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
+                    if $focused {
+                        false
+                    } else {
+                        if $child.focus(false) {
+                            $parent.focus(true);
+                        }
+                        true
+                    }
+                },
+                Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
+                    if $child.focus(true) {
+                        $parent.focus(false);
                     }
                     true
-                }
-            },
-            Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
-                if $child.focus(true) {
-                    $parent.focus(false);
-                }
-                true
-            },
-            Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
-                if $focused {
-                    false
-                } else {
-                    if $child.focus(false) {
-                        $parent.focus(true);
+                },
+                Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
+                    if $focused {
+                        false
+                    } else {
+                        if $child.focus(false) {
+                            $parent.focus(true);
+                        }
+                        true
+                    }
+                },
+                Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                    if $child.focus(true) {
+                        $parent.focus(false);
                     }
                     true
+                },
+                _ => {
+                    false
                 }
-            },
-            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-                if $child.focus(true) {
-                    $parent.focus(false);
-                }
-                true
-            },
-            _ => {
-                false
-            }
-        })
+            })
+        }
     }
 }
