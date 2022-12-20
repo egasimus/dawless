@@ -51,11 +51,11 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         Layout::Layers(Sizing::Min, vec![
             Layout::Item(Sizing::AUTO, &self.frame),
             Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
-        ])
+        ]).render(term, area)
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

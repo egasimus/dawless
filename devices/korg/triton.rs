@@ -26,7 +26,7 @@ impl TritonTUI {
     }
 }
 impl TUI for TritonTUI {
-    fn layout (&self) -> Layout {
-        self.menu.layout()
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.menu.render(term, area)
     }
 }

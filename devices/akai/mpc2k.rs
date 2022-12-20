@@ -13,8 +13,8 @@ impl MPC2000TUI {
 }
 
 impl TUI for MPC2000TUI {
-    fn layout (&self) -> Layout {
-        self.menu.layout()
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.menu.render(term, area)
     }
 }
 

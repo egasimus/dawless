@@ -41,13 +41,6 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn layout (&self) -> Layout {
-        if self.state {
-            self.open.layout()
-        } else {
-            self.closed.layout()
-        }
-    }
     fn min_size (&self) -> Size {
         if self.state {
             self.open.min_size()

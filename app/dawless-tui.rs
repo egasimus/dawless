@@ -114,21 +114,50 @@ impl App {
     fn device_mut <'a> (&'a mut self) -> &'a mut dyn TUI {
         &mut **self.menu.get_mut().unwrap()
     }
+    fn layout <'a> (&self, area: Area) -> (Size, Render<'a>) {
+        Layout::row(|item|{
+            item(Layout::layers(|item|{
+                item(&self.frame);
+                item(&self.menu).padding(1);
+            }));
+            if self.open {
+                item(self.device()).min_size();
+            }
+        })
+            //item(if self.open {
+                //self.device()
+            //} else {
+                //BLANK
+            //.item(Layout::layers(|self|self
+                //.item(&self.frame)
+                //.item(&self.menu)))
+            //.item(if self.open {
+                //self.device()
+            //} else {
+                //BLANK
+            //})
+            //.item(Layout::layers()
+                //.item(&self.frame)
+                //.item(&self.menu))
+            //.item(if self.open {
+                //self.device()
+            //} else {
+                //BLANK
+            //})
+        //let menu = Layout::Layers(Sizing::Min, vec![
+            //Layout::Item(Sizing::AUTO, &self.frame),
+            //Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
+        //]);
+        //let item = if self.open {
+            //Layout::Item(Sizing::Min, self.device())
+        //} else {
+            //Layout::NIL
+        //};
+        //Layout::Row(Sizing::Min, vec![menu, item])
+    }
 }
 
 impl TUI for App {
-    fn layout (&self) -> Layout {
-        let menu = Layout::Layers(Sizing::Min, vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
-        ]);
-        let item = if self.open {
-            Layout::Item(Sizing::Min, self.device())
-        } else {
-            Layout::NIL
-        };
-        Layout::Row(Sizing::Min, vec![menu, item])
-    }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         self.frame.focused = focus;

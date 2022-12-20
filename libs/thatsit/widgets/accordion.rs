@@ -24,12 +24,13 @@ impl <T: TUI> Accordion <T> {
 }
 
 impl <T: TUI> TUI for Accordion <T> {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let mut items = vec![];
         for item in self.items.iter() {
             items.push(Layout::Item(Sizing::Min, item));
         }
         Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
+            .render(term, area)
     }
     fn min_size (&self) -> Size {
         let mut size = Size::MIN;

@@ -59,22 +59,15 @@ impl <T> List <T> {
 }
 
 impl <T: Sync> TUI for List <T> {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let mut items = vec![];
-        for (index, (label, _)) in self.items.iter().enumerate() {
+        for (label, _) in self.items.iter() {
             items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
-            if index >= 9 {
-                break
-            }
         }
-        //Layout::Column(
-            //Sizing::Scroll(&self.scrollbar, &Sizing::Min),
-            //items
-        //)
-        Layout::Row(Sizing::AUTO, vec![
-            Layout::Item(Sizing::Min, &self.scrollbar),
-            Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
-        ])
+        Layout::Column(
+            Sizing::Scroll(&self.scrollbar, &Sizing::Range(self.min_size(), self.max_size())),
+            items
+        ).render(term, area)
     }
     fn min_size (&self) -> Size {
         Size(self.width(), u16::max(1, self.len() as u16))

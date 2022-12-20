@@ -15,27 +15,27 @@ use crossterm::{
 pub type FileListItem = (String, bool);
 
 #[derive(Debug, Default)]
-pub struct FileList (pub List<FileListItem>);
+pub struct FileList {
+    pub list: List<FileListItem>,
+    pub scrollbar: Scrollbar
+}
 
 impl TUI for FileList {
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.0.handle(event)
-    }
-    fn layout (&self) -> Layout {
-        self.0.layout()
+        self.list.handle(event)
     }
     fn min_size (&self) -> Size {
-        self.0.min_size()
+        self.list.min_size()
     }
     fn max_size (&self) -> Size {
-        self.0.max_size()
+        self.list.max_size()
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, ..)): Area) -> Result<()> {
-        let Theme { bg, fg, hi } = self.0.theme;
-        for (index, (_, (path, is_dir))) in self.0.items.iter().enumerate() {
+        let Theme { bg, fg, hi } = self.list.theme;
+        for (index, (_, (path, is_dir))) in self.list.items.iter().enumerate() {
             term.queue(SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }))?
                 .queue(SetBackgroundColor(bg))?
-                .queue(SetForegroundColor(if self.0.index == index { hi } else { fg }))?
+                .queue(SetForegroundColor(if self.list.index == index { hi } else { fg }))?
                 .queue(MoveTo(x, y + index as u16))?
                 .queue(Print(format!("{} {:<0width$}",
                     if *is_dir { "■" } else { " " },

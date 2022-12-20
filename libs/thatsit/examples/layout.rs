@@ -54,17 +54,17 @@ struct Subcomponent {
 
 fn main () -> Result<()> {
     let mut term = std::io::stdout();
-    setup(&mut term)?;
+    setup(&mut term, true)?;
     loop {
         APP.with(|app| {
             let app = app.borrow();
-            let layout = app.layout();
-            let min_size = layout.min_size();
+            //let layout = app.layout();
+            let min_size = app.min_size();
             let screen_size: Size = size().unwrap().into();
             if let Err(e) = min_size.fits_in(screen_size) {
                 write_error(&mut term, format!("{e}").as_str()).unwrap();
             } else {
-                let max_size = layout.max_size();
+                let max_size = app.max_size();
                 let size = screen_size.crop_to(max_size);
                 let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                 app.render(&mut term, Area(xy, size)).unwrap();
@@ -81,32 +81,32 @@ fn main () -> Result<()> {
 }
 
 impl TUI for App {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         Layout::Layers(Sizing::AUTO, vec![
             Layout::Item(Sizing::AUTO, &self.frame),
             Layout::Column(Sizing::AUTO, vec![
                 Layout::Item(Sizing::AUTO, &self.component1),
                 Layout::Item(Sizing::AUTO, &self.component2)
             ])
-        ])
+        ]).render(term, area)
     }
 }
 
 impl TUI for Component {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         Layout::Layers(Sizing::AUTO, vec![
             Layout::Item(Sizing::AUTO, &self.frame),
             Layout::Column(Sizing::AUTO, vec![
                 Layout::Item(Sizing::AUTO, &self.subcomponent1),
                 Layout::Item(Sizing::AUTO, &self.subcomponent2)
             ])
-        ])
+        ]).render(term, area)
     }
 }
 
 impl TUI for Subcomponent {
-    fn layout (&self) -> Layout {
-        Layout::Item(Sizing::AUTO, &self.frame)
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        Layout::Item(Sizing::AUTO, &self.frame).render(term, area)
     }
 }
 

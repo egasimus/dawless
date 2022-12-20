@@ -8,9 +8,6 @@ pub struct Scrollbar {
 }
 
 impl TUI for Scrollbar {
-    fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {})
-    }
     fn min_size (&self) -> Size {
         Size(1, 3)
     }
@@ -18,6 +15,7 @@ impl TUI for Scrollbar {
         Size(1, Unit::MAX)
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(_, h)): Area) -> Result<()> {
+        let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
         let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;
         let h = h as usize;
         for index in 0..h {

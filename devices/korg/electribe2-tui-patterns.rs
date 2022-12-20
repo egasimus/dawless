@@ -41,12 +41,12 @@ impl Electribe2PatternsTUI {
     }
     fn update_listing (&mut self) {
         let (entries, _) = list_current_directory();
-        self.file_list.0.replace(entries);
+        self.file_list.list.replace(entries);
     }
 }
 
 impl TUI for Electribe2PatternsTUI {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, offset, .. } = *self;
         Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
             Layout::Item(Sizing::AUTO, &self.frame),
@@ -61,7 +61,7 @@ impl TUI for Electribe2PatternsTUI {
                     Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
                 ])
             }
-        ])
+        ]).render(term, area)
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
@@ -83,7 +83,7 @@ impl TUI for Electribe2PatternsTUI {
         } else {
             Ok(
                 is_key!(event => KeyCode::Enter => {
-                    let (path, is_dir) = &self.file_list.0.items.get(self.file_list.0.index).unwrap().1;
+                    let (path, is_dir) = &self.file_list.list.items.get(self.file_list.list.index).unwrap().1;
                     if *is_dir {
                         std::env::set_current_dir(path)?;
                         self.update_listing();
@@ -102,9 +102,6 @@ impl TUI for Electribe2PatternsTUI {
 pub struct PatternList(List<Electribe2Pattern>);
 
 impl TUI for PatternList {
-    fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Range(self.min_size(), self.max_size()), &self.0)
-    }
     fn min_size (&self) -> Size {
         Size(24, 10)
     }
@@ -112,7 +109,10 @@ impl TUI for PatternList {
         Size(24, 10)
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        return self.layout().render(term, area);
+        return self.0.render(term, area);
+        return Layout::Item(
+            Sizing::Range(self.min_size(), self.max_size()), &self.0
+        ).render(term, area);
         //let Area(Point(x, y), Size(w, h)) = area;
         //let Self { offset, .. } = *self;
         //let Theme { bg, fg, hi } = THEME;
@@ -157,11 +157,10 @@ pub struct Pattern {
 }
 
 impl TUI for Pattern {
-    fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
-    }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        return self.layout().render(term, area);
+        return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
+            .render(term, area);
+
         let Area(Point(x, y), Size(w, h)) = area;
         let Theme { bg, fg, hi } = THEME;
         //let  = *space;

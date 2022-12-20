@@ -13,7 +13,7 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
-    fn layout (&self) -> Layout {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, .. } = *self;
         if let Some(bank) = &self.bank {
             Layout::Layers(Sizing::AUTO, vec![
@@ -28,7 +28,7 @@ impl TUI for Electribe2SamplesTUI {
                 Layout::Item(Sizing::AUTO, &self.frame),
                 Layout::Item(Sizing::AUTO, &self.file_list),
             ])
-        }
+        }.render(term, area)
     }
 }
 
@@ -40,6 +40,6 @@ impl Electribe2SamplesTUI {
     }
     fn update_listing (&mut self) {
         let (entries, _) = list_current_directory();
-        self.file_list.0.replace(entries);
+        self.file_list.list.replace(entries);
     }
 }

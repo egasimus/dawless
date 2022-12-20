@@ -14,9 +14,6 @@ impl Label {
 }
 
 impl TUI for Label {
-    fn layout (&self) -> Layout {
-        Layout::Item(Sizing::Fixed(self.min_size()), &Blank {})
-    }
     fn min_size (&self) -> Size {
         Size(self.text.len() as u16, 1)
     }
@@ -28,6 +25,7 @@ impl TUI for Label {
         true
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+        let layout = Layout::Item(Sizing::Fixed(self.min_size()), &Blank {});
         let Theme { bg, fg, hi } = self.theme;
         term.queue(SetBackgroundColor(bg))?
             .queue(SetForegroundColor(if self.focused { hi } else { fg }))?

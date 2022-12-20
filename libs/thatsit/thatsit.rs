@@ -1,3 +1,6 @@
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
+
 //! `thatsit` is a toy TUI framework based on `crossterm`, containing a basic layout engine.
 //! Its main design goal is **brevity**, of both API and implementation.
 
@@ -7,11 +10,11 @@ opt_mod::module_flat!(display);
 opt_mod::module_flat!(default);
 opt_mod::module_flat!(ops);
 opt_mod::module_flat!(macros);
+opt_mod::module_flat!(layout);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
-
 pub use crossterm;
-
+pub use crossterm::QueueableCommand;
 pub(crate) use crossterm::{
     ExecutableCommand,
     style::{
@@ -28,9 +31,8 @@ pub(crate) use crossterm::{
     }
 };
 
-pub use crossterm::QueueableCommand;
 
-use std::sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}};
+use std::{sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}}, ops::{Deref, DerefMut}};
 
 pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     if better_panic {
@@ -79,29 +81,23 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 
 /// A terminal UI widget
 pub trait TUI: Sync {
-    /// Return the layout of the children of this component.
-    fn layout (&self) -> Layout { Layout::default() }
     /// Return the minimum size for this component.
-    fn min_size (&self) -> Size { self.layout().min_size() }
+    fn min_size (&self) -> Size { Size::MIN }
     /// Return the minimum size for this component.
-    fn max_size (&self) -> Size { self.layout().max_size() }
-    /// Draw to the terminal.
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.layout().render(term, area)
-    }
+    fn max_size (&self) -> Size { Size::MAX }
     /// Handle input events.
     fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
     /// Handle focus changes.
     fn focus (&mut self, _focus: bool) -> bool { false }
     /// Is this widget focused?
     fn focused (&self) -> bool { false }
+    /// Draw this widget.
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        Layout::default().render(term, area)
+    }
 }
 
-use std::ops::{Deref, DerefMut};
-
 impl TUI for Box<dyn TUI> {
-    fn layout (&self)
-        -> Layout { (*self).deref().layout() }
     fn min_size (&self)
         -> Size { (*self).deref().min_size() }
     fn max_size (&self)
@@ -169,10 +165,10 @@ impl<'a> Sizing<'a> {
         }
     }
     /// Check whether the sizing contains a scroll
-    pub fn can_scroll (sizing: Sizing<'a>) -> bool {
-        match sizing {
+    pub fn can_scroll (&self) -> bool {
+        match self {
             Self::Scroll(_, _) => true,
-            Self::Pad(_, sizing) => Self::can_scroll(*sizing),
+            Self::Pad(_, sizing) => sizing.can_scroll(),
             _ => false
         }
     }
@@ -338,7 +334,7 @@ impl<'a> TUI for Layout<'a> {
             },
             Self::Column(sizing, elements) => {
                 let mut flex = Flex::new(Size::height, rect.height());
-                let sizes = flex.apply(elements)?;
+                let (sizes, scroll) = flex.apply(elements, sizing.can_scroll())?;
                 let width = match sizing {
                     Sizing::Min => self.min_size(), Sizing::Max => self.max_size(), _ => rect.1
                 }.width();
@@ -354,7 +350,7 @@ impl<'a> TUI for Layout<'a> {
             },
             Self::Row(sizing, elements) => {
                 let mut flex = Flex::new(Size::width, rect.width());
-                let sizes = flex.apply(elements)?;
+                let (sizes, scroll) = flex.apply(elements, sizing.can_scroll())?;
                 let height = match sizing {
                     Sizing::Min => self.min_size(), Sizing::Max => self.max_size(), _ => rect.1
                 }.height();
@@ -362,7 +358,7 @@ impl<'a> TUI for Layout<'a> {
                 for (index, element) in elements.iter().enumerate() {
                     let w = sizes[index];
                     element.render(term, Area(Point(x, rect.y()), Size(w, match element.sizing() {
-                        Sizing::Min => element.min_size().height(),
+                     Sizing::Min => element.min_size().height(),
                         _ => height
                     })))?;
                     x = x + w;
@@ -398,11 +394,18 @@ impl<A: Fn(Size)->Unit> Flex<A> {
             }
         })
     }
-    fn apply (&mut self, layouts: &Vec<Layout>) -> Result<Vec<Unit>> {
+    fn apply (&mut self, layouts: &Vec<Layout>, can_scroll: bool) -> Result<(Vec<Unit>, bool)> {
+        let mut scroll = false;
         for layout in layouts.iter() {
             let taken = self.prepare(layout)?;
             if taken > self.remaining {
-                return Err(Error::new(ErrorKind::Other, "not enough space"))
+                if can_scroll {
+                    scroll = true;
+                    break
+                } else {
+                    panic!("{:?} {}", layouts, can_scroll);
+                    return Err(Error::new(ErrorKind::Other, "not enough space"))
+                }
             }
             self.remaining = self.remaining - taken;
         }
@@ -420,6 +423,6 @@ impl<A: Fn(Size)->Unit> Flex<A> {
                 }
             });
         }
-        Ok(sizes)
+        Ok((sizes, scroll))
     }
 }
