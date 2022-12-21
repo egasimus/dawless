@@ -8,7 +8,7 @@ pub struct Frame {
     pub focused: bool,
 }
 
-impl TUI for Frame {
+impl<'a> TUI<'a> for Frame {
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
         let Self { theme: Theme { bg, fg, hi, .. }, title, focused } = self;
         term.queue(ResetColor)?

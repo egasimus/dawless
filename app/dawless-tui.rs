@@ -15,7 +15,7 @@ static THEME: Theme = Theme {
 
 static EXITED: AtomicBool = AtomicBool::new(false);
 
-thread_local!(static APP: RefCell<App> = RefCell::new(App {
+thread_local!(static APP: RefCell<App<'static>> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
     frame:   Frame { theme: THEME, title: "Select device:".into(), focused: true, ..Frame::default() },
@@ -23,11 +23,11 @@ thread_local!(static APP: RefCell<App> = RefCell::new(App {
     open:    false
 }));
 
-struct App {
+struct App<'a> {
     exited:  &'static AtomicBool,
     focused: bool,
     frame:   Frame,
-    menu:    List<Box<dyn TUI>>,
+    menu:    List<Box<dyn TUI<'a>>>,
     open:    bool
 }
 
@@ -63,28 +63,22 @@ pub(crate) fn main () -> Result<()> {
             let screen_size: Size = size().unwrap().into();
 
             // Render to output buffer
-            {
-                let app = app.borrow();
-                if app.exited.fetch_and(true, Ordering::Relaxed) == true {
+                if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
                     done = true;
                     return
                 }
-                let layout = app.layout();
+                let layout = app.borrow().layout();
                 let min_size = layout.min_size();
                 if let Err(e) = min_size.fits_in(screen_size) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 } else {
-                    let size = screen_size.crop_to(match layout.size() {
-                        Some(size) => size,
-                        None => layout.max_size()
-                    });
+                    let size = screen_size.crop_to(layout.min_size());
                     let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                     //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
-                    if let Err(e) = app.render(&mut term, Area(xy, size)) {
+                    if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
                         write_error(&mut term, format!("{e}").as_str()).unwrap();
                     };
                 }
-            };
 
             // Flush output buffer
             term.flush().unwrap();
@@ -104,60 +98,19 @@ pub(crate) fn main () -> Result<()> {
     Ok(())
 }
 
-impl App {
+impl<'a> App<'a> {
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
-    fn device <'a> (&'a self) -> &'a dyn TUI {
-        &**self.menu.get().unwrap()
-    }
-    fn device_mut <'a> (&'a mut self) -> &'a mut dyn TUI {
-        &mut **self.menu.get_mut().unwrap()
-    }
-    fn layout <'a> (&self, area: Area) -> (Size, Render<'a>) {
-        Layout::row(|item|{
-            item(Layout::layers(|item|{
-                item(&self.frame);
-                item(&self.menu).padding(1);
-            }));
-            if self.open {
-                item(self.device()).min_size();
-            }
-        })
-            //item(if self.open {
-                //self.device()
-            //} else {
-                //BLANK
-            //.item(Layout::layers(|self|self
-                //.item(&self.frame)
-                //.item(&self.menu)))
-            //.item(if self.open {
-                //self.device()
-            //} else {
-                //BLANK
-            //})
-            //.item(Layout::layers()
-                //.item(&self.frame)
-                //.item(&self.menu))
-            //.item(if self.open {
-                //self.device()
-            //} else {
-                //BLANK
-            //})
-        //let menu = Layout::Layers(Sizing::Min, vec![
-            //Layout::Item(Sizing::AUTO, &self.frame),
-            //Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.menu)
-        //]);
-        //let item = if self.open {
-            //Layout::Item(Sizing::Min, self.device())
-        //} else {
-            //Layout::NIL
-        //};
-        //Layout::Row(Sizing::Min, vec![menu, item])
-    }
 }
 
-impl TUI for App {
+impl<'a> TUI<'a> for App<'a> {
+    fn layout (&'a self) -> Thunk<'a> {
+        row(|add|{
+            add(stack(|add|{ add(&self.frame); add(&self.menu); }));
+            if self.open { add(self.menu.get().unwrap()); }
+        })
+    }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         self.frame.focused = focus;
@@ -169,14 +122,16 @@ impl TUI for App {
             return Ok(true)
         }
         if !self.focused {
-            if self.device_mut().handle(&event)? {
+            if self.menu.get_mut().unwrap().handle(&event)? {
                 return Ok(true)
             }
         }
         if self.menu.handle(event)? {
             return Ok(true)
         }
-        let result = handle_menu_focus!(event, self, self.device_mut(), self.focused);
+        let result = handle_menu_focus!(
+            event, self, self.menu.get_mut().unwrap(), self.focused
+        );
         if let Ok(true) = result {
             self.open = !self.focused
         }

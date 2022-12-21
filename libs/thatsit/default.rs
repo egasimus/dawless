@@ -1,12 +1,12 @@
 use crate::*;
 
-impl<'a> Default for &'a dyn TUI {
+impl<'a> Default for &'a dyn TUI<'a> {
     fn default () -> Self {
         &Blank {}
     }
 }
 
-impl Default for Box<dyn TUI> {
+impl<'a> Default for Box<dyn TUI<'a>> {
     fn default () -> Self {
         Box::new(Blank {})
     }

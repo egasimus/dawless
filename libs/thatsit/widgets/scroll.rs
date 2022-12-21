@@ -7,7 +7,7 @@ pub struct Scrollbar {
     pub offset: usize
 }
 
-impl TUI for Scrollbar {
+impl<'a> TUI<'a> for Scrollbar {
     fn min_size (&self) -> Size {
         Size(1, 3)
     }

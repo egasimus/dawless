@@ -13,7 +13,7 @@ pub struct Thunk<'a> {
     pub render_fn: RenderFn<'a>,
 }
 
-impl<'a> TUI for Thunk<'a> {}
+impl<'a> TUI<'a> for Thunk<'a> {}
 
 impl<'a> std::fmt::Debug for Thunk<'a> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -33,7 +33,7 @@ pub struct LayoutItem<'a> {
 }
 
 impl<'a> LayoutItem<'a> {
-    fn collect (mut items: impl FnMut(&mut Define)) -> Vec<Self> {
+    fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<Self> {
         let mut define = Define::default();
         items(&mut define);
         define.items
@@ -41,7 +41,7 @@ impl<'a> LayoutItem<'a> {
     pub fn min_size (&self) -> Size {
         self.content.min_size()
     }
-    pub fn item (item: &'a dyn TUI) -> Self {
+    pub fn item (item: &'a dyn TUI<'a>) -> Self {
         Self {
             content: LayoutContent::Item(item),
             sizing:  Sizing::Min,
@@ -63,7 +63,7 @@ impl<'a> LayoutItem<'a> {
 /// The content of a layout item.
 #[derive(Clone, Debug)]
 pub enum LayoutContent<'a> {
-    Item(&'a dyn TUI),
+    Item(&'a dyn TUI<'a>),
     Thunk(Thunk<'a>)
 }
 
@@ -83,14 +83,14 @@ pub struct Define<'a> {
     items: Vec<LayoutItem<'a>>
 }
 
-impl<'a, T: TUI> FnOnce<(&'a T,)> for Define<'a> {
+impl<'a, T: TUI<'a>> FnOnce<(&'a T,)> for Define<'a> {
     type Output = ();
     extern "rust-call" fn call_once (self, _args: (&'a T,)) -> Self::Output {
         unreachable!()
     }
 }
 
-impl<'a, T: TUI> FnMut<(&'a T,)> for Define<'a> {
+impl<'a, T: TUI<'a>> FnMut<(&'a T,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (&'a T,)) -> Self::Output {
         self.items.push(LayoutItem::item(args.0));
         ()
@@ -113,7 +113,7 @@ impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
 
 
 /// A horizontal row of widgets.
-pub fn row <'a> (items: impl FnMut(&mut Define)) -> Thunk<'a> {
+pub fn row <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.expand_row(item.min_size()) }
@@ -121,7 +121,7 @@ pub fn row <'a> (items: impl FnMut(&mut Define)) -> Thunk<'a> {
 }
 
 /// A vertical column of widgets.
-pub fn col <'a> (items: impl FnMut(&mut Define)) -> Thunk<'a> {
+pub fn col <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.expand_column(item.min_size()) }
@@ -129,7 +129,7 @@ pub fn col <'a> (items: impl FnMut(&mut Define)) -> Thunk<'a> {
 }
 
 /// A stack of widgets drawn on top of each other.
-pub fn stack <'a> (items: impl FnMut(&mut Define)) -> Thunk<'a> {
+pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.stretch(item.min_size()) }
@@ -176,3 +176,4 @@ mod test {
     }
 
 }
+

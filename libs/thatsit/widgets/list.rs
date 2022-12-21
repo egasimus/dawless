@@ -58,7 +58,7 @@ impl <T> List <T> {
     }
 }
 
-impl <T: Sync> TUI for List <T> {
+impl <'a, T: Sync> TUI<'a> for List <T> {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let mut items = vec![];
         for (label, _) in self.items.iter() {

@@ -1,16 +1,18 @@
 use crate::*;
 
 #[derive(Default, Debug)]
-pub struct Toggle<T: TUI, U: TUI> {
+pub struct Toggle<'a, T: TUI<'a>, U: TUI<'a>> {
+    phantom: std::marker::PhantomData<&'a dyn TUI<'a>>,
     pub theme:  Theme,
     pub closed: T,
     pub open:   U,
     state: bool,
 }
 
-impl<T: TUI, U: TUI> Toggle<T, U> {
+impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
+            phantom: std::marker::PhantomData,
             theme:  Theme::default(),
             state: false,
             closed,
@@ -40,7 +42,7 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
     }
 }
 
-impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
+impl<'a, T: TUI<'a>, U: TUI<'a>> TUI<'a> for Toggle<'a, T, U> {
     fn min_size (&self) -> Size {
         if self.state {
             self.open.min_size()
@@ -69,7 +71,7 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
             self.closed.focused()
         }
     }
-    fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
+    fn render (&'a self, term: &mut dyn Write, rect: Area) -> Result<()> {
         if self.state {
             self.open.render(term, rect)
         } else {

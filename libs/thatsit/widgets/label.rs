@@ -13,7 +13,7 @@ impl Label {
     }
 }
 
-impl TUI for Label {
+impl<'a> TUI<'a> for Label {
     fn min_size (&self) -> Size {
         Size(self.text.len() as u16, 1)
     }

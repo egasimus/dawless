@@ -80,7 +80,7 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 }
 
 /// A terminal UI widget
-pub trait TUI: Sync {
+pub trait TUI<'a>: Sync {
     /// Return the minimum size for this component.
     fn min_size (&self) -> Size { Size::MIN }
     /// Return the minimum size for this component.
@@ -91,18 +91,22 @@ pub trait TUI: Sync {
     fn focus (&mut self, _focus: bool) -> bool { false }
     /// Is this widget focused?
     fn focused (&self) -> bool { false }
+
+    fn layout (&'a self) -> Thunk<'a> {
+        Thunk { min_size: self.min_size(), render_fn: &|_,_|{Ok(())} }
+    }
     /// Draw this widget.
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+    fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
         Layout::default().render(term, area)
     }
 }
 
-impl TUI for Box<dyn TUI> {
+impl<'a> TUI<'a> for Box<dyn TUI<'a>> {
     fn min_size (&self)
         -> Size { (*self).deref().min_size() }
     fn max_size (&self)
         -> Size { (*self).deref().max_size() }
-    fn render (&self, term: &mut dyn Write, area: Area)
+    fn render (&'a self, term: &mut dyn Write, area: Area)
         -> Result<()> { (*self).deref().render(term, area) }
     fn handle (&mut self, event: &Event)
         -> Result<bool> { (*self).deref_mut().handle(event) }
@@ -178,7 +182,7 @@ impl<'a> Sizing<'a> {
 #[derive(Clone)]
 pub enum Layout<'a> {
     /// A single item
-    Item(Sizing<'a>, &'a dyn TUI),
+    Item(Sizing<'a>, &'a dyn TUI<'a>),
     /// Render items on top of each other
     Layers(Sizing<'a>, Vec<Layout<'a>>),
     /// Render items in a vertical column
@@ -288,7 +292,7 @@ impl<'a> Layout<'a> {
     }
 }
 
-impl<'a> TUI for Layout<'a> {
+impl<'a> TUI<'a> for Layout<'a> {
     fn min_size (&self) -> Size {
         match self {
             Self::Item(_, item) => {
@@ -323,7 +327,7 @@ impl<'a> TUI for Layout<'a> {
             Self::Grid(_, _) => unimplemented!()
         }.apply_padding(&self.sizing())
     }
-    fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
+    fn render (&'a self, term: &mut dyn Write, rect: Area) -> Result<()> {
         let rect = rect.apply_padding(&self.sizing());
         Ok(match self {
             Self::Item(_, item) => {

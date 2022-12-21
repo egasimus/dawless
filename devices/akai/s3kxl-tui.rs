@@ -12,7 +12,7 @@ impl S3000XLTUI {
     }
 }
 
-impl TUI for S3000XLTUI {
+impl<'a> TUI<'a> for S3000XLTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }

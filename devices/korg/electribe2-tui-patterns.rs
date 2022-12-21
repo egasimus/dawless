@@ -45,7 +45,7 @@ impl Electribe2PatternsTUI {
     }
 }
 
-impl TUI for Electribe2PatternsTUI {
+impl<'a> TUI<'a> for Electribe2PatternsTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, offset, .. } = *self;
         Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
@@ -101,7 +101,7 @@ impl TUI for Electribe2PatternsTUI {
 #[derive(Debug, Default)]
 pub struct PatternList(List<Electribe2Pattern>);
 
-impl TUI for PatternList {
+impl<'a> TUI<'a> for PatternList {
     fn min_size (&self) -> Size {
         Size(24, 10)
     }
@@ -156,7 +156,7 @@ pub struct Pattern {
     pattern: Electribe2Pattern
 }
 
-impl TUI for Pattern {
+impl<'a> TUI<'a> for Pattern {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
             .render(term, area);

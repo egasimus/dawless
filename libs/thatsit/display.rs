@@ -32,7 +32,13 @@ impl Display for Size {
     }
 }
 
-impl Debug for &dyn TUI {
+impl<'a> Debug for &dyn TUI<'a> {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}-{})", self.min_size(), self.max_size())
+    }
+}
+
+impl<'a> Debug for Box<dyn TUI<'a>> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({}-{})", self.min_size(), self.max_size())
     }

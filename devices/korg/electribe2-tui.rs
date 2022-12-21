@@ -13,14 +13,14 @@ pub static THEME: Theme = Theme {
 };
 
 #[derive(Debug)]
-pub struct Electribe2TUI {
+pub struct Electribe2TUI<'a> {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: Accordion<Box<dyn TUI>>,
+    selector: Accordion<'a, Box<dyn TUI<'a>>>,
 }
 
-impl Electribe2TUI {
+impl<'a> Electribe2TUI<'a> {
     pub fn new () -> Self {
         let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
         let mut selector = Accordion::default();
@@ -50,12 +50,13 @@ impl Electribe2TUI {
     }
 }
 
-impl TUI for Electribe2TUI {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Layout::Layers(Sizing::Min, vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
-        ]).render(term, area)
+impl<'a> TUI<'a> for Electribe2TUI<'a> {
+    fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
+        stack(|add| {
+            add(&self.frame);
+            add(&self.selector);//Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
+        });//.render(term, area)
+        Ok(())
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

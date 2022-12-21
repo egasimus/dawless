@@ -11,7 +11,7 @@ impl MioXLTUI {
         Self { menu }
     }
 }
-impl TUI for MioXLTUI {
+impl<'a> TUI<'a> for MioXLTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }

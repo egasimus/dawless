@@ -12,7 +12,7 @@ pub struct Electribe2SamplesTUI {
     pub sample: Blank
 }
 
-impl TUI for Electribe2SamplesTUI {
+impl<'a> TUI<'a> for Electribe2SamplesTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Self { focused, .. } = *self;
         if let Some(bank) = &self.bank {

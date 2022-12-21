@@ -25,7 +25,7 @@ impl TritonTUI {
         Self { menu }
     }
 }
-impl TUI for TritonTUI {
+impl<'a> TUI<'a> for TritonTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }
