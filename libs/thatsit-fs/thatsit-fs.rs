@@ -20,7 +20,7 @@ pub struct FileList {
     pub scrollbar: Scrollbar
 }
 
-impl<'a> TUI<'a> for FileList {
+impl TUI for FileList {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         self.list.handle(event)
     }

@@ -12,23 +12,23 @@ pub struct Electribe2SamplesTUI {
     pub sample: Blank
 }
 
-impl<'a> TUI<'a> for Electribe2SamplesTUI {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+impl TUI for Electribe2SamplesTUI {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, .. } = *self;
         if let Some(bank) = &self.bank {
-            Layout::Layers(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Column(Sizing::AUTO, vec![
-                    Layout::Item(Sizing::AUTO, &self.sample_list),
-                    Layout::Item(Sizing::AUTO, &self.sample),
-                ])
-            ])
+            stack(|add| {
+                add(&self.frame);
+                col(|add| {
+                    add(&self.sample_list);
+                    add(&self.sample);
+                });
+            })
         } else {
-            Layout::Layers(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.frame),
-                Layout::Item(Sizing::AUTO, &self.file_list),
-            ])
-        }.render(term, area)
+            stack(|add| {
+                add(&self.frame);
+                add(&self.file_list);
+            })
+        }
     }
 }
 

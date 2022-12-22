@@ -54,7 +54,7 @@ struct Subcomponent {
 
 fn main () -> Result<()> {
     let mut term = std::io::stdout();
-    //setup(&mut term, true)?;
+    setup(&mut term, true)?;
     loop {
         APP.with(|app| {
             let app = app.borrow();
@@ -68,9 +68,8 @@ fn main () -> Result<()> {
                 let size = screen_size.crop_to(max_size);
                 let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                 let area = Area(xy, size);
-                let mut out: Vec<u8> = vec![];
-                app.render(&mut out, area).unwrap();
-                println!("{out:?}");
+                app.render(&mut term, area).unwrap();
+                //println!("{out:?}");
             }
         });
         term.flush()?;
@@ -80,7 +79,7 @@ fn main () -> Result<()> {
             }
         }
     }
-    //teardown(&mut term)
+    teardown(&mut term)?;
     Ok(())
 }
 

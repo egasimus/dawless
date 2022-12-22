@@ -15,7 +15,7 @@ static THEME: Theme = Theme {
 
 static EXITED: AtomicBool = AtomicBool::new(false);
 
-thread_local!(static APP: RefCell<App<'static>> = RefCell::new(App {
+thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
     frame:   Frame { theme: THEME, title: "Select device:".into(), focused: true, ..Frame::default() },
@@ -23,11 +23,11 @@ thread_local!(static APP: RefCell<App<'static>> = RefCell::new(App {
     open:    false
 }));
 
-struct App<'a> {
+struct App {
     exited:  &'static AtomicBool,
     focused: bool,
     frame:   Frame,
-    menu:    List<Box<dyn TUI<'a>>>,
+    menu:    List<Box<dyn TUI>>,
     open:    bool
 }
 
@@ -68,11 +68,10 @@ pub(crate) fn main () -> Result<()> {
                     return
                 }
                 let layout = app.borrow().layout();
-                let min_size = layout.min_size();
-                if let Err(e) = min_size.fits_in(screen_size) {
+                if let Err(e) = layout.min_size.fits_in(screen_size) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 } else {
-                    let size = screen_size.crop_to(layout.min_size());
+                    let size = screen_size.crop_to(layout.min_size);
                     let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                     //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
                     if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
@@ -98,14 +97,14 @@ pub(crate) fn main () -> Result<()> {
     Ok(())
 }
 
-impl<'a> App<'a> {
+impl App {
     fn exit (&mut self) {
         self.exited.store(true, Ordering::Relaxed);
     }
 }
 
-impl<'a> TUI<'a> for App<'a> {
-    fn layout (&'a self) -> Thunk<'a> {
+impl TUI for App {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
         row(|add|{
             add(stack(|add|{ add(&self.frame); add(&self.menu); }));
             if self.open { add(self.menu.get().unwrap()); }

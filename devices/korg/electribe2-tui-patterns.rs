@@ -45,23 +45,37 @@ impl Electribe2PatternsTUI {
     }
 }
 
-impl<'a> TUI<'a> for Electribe2PatternsTUI {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Self { focused, offset, .. } = *self;
-        Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            if let Some(bank) = &self.bank {
-                Layout::Row(Sizing::AUTO, vec![
-                    Layout::Item(Sizing::AUTO, &self.patterns),
-                    Layout::Item(Sizing::AUTO, &self.pattern),
-                ])
+impl TUI for Electribe2PatternsTUI {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        let Self { focused, offset, bank, .. } = self;
+        stack(|add|{
+            add(&self.frame);
+            add(if let Some(bank) = &bank {
+                row(|add|{
+                    add(&self.patterns);
+                    add(&self.pattern);
+                })
             } else {
-                Layout::Column(Sizing::AUTO, vec![
-                    Layout::Item(Sizing::Min, &self.label),
-                    Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
-                ])
-            }
-        ]).render(term, area)
+                col(|add|{
+                    add(&self.label);
+                    add(&self.file_list);
+                })
+            });
+        })
+        //Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
+            //Layout::Item(Sizing::AUTO, &self.frame),
+            //if let Some(bank) = &self.bank {
+                //Layout::Row(Sizing::AUTO, vec![
+                    //Layout::Item(Sizing::AUTO, &self.patterns),
+                    //Layout::Item(Sizing::AUTO, &self.pattern),
+                //])
+            //} else {
+                //Layout::Column(Sizing::AUTO, vec![
+                    //Layout::Item(Sizing::Min, &self.label),
+                    //Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
+                //])
+            //}
+        //]).render(term, area)
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
@@ -101,7 +115,7 @@ impl<'a> TUI<'a> for Electribe2PatternsTUI {
 #[derive(Debug, Default)]
 pub struct PatternList(List<Electribe2Pattern>);
 
-impl<'a> TUI<'a> for PatternList {
+impl TUI for PatternList {
     fn min_size (&self) -> Size {
         Size(24, 10)
     }
@@ -110,9 +124,9 @@ impl<'a> TUI<'a> for PatternList {
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         return self.0.render(term, area);
-        return Layout::Item(
-            Sizing::Range(self.min_size(), self.max_size()), &self.0
-        ).render(term, area);
+        //return Layout::Item(
+            //Sizing::Range(self.min_size(), self.max_size()), &self.0
+        //).render(term, area);
         //let Area(Point(x, y), Size(w, h)) = area;
         //let Self { offset, .. } = *self;
         //let Theme { bg, fg, hi } = THEME;
@@ -156,55 +170,56 @@ pub struct Pattern {
     pattern: Electribe2Pattern
 }
 
-impl<'a> TUI<'a> for Pattern {
+impl TUI for Pattern {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
-            .render(term, area);
+        return Ok(())
+        //return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
+            //.render(term, area);
 
-        let Area(Point(x, y), Size(w, h)) = area;
-        let Theme { bg, fg, hi } = THEME;
-        //let  = *space;
-        let title = String::from("Pattern details");
-        //Frame { theme: THEME, focused: true, title }
-            //.render(term, &Space(Point(x, y), Point(46, 30)))?;
-        term.queue(SetForegroundColor(fg))?
-            .queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?
-            .queue(MoveTo(x + 21, y + 2))?.queue(Print(&self.pattern.level))?
-            .queue(MoveTo(x +  1, y + 3))?.queue(Print(&self.pattern.bpm))?
-            .queue(MoveTo(x + 21, y + 3))?.queue(Print(&self.pattern.swing))?
-            .queue(MoveTo(x +  1, y + 4))?.queue(Print(&self.pattern.length))?
-            .queue(MoveTo(x + 21, y + 4))?.queue(Print(&self.pattern.beats))?
-            .queue(MoveTo(x +  1, y + 5))?.queue(Print(&self.pattern.key))?
-            .queue(MoveTo(x + 21, y + 5))?.queue(Print(&self.pattern.scale))?
-            .queue(MoveTo(x +  1, y + 6))?.queue(Print(&self.pattern.chord_set))?
-            .queue(MoveTo(x + 21, y + 6))?.queue(Print(&self.pattern.gate_arp))?
-            .queue(MoveTo(x +  1, y + 7))?.queue(Print(&self.pattern.mfx_type))?
-            .queue(MoveTo(x +  1, y + 8))?.queue(Print(&self.pattern.alt_13_14))?
-            .queue(MoveTo(x + 21, y + 8))?.queue(Print(&self.pattern.alt_15_16))?
-            .queue(MoveTo(x + 1, y + 10))?
-            .queue(SetAttribute(Attribute::Bold))?
-            .queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
-            .queue(SetAttribute(Attribute::Reset))?
-            .queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(fg))?;
-        for index in 0..17 {
-            term.queue(MoveTo(x + 1, y + 12 + index))?
-                .queue(if let Some(part) = self.pattern.parts.get(index as usize) {
-                    Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
-                        index + 1,
-                        part.sample,
-                        part.pitch,
-                        part.filter_type,
-                        part.modulation_type,
-                        part.ifx_on,
-                        part.level,
-                        part.pan,
-                        part.mfx_on,
-                    ))
-                } else {
-                    Print("".into())
-                })?;
-        }
-        Ok(())
+        //let Area(Point(x, y), Size(w, h)) = area;
+        //let Theme { bg, fg, hi } = THEME;
+        ////let  = *space;
+        //let title = String::from("Pattern details");
+        ////Frame { theme: THEME, focused: true, title }
+            ////.render(term, &Space(Point(x, y), Point(46, 30)))?;
+        //term.queue(SetForegroundColor(fg))?
+            //.queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?
+            //.queue(MoveTo(x + 21, y + 2))?.queue(Print(&self.pattern.level))?
+            //.queue(MoveTo(x +  1, y + 3))?.queue(Print(&self.pattern.bpm))?
+            //.queue(MoveTo(x + 21, y + 3))?.queue(Print(&self.pattern.swing))?
+            //.queue(MoveTo(x +  1, y + 4))?.queue(Print(&self.pattern.length))?
+            //.queue(MoveTo(x + 21, y + 4))?.queue(Print(&self.pattern.beats))?
+            //.queue(MoveTo(x +  1, y + 5))?.queue(Print(&self.pattern.key))?
+            //.queue(MoveTo(x + 21, y + 5))?.queue(Print(&self.pattern.scale))?
+            //.queue(MoveTo(x +  1, y + 6))?.queue(Print(&self.pattern.chord_set))?
+            //.queue(MoveTo(x + 21, y + 6))?.queue(Print(&self.pattern.gate_arp))?
+            //.queue(MoveTo(x +  1, y + 7))?.queue(Print(&self.pattern.mfx_type))?
+            //.queue(MoveTo(x +  1, y + 8))?.queue(Print(&self.pattern.alt_13_14))?
+            //.queue(MoveTo(x + 21, y + 8))?.queue(Print(&self.pattern.alt_15_16))?
+            //.queue(MoveTo(x + 1, y + 10))?
+            //.queue(SetAttribute(Attribute::Bold))?
+            //.queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
+            //.queue(SetAttribute(Attribute::Reset))?
+            //.queue(SetBackgroundColor(bg))?
+            //.queue(SetForegroundColor(fg))?;
+        //for index in 0..17 {
+            //term.queue(MoveTo(x + 1, y + 12 + index))?
+                //.queue(if let Some(part) = self.pattern.parts.get(index as usize) {
+                    //Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
+                        //index + 1,
+                        //part.sample,
+                        //part.pitch,
+                        //part.filter_type,
+                        //part.modulation_type,
+                        //part.ifx_on,
+                        //part.level,
+                        //part.pan,
+                        //part.mfx_on,
+                    //))
+                //} else {
+                    //Print("".into())
+                //})?;
+        //}
+        //Ok(())
     }
 }

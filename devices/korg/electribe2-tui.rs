@@ -17,7 +17,7 @@ pub struct Electribe2TUI<'a> {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: Accordion<'a, Box<dyn TUI<'a>>>,
+    selector: Accordion<'a, Box<dyn TUI>>,
 }
 
 impl<'a> Electribe2TUI<'a> {
@@ -50,13 +50,12 @@ impl<'a> Electribe2TUI<'a> {
     }
 }
 
-impl<'a> TUI<'a> for Electribe2TUI<'a> {
-    fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
+impl<'a> TUI for Electribe2TUI<'a> {
+    fn layout <'b> (&'b self) -> Thunk<'b> {
         stack(|add| {
             add(&self.frame);
             add(&self.selector);//Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
-        });//.render(term, area)
-        Ok(())
+        })
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
