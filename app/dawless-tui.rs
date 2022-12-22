@@ -20,7 +20,9 @@ thread_local!(static APP: RefCell<App> = RefCell::new(App {
     focused: true,
     frame:   Frame { theme: THEME, title: "Select device:".into(), focused: true, ..Frame::default() },
     menu:    List { theme: THEME, ..List::default() },
-    open:    false
+    open:    false,
+    button1: Button::new("Korg"),
+    button2: Button::new("AKAI"),
 }));
 
 struct App {
@@ -28,7 +30,9 @@ struct App {
     focused: bool,
     frame:   Frame,
     menu:    List<Box<dyn TUI>>,
-    open:    bool
+    open:    bool,
+    button1: Button,
+    button2: Button,
 }
 
 pub(crate) fn main () -> Result<()> {
@@ -59,21 +63,21 @@ pub(crate) fn main () -> Result<()> {
             // Clear screen
             clear(&mut term).unwrap();
 
-            // Get screen size
-            let screen_size: Size = size().unwrap().into();
-
-            // Render to output buffer
+            // Break loop if exited
             if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
                 done = true;
                 return
             }
+
+            // Check if there is sufficient screen size
+            let screen_size: Size = size().unwrap().into();
             let min_size = app.borrow().layout().min_size;
             if let Err(e) = min_size.fits_in(screen_size) {
                 write_error(&mut term, format!("{e}").as_str()).unwrap();
             } else {
+                // Render to output buffer
                 let size = screen_size.crop_to(min_size);
                 let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
-                //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
                 if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 };
@@ -105,10 +109,17 @@ impl App {
 
 impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        row(|add|{
-            add(stack(|add|{ add(&self.frame); add(&self.menu); }));
-            if self.open { add(self.menu.get().unwrap()); }
-        })
+        //row(|add|{
+            //add(stack(|add|{
+                //add(&self.frame);
+                //add(&self.menu);
+                col(|add|{
+                    add(&self.button1);
+                    add(&self.button2);
+                })
+            //}));
+            //if self.open { add(self.menu.get().unwrap()); }
+        //})
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

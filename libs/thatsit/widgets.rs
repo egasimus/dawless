@@ -6,3 +6,4 @@ opt_mod::module_flat!(list);
 opt_mod::module_flat!(accordion);
 opt_mod::module_flat!(scroll);
 opt_mod::module_flat!(toggle);
+opt_mod::module_flat!(button);
