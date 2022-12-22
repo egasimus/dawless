@@ -63,21 +63,21 @@ pub(crate) fn main () -> Result<()> {
             let screen_size: Size = size().unwrap().into();
 
             // Render to output buffer
-                if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
-                    done = true;
-                    return
-                }
-                let layout = app.borrow().layout();
-                if let Err(e) = layout.min_size.fits_in(screen_size) {
+            if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
+                done = true;
+                return
+            }
+            let min_size = app.borrow().layout().min_size;
+            if let Err(e) = min_size.fits_in(screen_size) {
+                write_error(&mut term, format!("{e}").as_str()).unwrap();
+            } else {
+                let size = screen_size.crop_to(min_size);
+                let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
+                //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
+                if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
-                } else {
-                    let size = screen_size.crop_to(layout.min_size);
-                    let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
-                    //write_text(&mut term, 0, 0, &format!("{screen_size} {size} {xy}")).unwrap();
-                    if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
-                        write_error(&mut term, format!("{e}").as_str()).unwrap();
-                    };
-                }
+                };
+            }
 
             // Flush output buffer
             term.flush().unwrap();
