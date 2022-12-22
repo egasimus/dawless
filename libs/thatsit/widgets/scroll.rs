@@ -7,7 +7,7 @@ pub struct Scrollbar {
     pub offset: usize
 }
 
-impl<'a> TUI<'a> for Scrollbar {
+impl TUI for Scrollbar {
     fn min_size (&self) -> Size {
         Size(1, 3)
     }
@@ -15,16 +15,16 @@ impl<'a> TUI<'a> for Scrollbar {
         Size(1, Unit::MAX)
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(_, h)): Area) -> Result<()> {
-        let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
-        let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;
-        let h = h as usize;
-        for index in 0..h {
-            let scroll_offset = (offset * h) / length;
-            let scroll_index  = (index  * h) / length;
-            term.queue(SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }))?
-                .queue(MoveTo(x, y + index as u16))?
-                .queue(Print("▒"))?;
-        }
+        //let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
+        //let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;
+        //let h = h as usize;
+        //for index in 0..h {
+            //let scroll_offset = (offset * h) / length;
+            //let scroll_index  = (index  * h) / length;
+            //term.queue(SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }))?
+                //.queue(MoveTo(x, y + index as u16))?
+                //.queue(Print("▒"))?;
+        //}
         Ok(())
     }
 }

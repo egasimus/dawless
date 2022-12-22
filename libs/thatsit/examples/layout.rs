@@ -54,7 +54,7 @@ struct Subcomponent {
 
 fn main () -> Result<()> {
     let mut term = std::io::stdout();
-    setup(&mut term, true)?;
+    //setup(&mut term, true)?;
     loop {
         APP.with(|app| {
             let app = app.borrow();
@@ -67,7 +67,10 @@ fn main () -> Result<()> {
                 let max_size = app.max_size();
                 let size = screen_size.crop_to(max_size);
                 let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
-                app.render(&mut term, Area(xy, size)).unwrap();
+                let area = Area(xy, size);
+                let mut out: Vec<u8> = vec![];
+                app.render(&mut out, area).unwrap();
+                println!("{out:?}");
             }
         });
         term.flush()?;
@@ -77,11 +80,12 @@ fn main () -> Result<()> {
             }
         }
     }
-    teardown(&mut term)
+    //teardown(&mut term)
+    Ok(())
 }
 
-impl<'a> TUI<'a> for App {
-    fn layout (&'a self) -> Thunk<'a> {
+impl TUI for App {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.frame);
             col(|add|{
@@ -92,8 +96,8 @@ impl<'a> TUI<'a> for App {
     }
 }
 
-impl<'a> TUI<'a> for Component {
-    fn layout (&'a self) -> Thunk<'a> {
+impl TUI for Component {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.frame);
             col(|add|{
@@ -104,8 +108,8 @@ impl<'a> TUI<'a> for Component {
     }
 }
 
-impl<'a> TUI<'a> for Subcomponent {
-    fn layout (&'a self) -> Thunk<'a> {
+impl TUI for Subcomponent {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.frame);
         })

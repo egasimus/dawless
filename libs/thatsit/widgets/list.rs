@@ -58,17 +58,17 @@ impl <T> List <T> {
     }
 }
 
-impl <'a, T: Sync> TUI<'a> for List <T> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let mut items = vec![];
-        for (label, _) in self.items.iter() {
-            items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
-        }
-        Layout::Column(
-            Sizing::Scroll(&self.scrollbar, &Sizing::Range(self.min_size(), self.max_size())),
-            items
-        ).render(term, area)
-    }
+impl <'a, T: Sync> TUI for List <T> {
+    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        //let mut items = vec![];
+        //for (label, _) in self.items.iter() {
+            //items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
+        //}
+        //Layout::Column(
+            //Sizing::Scroll(&self.scrollbar, &Sizing::Range(self.min_size(), self.max_size())),
+            //items
+        //).render(term, area)
+    //}
     fn min_size (&self) -> Size {
         Size(self.width(), u16::max(1, self.len() as u16))
     }

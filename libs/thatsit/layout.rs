@@ -11,11 +11,11 @@ pub struct Thunk<'a> {
     /// A function that takes the list of items in this thunk, a writable output buffer,
     /// and a rectangular area, and draws the items something into that area of the buffer
     /// in a particular layout.
-    pub render_fn: fn(&'a Vec<LayoutItem<'a>>, &mut dyn Write, Area)->Result<()>,
+    pub render_fn: fn(&Vec<LayoutItem<'a>>, &mut dyn Write, Area)->Result<()>,
 }
 
-impl<'a> TUI<'a> for Thunk<'a> {
-    fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
+impl<'a> Thunk<'a> {
+    pub fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         (self.render_fn)(&self.items, term, area)
     }
 }
@@ -25,16 +25,16 @@ impl<'a> TUI<'a> for Thunk<'a> {
 #[derive(Clone, Debug)]
 pub struct LayoutItem<'a> {
     pub content: LayoutContent<'a>,
-    pub sizing:  Sizing<'a>,
+    //pub sizing:  Sizing<'a>,
     pub padding: usize,
     pub scrolls: bool
 }
 
 impl<'a> LayoutItem<'a> {
-    pub fn item (item: &'a dyn TUI<'a>) -> Self {
+    pub fn item (item: &'a dyn TUI) -> Self {
         Self {
             content: LayoutContent::Item(item),
-            sizing:  Sizing::Min,
+            //sizing:  Sizing::Min,
             padding: 0,
             scrolls: false
         }
@@ -42,7 +42,7 @@ impl<'a> LayoutItem<'a> {
     pub fn thunk (thunk: Thunk<'a>) -> Self {
         Self {
             content: LayoutContent::Thunk(thunk),
-            sizing:  Sizing::Min,
+            //sizing:  Sizing::Min,
             padding: 0,
             scrolls: false
         }
@@ -55,7 +55,7 @@ impl<'a> LayoutItem<'a> {
     pub fn min_size (&self) -> Size {
         self.content.min_size()
     }
-    pub fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
+    pub fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         match &self.content {
             LayoutContent::Item(item) => item.render(term, area),
             LayoutContent::Thunk(thunk) => thunk.render(term, area)
@@ -68,7 +68,7 @@ impl<'a> LayoutItem<'a> {
 #[derive(Clone, Debug)]
 pub enum LayoutContent<'a> {
     /// A single widget.
-    Item(&'a dyn TUI<'a>),
+    Item(&'a dyn TUI),
     /// A collection of widgets with attached layout renderer.
     Thunk(Thunk<'a>)
 }
@@ -90,14 +90,14 @@ pub struct Define<'a> {
     items: Vec<LayoutItem<'a>>
 }
 
-impl<'a, T: TUI<'a>> FnOnce<(&'a T,)> for Define<'a> {
+impl<'a, T: TUI> FnOnce<(&'a T,)> for Define<'a> {
     type Output = ();
     extern "rust-call" fn call_once (self, _args: (&'a T,)) -> Self::Output {
         unreachable!()
     }
 }
 
-impl<'a, T: TUI<'a>> FnMut<(&'a T,)> for Define<'a> {
+impl<'a, T: TUI> FnMut<(&'a T,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (&'a T,)) -> Self::Output {
         self.items.push(LayoutItem::item(args.0));
         ()
@@ -120,7 +120,7 @@ impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
 
 /// Empty render function.
 pub fn render_nil <'a> (
-    _items: &'a Vec<LayoutItem<'a>>, _write: &mut dyn Write, _area: Area
+    _items: &Vec<LayoutItem<'a>>, _write: &mut dyn Write, _area: Area
 ) -> Result<()> {
     Ok(())
 }
@@ -135,7 +135,7 @@ pub fn row <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
 
 /// Render the items from a row thunk.
 pub fn render_row <'a> (
-    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
     let mut x = area.0.x();
     for item in items.iter() {
@@ -157,7 +157,7 @@ pub fn col <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
 
 /// Render a column thunk.
 pub fn render_col <'a> (
-    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
     let mut y = area.0.y();
     for item in items.iter() {
@@ -179,7 +179,7 @@ pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
 
 /// Render a stack thunk.
 pub fn render_stack <'a> (
-    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
     for item in items.iter() {
         item.render(write, area)?;
@@ -194,7 +194,7 @@ mod test {
 
     struct One;
 
-    impl<'a> TUI<'a> for One {
+    impl<'a> TUI for One {
         fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
             write!(term, "\n{}", Area(area.0, self.min_size()))
         }

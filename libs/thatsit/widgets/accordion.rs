@@ -1,7 +1,7 @@
 use crate::*;
 
 #[derive(Default, Debug)]
-pub struct Accordion <'a, T: TUI<'a>> {
+pub struct Accordion <'a, T: TUI> {
     pub theme: Theme,
     pub index: usize,
     pub items: Vec<Toggle<'a, Label, T>>,
@@ -9,7 +9,7 @@ pub struct Accordion <'a, T: TUI<'a>> {
     pub entered: bool
 }
 
-impl <'a, T: TUI<'a>> Accordion<'a, T> {
+impl <'a, T: TUI> Accordion<'a, T> {
     pub fn add (&mut self, text: &str, item: T) -> &mut Self {
         let label = Label { theme: self.theme, focused: self.items.len() == 0, text: text.into() };
         self.items.push(Toggle::new(label, item));
@@ -23,15 +23,15 @@ impl <'a, T: TUI<'a>> Accordion<'a, T> {
     }
 }
 
-impl<'a, T: TUI<'a>> TUI<'a> for Accordion<'a, T> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let mut items = vec![];
-        for item in self.items.iter() {
-            //items.push(Layout::Item(Sizing::Min, item));
-        }
-        Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
-            .render(term, area)
-    }
+impl<'a, T: TUI> TUI for Accordion<'a, T> {
+    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        //let mut items = vec![];
+        //for item in self.items.iter() {
+            ////items.push(Layout::Item(Sizing::Min, item));
+        //}
+        //Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
+            //.render(term, area)
+    //}
     fn min_size (&self) -> Size {
         let mut size = Size::MIN;
         for item in self.items.iter() {

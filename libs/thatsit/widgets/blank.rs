@@ -7,7 +7,7 @@ pub struct Blank;
 /// An instance of the empty widget
 pub const BLANK: &'static Blank = &Blank;
 
-impl<'a> TUI<'a> for Blank {
+impl TUI for Blank {
     fn min_size (&self) -> Size {
         Size::MIN
     }

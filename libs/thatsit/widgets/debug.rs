@@ -3,7 +3,7 @@ use crate::*;
 /// A debug widget
 pub struct DebugBox { pub bg: Color }
 
-impl<'a> TUI<'a> for DebugBox {
+impl TUI for DebugBox {
     fn min_size (&self) -> Size {
         Size(16, 3)
     }

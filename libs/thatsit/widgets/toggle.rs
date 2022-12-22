@@ -1,15 +1,15 @@
 use crate::*;
 
 #[derive(Default, Debug)]
-pub struct Toggle<'a, T: TUI<'a>, U: TUI<'a>> {
-    phantom: std::marker::PhantomData<&'a dyn TUI<'a>>,
+pub struct Toggle<'a, T: TUI, U: TUI> {
+    phantom: std::marker::PhantomData<&'a dyn TUI>,
     pub theme:  Theme,
     pub closed: T,
     pub open:   U,
     state: bool,
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
+impl<'a, T: TUI, U: TUI> Toggle<'a, T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
             phantom: std::marker::PhantomData,
@@ -42,7 +42,7 @@ impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
     }
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> TUI<'a> for Toggle<'a, T, U> {
+impl<'a, T: TUI, U: TUI> TUI for Toggle<'a, T, U> {
     fn min_size (&self) -> Size {
         if self.state {
             self.open.min_size()
@@ -71,7 +71,7 @@ impl<'a, T: TUI<'a>, U: TUI<'a>> TUI<'a> for Toggle<'a, T, U> {
             self.closed.focused()
         }
     }
-    fn render (&'a self, term: &mut dyn Write, rect: Area) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         if self.state {
             self.open.render(term, rect)
         } else {
