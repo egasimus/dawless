@@ -19,6 +19,14 @@
     }
 }
 
+#[macro_export] macro_rules! assert_rendered {
+    ($layout:ident == $expected:expr) => {
+        let mut output = Vec::<u8>::new();
+        assert_eq!($layout.render(&mut output, Area(Point(5, 5), Size(10, 10))).unwrap(), ());
+        assert_eq!(from_utf8(&output).unwrap(), $expected);
+    }
+}
+
 // TODO:
 /*
 macro_rules! layout {

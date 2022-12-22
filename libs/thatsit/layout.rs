@@ -203,20 +203,10 @@ mod test {
         }
     }
 
-    macro_rules! assert_rendered {
-        ($layout:ident == $expected:expr) => {
-            let mut output = Vec::<u8>::new();
-            assert_eq!($layout.render(&mut output, Area(Point(5, 5), Size(10, 10))).unwrap(), ());
-            assert_eq!(from_utf8(&output).unwrap(), $expected);
-        }
-    }
-
     #[test]
     fn test_row_col () {
 
-        let mut output = Vec::<u8>::new();
-        One.render(&mut output, Area(Point(5, 5), Size(10, 10))).unwrap();
-        assert_eq!(from_utf8(&output).unwrap(), "\n1x1+5+5");
+        assert_rendered!(One == "\n1x1+5+5");
 
         let layout = row(|add| { add(&One); add(&One); });
         assert_eq!(layout.min_size, Size(2, 1));
