@@ -9,8 +9,9 @@ type RenderFn<'a> = &'a (dyn Fn(&mut dyn Write, Area)->Result<()> + Sync);
 /// provided a minimum area is available.
 #[derive(Clone)]
 pub struct Thunk<'a> {
-    pub min_size: Size,
-    pub render_fn: RenderFn<'a>,
+    pub min_size:  Size,
+    pub items:     Vec<LayoutItem<'a>>,
+    pub render_fn: fn(&'a Vec<LayoutItem<'a>>, &mut dyn Write, Area)->Result<()>,
 }
 
 impl<'a> TUI<'a> for Thunk<'a> {}
@@ -33,14 +34,6 @@ pub struct LayoutItem<'a> {
 }
 
 impl<'a> LayoutItem<'a> {
-    fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<Self> {
-        let mut define = Define::default();
-        items(&mut define);
-        define.items
-    }
-    pub fn min_size (&self) -> Size {
-        self.content.min_size()
-    }
     pub fn item (item: &'a dyn TUI<'a>) -> Self {
         Self {
             content: LayoutContent::Item(item),
@@ -55,6 +48,20 @@ impl<'a> LayoutItem<'a> {
             sizing:  Sizing::Min,
             padding: 0,
             scrolls: false
+        }
+    }
+    pub fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<Self> {
+        let mut define = Define::default();
+        items(&mut define);
+        define.items
+    }
+    pub fn min_size (&self) -> Size {
+        self.content.min_size()
+    }
+    pub fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
+        match &self.content {
+            LayoutContent::Item(item) => item.render(term, area),
+            LayoutContent::Thunk(thunk) => (thunk.render_fn)(&thunk.items, term, area)
         }
     }
 }
@@ -111,29 +118,56 @@ impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
     }
 }
 
+/// Empty render function.
+pub fn render_nil <'a> (
+    _items: &'a Vec<LayoutItem<'a>>, _write: &mut dyn Write, _area: Area
+) -> Result<()> {
+    Ok(())
+}
 
-/// A horizontal row of widgets.
+/// Collect widgets in a row thunk.
 pub fn row <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.expand_row(item.min_size()) }
-    Thunk { min_size, render_fn: &|_write,_area|{Ok(())} }
+    Thunk { items, min_size, render_fn: render_row }
 }
 
-/// A vertical column of widgets.
+/// Render the items from a row thunk.
+pub fn render_row <'a> (
+    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    Ok(())
+}
+
+/// Collect widgets in a column thunk.
 pub fn col <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.expand_column(item.min_size()) }
-    Thunk { min_size, render_fn: &|_write,_area|{Ok(())} }
+    Thunk { items, min_size, render_fn: render_col }
 }
 
-/// A stack of widgets drawn on top of each other.
+/// Render a column thunk.
+pub fn render_col <'a> (
+    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    Ok(())
+}
+
+/// Collect widgets in a stack thunk.
 pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
     let items = LayoutItem::collect(items);
     for item in items.iter() { min_size = min_size.stretch(item.min_size()) }
-    Thunk { min_size, render_fn: &|_write,_area|{Ok(())} }
+    Thunk { items, min_size, render_fn: render_stack }
+}
+
+/// Render a stack thunk.
+pub fn render_stack <'a> (
+    items: &'a Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    Ok(())
 }
 
 

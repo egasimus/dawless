@@ -80,33 +80,35 @@ fn main () -> Result<()> {
     teardown(&mut term)
 }
 
-impl TUI for App {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Layout::Layers(Sizing::AUTO, vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Column(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.component1),
-                Layout::Item(Sizing::AUTO, &self.component2)
-            ])
-        ]).render(term, area)
+impl<'a> TUI<'a> for App {
+    fn layout (&'a self) -> Thunk<'a> {
+        stack(|add|{
+            add(&self.frame);
+            col(|add|{
+                add(&self.component1);
+                add(&self.component2);
+            });
+        })
     }
 }
 
-impl TUI for Component {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Layout::Layers(Sizing::AUTO, vec![
-            Layout::Item(Sizing::AUTO, &self.frame),
-            Layout::Column(Sizing::AUTO, vec![
-                Layout::Item(Sizing::AUTO, &self.subcomponent1),
-                Layout::Item(Sizing::AUTO, &self.subcomponent2)
-            ])
-        ]).render(term, area)
+impl<'a> TUI<'a> for Component {
+    fn layout (&'a self) -> Thunk<'a> {
+        stack(|add|{
+            add(&self.frame);
+            col(|add|{
+                add(&self.subcomponent1);
+                add(&self.subcomponent2);
+            });
+        })
     }
 }
 
-impl TUI for Subcomponent {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Layout::Item(Sizing::AUTO, &self.frame).render(term, area)
+impl<'a> TUI<'a> for Subcomponent {
+    fn layout (&'a self) -> Thunk<'a> {
+        stack(|add|{
+            add(&self.frame);
+        })
     }
 }
 

@@ -1,5 +1,6 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
+#![feature(type_alias_impl_trait)]
 
 //! `thatsit` is a toy TUI framework based on `crossterm`, containing a basic layout engine.
 //! Its main design goal is **brevity**, of both API and implementation.
@@ -93,7 +94,7 @@ pub trait TUI<'a>: Sync {
     fn focused (&self) -> bool { false }
 
     fn layout (&'a self) -> Thunk<'a> {
-        Thunk { min_size: self.min_size(), render_fn: &|_,_|{Ok(())} }
+        Thunk { items: vec![], min_size: self.min_size(), render_fn: render_nil }
     }
     /// Draw this widget.
     fn render (&'a self, term: &mut dyn Write, area: Area) -> Result<()> {
