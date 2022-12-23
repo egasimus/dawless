@@ -1,15 +1,19 @@
 use crate::*;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Button {
     pub theme:   Theme,
     pub focused: bool,
-    pub text:    String
+    pub text:    String,
+    pub click:   Option<Box<dyn FnMut() -> ()>>
 }
 
 impl Button {
-    pub fn new (text: impl Into<String>) -> Self {
-        Self { text: text.into(), ..Self::default() }
+    pub fn new (
+        text:  impl Into<String>,
+        click: Option<Box<dyn FnMut() -> ()>>
+    ) -> Self {
+        Self { text: text.into(), click, ..Self::default() }
     }
 }
 
@@ -23,6 +27,14 @@ impl TUI for Button {
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
         true
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(if_key!(event => KeyCode::Enter => {
+            if let Some(click) = &mut self.click {
+                (click)();
+            }
+            true
+        }))
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;

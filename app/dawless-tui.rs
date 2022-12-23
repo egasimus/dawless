@@ -18,62 +18,45 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     focused: true,
     exited: &EXITED,
+    menu: DeviceMenu::new(),
+    label: Label {
+        text: "Devices:".into(),
+        ..Label::default()
+    },
     frame: Frame {
         theme: THEME,
         title: "Select device:".into(),
         focused: true,
         ..Frame::default()
     },
-    menu: FocusColumn {
-        theme: THEME,
-        ..FocusColumn::default()
-    },
-    open: false,
 }));
 
 struct App {
-    exited: &'static AtomicBool,
+    exited:  &'static AtomicBool,
     focused: bool,
-    frame: Frame,
-    menu: FocusColumn<Button>,
-    open: bool,
+    frame:   Frame,
+    label:   Label,
+    menu:    DeviceMenu,
 }
 
 pub(crate) fn main () -> Result<()> {
-
-    // Init app features
-    APP.with(|app| {
-        app.borrow_mut().menu.items = vec![
-            Button::new("Korg Electribe"),
-            Button::new("Korg Triton"),
-            Button::new("AKAI S3000XL"),
-            Button::new("AKAI MPC2000"),
-            Button::new("iConnectivity mioXL")
-        ];
-    });
-
     // Set up event channel and input thread
     let (tx, rx) = channel::<Event>();
     spawn_input_thread(tx, &EXITED);
-
     // Setup terminal and panic hook
     let mut term = std::io::stdout();
     setup(&mut term, true)?;
-
     // Render app and listen for updates
     loop {
         let mut done = false;
         APP.with(|app| {
-
             // Clear screen
             clear(&mut term).unwrap();
-
             // Break loop if exited
             if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
                 done = true;
                 return
             }
-
             // Check if there is sufficient screen size
             let screen_size: Size = size().unwrap().into();
             let min_size = app.borrow().layout().min_size;
@@ -87,22 +70,17 @@ pub(crate) fn main () -> Result<()> {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 };
             }
-
             // Flush output buffer
             term.flush().unwrap();
-
             // Wait for input and update
             app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
-
         });
         if done {
             break
         }
     }
-
     // Clean up
     teardown(&mut term)?;
-
     Ok(())
 }
 
@@ -116,7 +94,7 @@ impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.frame);
-            add(&self.menu);
+            add(&self.menu.buttons);
         })
     }
     fn focus (&mut self, focus: bool) -> bool {
@@ -129,20 +107,57 @@ impl TUI for App {
             self.exit();
             return Ok(true)
         }
-        if !self.focused {
-            if self.menu.get_mut().handle(&event)? {
-                return Ok(true)
-            }
-        }
-        if self.menu.handle(event)? {
-            return Ok(true)
-        }
-        let result = handle_menu_focus!(
-            event, self, self.menu.get_mut(), self.focused
-        );
-        if let Ok(true) = result {
-            self.open = !self.focused
-        }
-        result
+        self.menu.buttons.handle(event)
+    }
+}
+
+use std::{rc::Rc, cell::Cell};
+
+struct DeviceMenu {
+    buttons: FocusColumn<Button>,
+    device:  Rc<Cell<Option<Box<dyn TUI>>>>
+}
+
+impl DeviceMenu {
+    fn new () -> Self {
+        let device = Rc::new(Cell::new(None));
+        let mut menu = Self { buttons: FocusColumn::default(), device: Rc::clone(&device) };
+        menu.buttons.items.push(Button::new(
+            "Korg Electribe",
+            Some(Box::new(move || {
+                device.set(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())))
+            }))
+        ));
+        menu.buttons.items.push(Button::new(
+            "Korg Triton",
+            None
+        ));
+        menu.buttons.items.push(Button::new(
+            "AKAI S3000XL",
+            None
+        ));
+        menu.buttons.items.push(Button::new(
+            "AKAI MPC2000",
+            None
+        ));
+        menu.buttons.items.push(Button::new(
+            "iConnectivity mioXL",
+            None
+        ));
+        menu
+        //.add("Korg Electribe",      Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
+        //.add("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
+        //.add("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
+        //.add("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
+        //.add("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
+    }
+}
+
+impl TUI for DeviceMenu {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        stack(|add|{
+            add(&self.buttons);
+            add(self.device);
+        })
     }
 }

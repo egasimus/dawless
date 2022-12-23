@@ -81,7 +81,7 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 }
 
 /// A terminal UI widget
-pub trait TUI: Sync {
+pub trait TUI {
     /// Return the minimum size for this component.
     fn min_size (&self) -> Size { Size::MIN }
     /// Return the minimum size for this component.

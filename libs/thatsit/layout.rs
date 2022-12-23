@@ -15,6 +15,7 @@ pub struct Thunk<'a> {
 }
 
 impl<'a> Thunk<'a> {
+    /// Render this thunk.
     pub fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         (self.render_fn)(&self.items, term, area)
     }
@@ -30,23 +31,23 @@ pub struct LayoutItem<'a> {
     pub scrolls: bool
 }
 
+/// Add a widget to the layout.
+impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
+    fn from (item: &'a T) -> LayoutItem<'a> {
+        let content = LayoutContent::Item(item);
+        LayoutItem { content, padding: 0, scrolls: false }
+    }
+}
+
+/// Add a thunk to the layout.
+impl<'a> From<Thunk<'a>> for LayoutItem<'a> {
+    fn from (thunk: Thunk<'a>) -> LayoutItem<'a> {
+        let content = LayoutContent::Thunk(thunk);
+        LayoutItem { content, padding: 0, scrolls: false }
+    }
+}
+
 impl<'a> LayoutItem<'a> {
-    pub fn item (item: &'a dyn TUI) -> Self {
-        Self {
-            content: LayoutContent::Item(item),
-            //sizing:  Sizing::Min,
-            padding: 0,
-            scrolls: false
-        }
-    }
-    pub fn thunk (thunk: Thunk<'a>) -> Self {
-        Self {
-            content: LayoutContent::Thunk(thunk),
-            //sizing:  Sizing::Min,
-            padding: 0,
-            scrolls: false
-        }
-    }
     pub fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<Self> {
         let mut define = Define::default();
         items(&mut define);
@@ -105,7 +106,7 @@ impl<'a, T: TUI> FnOnce<(&'a T,)> for Define<'a> {
 
 impl<'a, T: TUI> FnMut<(&'a T,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (&'a T,)) -> Self::Output {
-        self.items.push(LayoutItem::item(args.0));
+        self.items.push(args.0.into());
         ()
     }
 }
@@ -119,7 +120,7 @@ impl<'a> FnOnce<(Thunk<'a>,)> for Define<'a> {
 
 impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (Thunk<'a>,)) -> Self::Output {
-        self.items.push(LayoutItem::thunk(args.0));
+        self.items.push(args.0.into());
         ()
     }
 }
@@ -152,6 +153,17 @@ pub fn render_row <'a> (
         x = x + size.width();
     }
     Ok(())
+}
+
+/// Create a thunk containing one item.
+pub fn one <'a, T: TUI> (item: &'a T) -> Thunk<'a> {
+    Thunk { items: vec![item.into()], min_size: item.min_size(), render_fn: render_one }
+}
+
+pub fn render_one <'a> (
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    items[0].render(write, area)
 }
 
 /// Collect widgets in a column thunk.
