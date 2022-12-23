@@ -96,7 +96,7 @@ impl TUI for Electribe2PatternsTUI {
             }
         } else {
             Ok(
-                is_key!(event => KeyCode::Enter => {
+                if_key!(event => KeyCode::Enter => {
                     let (path, is_dir) = &self.file_list.list.items.get(self.file_list.list.index).unwrap().1;
                     if *is_dir {
                         std::env::set_current_dir(path)?;

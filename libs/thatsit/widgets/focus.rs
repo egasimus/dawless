@@ -33,7 +33,7 @@ impl<T: TUI> TUI for FocusColumn<T> {
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(
-            self.handle_select(event)? ||
+            self.handle_select(event)?    ||
             self.get_mut().handle(event)? ||
             false
         )

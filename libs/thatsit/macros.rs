@@ -1,4 +1,4 @@
-#[macro_export] macro_rules! is_key {
+#[macro_export] macro_rules! if_key {
     ($event:expr => $code:pat => $block:block) => {
         if let Event::Key(KeyEvent { code: $code, .. }) = $event {
             $block

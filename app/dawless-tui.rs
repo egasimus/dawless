@@ -16,27 +16,27 @@ static THEME: Theme = Theme {
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
-    exited:  &EXITED,
     focused: true,
-    frame:   Frame {
+    exited: &EXITED,
+    frame: Frame {
         theme: THEME,
         title: "Select device:".into(),
         focused: true,
         ..Frame::default()
     },
-    menu:    FocusColumn {
+    menu: FocusColumn {
         theme: THEME,
         ..FocusColumn::default()
     },
-    open:    false,
+    open: false,
 }));
 
 struct App {
-    exited:  &'static AtomicBool,
+    exited: &'static AtomicBool,
     focused: bool,
-    frame:   Frame,
-    menu:    FocusColumn<Button>,
-    open:    bool,
+    frame: Frame,
+    menu: FocusColumn<Button>,
+    open: bool,
 }
 
 pub(crate) fn main () -> Result<()> {
@@ -114,16 +114,10 @@ impl App {
 
 impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        //row(|add|{
-            //add(stack(|add|{
-                //add(&self.frame);
-                //add(&self.menu);
-                col(|add|{
-                    add(&self.menu);
-                })
-            //}));
-            //if self.open { add(self.menu.get().unwrap()); }
-        //})
+        stack(|add|{
+            add(&self.frame);
+            add(&self.menu);
+        })
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

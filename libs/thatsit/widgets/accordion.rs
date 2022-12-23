@@ -48,7 +48,7 @@ impl<'a, T: TUI> TUI for Accordion<'a, T> {
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
-            is_key!(event => KeyCode::Esc => {
+            if_key!(event => KeyCode::Esc => {
                 self.items[self.index].set(false);
                 self.entered = false;
                 true

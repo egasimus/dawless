@@ -92,15 +92,13 @@ pub trait TUI: Sync {
     fn focus (&mut self, _focus: bool) -> bool { false }
     /// Is this widget focused?
     fn focused (&self) -> bool { false }
-
+    /// Define the layout for this widget
     fn layout <'a> (&'a self) -> Thunk<'a> {
         Thunk { items: vec![], min_size: self.min_size(), render_fn: render_nil }
     }
     /// Draw this widget.
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let layout = self.layout().render(term, area);
-        //layout.render(term, area)?;
-        Ok(())
+        self.layout().render(term, area)
     }
 }
 

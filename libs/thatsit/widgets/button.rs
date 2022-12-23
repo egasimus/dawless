@@ -15,7 +15,7 @@ impl Button {
 
 impl TUI for Button {
     fn min_size (&self) -> Size {
-        Size(self.text.len() as u16 + 4, 3)
+        Size(self.text.len() as u16 + 6, 3)
     }
     fn max_size (&self) -> Size {
         self.min_size()
@@ -24,8 +24,9 @@ impl TUI for Button {
         self.focused = focus;
         true
     }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
+        let w           = self.text.len() as u16 + 4;
         let top_edge    = "▇".repeat(w as usize);
         let background  = " ".repeat(w as usize);
         let bottom_edge = "▁".repeat(w as usize);
