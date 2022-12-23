@@ -6,11 +6,11 @@ const PTST: [u8; 4] = [80, 84, 83, 84];
 /// Pattern end tag
 const PTED: [u8; 4] = [80, 84, 69, 68];
 const PATTERNS_OFFSET: usize = 0x10100;
-const PATTERN_SIZE:    usize = 0x4000;
-const PARTS_OFFSET:    usize = 0x0800;
-const PART_SIZE:       usize = 0x0330;
-const STEPS_OFFSET:    usize = 0x001e;
-const STEP_SIZE:       usize = 0x000c;
+const PATTERN_SIZE: usize = 0x4000;
+const PARTS_OFFSET: usize = 0x0800;
+const PART_SIZE: usize = 0x0330;
+const STEPS_OFFSET: usize = 0x001e;
+const STEP_SIZE: usize = 0x000c;
 
 #[derive(Debug, Default)]
 pub struct Electribe2SampleBank {

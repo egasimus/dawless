@@ -124,7 +124,10 @@ struct DeviceMenu {
 impl DeviceMenu {
     fn new () -> Self {
         let device = Rc::new(RefCell::new(None));
-        let mut menu = Self { buttons: FocusColumn::default(), device: Rc::clone(&device) };
+        let mut menu = Self {
+            buttons: FocusColumn::default(),
+            device:  Rc::clone(&device)
+        };
         menu.buttons.items.push(Button::new(
             "Korg Electribe",
             Some(Box::new(move || {
@@ -157,13 +160,26 @@ impl DeviceMenu {
 }
 
 impl TUI for DeviceMenu {
+    fn min_size (&self) -> Size {
+        self.buttons.min_size().expand_row(self.device.min_size())
+    }
+    fn max_size (&self) -> Size {
+        self.buttons.max_size().expand_row(self.device.max_size())
+    }
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        stack(|add|{
-            add(&self.buttons);
-            add(&self.device);
-        })
+        row(|add|{ add(&self.buttons); add(&self.device); })
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.buttons.handle(event)
+        let entered = self.device.borrow().is_some();
+        if entered {
+            let mut device = self.device.borrow_mut();
+            if let Some(device) = &mut *device {
+                device.handle(event)
+            } else {
+                unreachable!()
+            }
+        } else {
+            self.buttons.handle(event)
+        }
     }
 }

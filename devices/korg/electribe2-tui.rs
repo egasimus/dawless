@@ -17,22 +17,21 @@ pub struct Electribe2TUI<'a> {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: Accordion<'a, Box<dyn TUI>>,
+    selector: FocusColumn<Toggle<'a, Button, Box<dyn TUI>>>,
 }
 
 impl<'a> Electribe2TUI<'a> {
     pub fn new () -> Self {
         let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
-        let mut selector = Accordion::default();
-        selector
-            .add(
-                "Edit pattern bank".into(),
-                Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
-            );
-            //.add(
-                //"Edit sample bank".into(),
-                //Box::new(Electribe2SamplesTUI::new())
-            //);
+        let mut selector = FocusColumn::default();
+        selector.items.push(Toggle::new(
+            Button::new("Edit pattern bank...", None),
+            Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
+        ));
+        selector.items.push(Toggle::new(
+            Button::new("Edit sample bank...", None),
+            Box::new(Electribe2SamplesTUI::new()) as Box<dyn TUI>
+        ));
         Self {
             focused: false,
             entered: false,
@@ -51,6 +50,9 @@ impl<'a> Electribe2TUI<'a> {
 }
 
 impl<'a> TUI for Electribe2TUI<'a> {
+    fn min_size (&self) -> Size {
+        self.selector.min_size()
+    }
     fn layout <'b> (&'b self) -> Thunk<'b> {
         stack(|add| {
             add(&self.frame);

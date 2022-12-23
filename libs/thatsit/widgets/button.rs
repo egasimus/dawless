@@ -8,6 +8,12 @@ pub struct Button {
     pub click:   Option<Box<dyn FnMut() -> ()>>
 }
 
+impl std::fmt::Debug for Button {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[Button ({}-{}): {}]", self.min_size(), self.max_size(), self.text)
+    }
+}
+
 impl Button {
     pub fn new (
         text:  impl Into<String>,
