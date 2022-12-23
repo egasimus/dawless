@@ -28,11 +28,11 @@ impl TUI for Button {
         let Theme { fg, hi, .. } = self.theme;
         let w           = self.text.len() as u16 + 4;
         let top_edge    = "▇".repeat(w as usize);
-        let background  = " ".repeat(w as usize);
         let bottom_edge = "▁".repeat(w as usize);
-        let bg          = Color::AnsiValue(235);
         let right_edge  = "▎";
         let left_edge   = "▊";
+        let background  = " ".repeat(w as usize);
+        let bg          = Color::AnsiValue(235);
         term.queue(ResetColor)?
             .queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
             .queue(SetForegroundColor(bg))?

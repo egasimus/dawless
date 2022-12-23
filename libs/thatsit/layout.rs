@@ -64,6 +64,12 @@ impl<'a> LayoutItem<'a> {
 }
 
 
+#[derive(Clone, Debug)]
+pub struct LayoutItemModifier {
+    index: usize
+}
+
+
 /// The content of a layout item.
 #[derive(Clone, Debug)]
 pub enum LayoutContent<'a> {
@@ -117,6 +123,7 @@ impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
         ()
     }
 }
+
 
 /// Empty render function.
 pub fn render_nil <'a> (
