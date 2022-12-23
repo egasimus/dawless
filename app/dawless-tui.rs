@@ -18,33 +18,38 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     exited:  &EXITED,
     focused: true,
-    frame:   Frame { theme: THEME, title: "Select device:".into(), focused: true, ..Frame::default() },
-    menu:    List { theme: THEME, ..List::default() },
+    frame:   Frame {
+        theme: THEME,
+        title: "Select device:".into(),
+        focused: true,
+        ..Frame::default()
+    },
+    menu:    FocusColumn {
+        theme: THEME,
+        ..FocusColumn::default()
+    },
     open:    false,
-    button1: Button::new("Korg"),
-    button2: Button::new("AKAI"),
 }));
 
 struct App {
     exited:  &'static AtomicBool,
     focused: bool,
     frame:   Frame,
-    menu:    List<Box<dyn TUI>>,
+    menu:    FocusColumn<Button>,
     open:    bool,
-    button1: Button,
-    button2: Button,
 }
 
 pub(crate) fn main () -> Result<()> {
 
     // Init app features
     APP.with(|app| {
-        app.borrow_mut().menu
-            .add("Korg Electribe",      Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
-            .add("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
-            .add("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
-            .add("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
-            .add("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
+        app.borrow_mut().menu.items = vec![
+            Button::new("Korg Electribe"),
+            Button::new("Korg Triton"),
+            Button::new("AKAI S3000XL"),
+            Button::new("AKAI MPC2000"),
+            Button::new("iConnectivity mioXL")
+        ];
     });
 
     // Set up event channel and input thread
@@ -114,8 +119,7 @@ impl TUI for App {
                 //add(&self.frame);
                 //add(&self.menu);
                 col(|add|{
-                    add(&self.button1);
-                    add(&self.button2);
+                    add(&self.menu);
                 })
             //}));
             //if self.open { add(self.menu.get().unwrap()); }
@@ -132,7 +136,7 @@ impl TUI for App {
             return Ok(true)
         }
         if !self.focused {
-            if self.menu.get_mut().unwrap().handle(&event)? {
+            if self.menu.get_mut().handle(&event)? {
                 return Ok(true)
             }
         }
@@ -140,7 +144,7 @@ impl TUI for App {
             return Ok(true)
         }
         let result = handle_menu_focus!(
-            event, self, self.menu.get_mut().unwrap(), self.focused
+            event, self, self.menu.get_mut(), self.focused
         );
         if let Ok(true) = result {
             self.open = !self.focused

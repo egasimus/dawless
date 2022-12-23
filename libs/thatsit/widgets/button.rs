@@ -29,23 +29,24 @@ impl TUI for Button {
         let top_edge    = "▇".repeat(w as usize);
         let background  = " ".repeat(w as usize);
         let bottom_edge = "▁".repeat(w as usize);
-        let bg = Color::AnsiValue(235);
-        let right_edge = "▎";
-        let left_edge  = "▊";
+        let bg          = Color::AnsiValue(235);
+        let right_edge  = "▎";
+        let left_edge   = "▊";
         term.queue(ResetColor)?
-            .queue(SetBackgroundColor(Color::AnsiValue(238)))?
+            .queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
             .queue(SetForegroundColor(bg))?
             .queue(MoveTo(x,     y+0))?.queue(Print(&left_edge))?
             .queue(MoveTo(x,     y+1))?.queue(Print(&left_edge))?
             .queue(MoveTo(x,     y+2))?.queue(Print(&left_edge))?
-            .queue(SetForegroundColor(bg))?
+            .queue(SetForegroundColor(if self.focused { Color::AnsiValue(236) } else { bg }))?
             .queue(MoveTo(x+1,   y+0))?.queue(Print(&top_edge))?
-            .queue(SetBackgroundColor(bg))?
+            .queue(SetBackgroundColor(if self.focused { Color::AnsiValue(236) } else { bg }))?
             .queue(MoveTo(x+1,   y+1))?.queue(Print(&background))?
             .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
             .queue(MoveTo(x+3,   y+1))?.queue(Print(&self.text))?
             .queue(SetForegroundColor(self.theme.bg))?
             .queue(MoveTo(x+1,   y+2))?.queue(Print(&bottom_edge))?
+            .queue(SetBackgroundColor(bg))?
             .queue(MoveTo(x+w+1, y+0))?.queue(Print(&right_edge))?
             .queue(MoveTo(x+w+1, y+1))?.queue(Print(&right_edge))?
             .queue(MoveTo(x+w+1, y+2))?.queue(Print(&right_edge))?;
