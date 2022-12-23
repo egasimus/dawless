@@ -94,7 +94,7 @@ impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.frame);
-            add(&self.menu.buttons);
+            add(&self.menu);
         })
     }
     fn focus (&mut self, focus: bool) -> bool {
@@ -103,29 +103,32 @@ impl TUI for App {
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
-            self.exit();
-            return Ok(true)
-        }
-        self.menu.buttons.handle(event)
+        Ok(
+            if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
+                self.exit();
+                true
+            } else {
+                self.menu.handle(event)?
+            }
+        )
     }
 }
 
-use std::{rc::Rc, cell::Cell};
+use std::{rc::Rc};
 
 struct DeviceMenu {
     buttons: FocusColumn<Button>,
-    device:  Rc<Cell<Option<Box<dyn TUI>>>>
+    device:  Rc<RefCell<Option<Box<dyn TUI>>>>
 }
 
 impl DeviceMenu {
     fn new () -> Self {
-        let device = Rc::new(Cell::new(None));
+        let device = Rc::new(RefCell::new(None));
         let mut menu = Self { buttons: FocusColumn::default(), device: Rc::clone(&device) };
         menu.buttons.items.push(Button::new(
             "Korg Electribe",
             Some(Box::new(move || {
-                device.set(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())))
+                device.replace(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())));
             }))
         ));
         menu.buttons.items.push(Button::new(
@@ -157,7 +160,10 @@ impl TUI for DeviceMenu {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         stack(|add|{
             add(&self.buttons);
-            add(self.device);
+            add(&self.device);
         })
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.buttons.handle(event)
     }
 }

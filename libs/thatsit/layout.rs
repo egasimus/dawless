@@ -15,6 +15,7 @@ pub struct Thunk<'a> {
 }
 
 impl<'a> Thunk<'a> {
+    pub const NIL: Self = Self { min_size: Size::MIN, items: vec![], render_fn: render_nil };
     /// Render this thunk.
     pub fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         (self.render_fn)(&self.items, term, area)

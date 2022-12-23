@@ -103,20 +103,99 @@ pub trait TUI {
 }
 
 impl TUI for Box<dyn TUI> {
-    fn min_size (&self)
-        -> Size { (*self).deref().min_size() }
-    fn max_size (&self)
-        -> Size { (*self).deref().max_size() }
-    fn render (&self, term: &mut dyn Write, area: Area)
-        -> Result<()> { (*self).deref().render(term, area) }
-    fn handle (&mut self, event: &Event)
-        -> Result<bool> { (*self).deref_mut().handle(event) }
-    fn focus (&mut self, focus: bool)
-        -> bool { (*self).deref_mut().focus(focus) }
-    fn focused (&self)
-        -> bool { (*self).deref().focused() }
-    fn layout <'a> (&'a self)
-        -> Thunk<'a> { (*self).deref().layout() }
+    fn min_size (&self) -> Size {
+        (*self).deref().min_size()
+    }
+    fn max_size (&self) -> Size {
+        (*self).deref().max_size()
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        (*self).deref().render(term, area)
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        (*self).deref_mut().handle(event)
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        (*self).deref_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        (*self).deref().focused()
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        (*self).deref().layout()
+    }
+}
+
+impl<T: TUI> TUI for Option<T> {
+    fn min_size (&self) -> Size {
+        match self { Some(x) => x.min_size(), None => Size::MIN }
+    }
+    fn max_size (&self) -> Size {
+        match self { Some(x) => x.max_size(), None => Size::MIN }
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        match self { Some(x) => x.render(term, area), None => Ok(()) }
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        match self { Some(x) => x.handle(event), None => Ok(false) }
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        match self { Some(x) => x.focus(focus), None => false }
+    }
+    fn focused (&self) -> bool {
+        match self { Some(x) => x.focused(), None => false }
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        match self { Some(x) => x.layout(), None => Thunk::NIL }
+    }
+}
+
+impl<T: TUI> TUI for std::cell::RefCell<T> {
+    fn min_size (&self) -> Size {
+        self.borrow().min_size()
+    }
+    fn max_size (&self) -> Size {
+        self.borrow().max_size()
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.borrow().render(term, area)
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.borrow_mut().handle(event)
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.borrow_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.borrow().focused()
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
+    }
+}
+
+impl<T: TUI> TUI for std::rc::Rc<std::cell::RefCell<T>> {
+    fn min_size (&self) -> Size {
+        self.borrow().min_size()
+    }
+    fn max_size (&self) -> Size {
+        self.borrow().max_size()
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.borrow().render(term, area)
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.borrow_mut().handle(event)
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.borrow_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.borrow().focused()
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
+    }
 }
 
 /// The unit of the coordinate system
