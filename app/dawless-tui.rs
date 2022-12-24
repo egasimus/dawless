@@ -121,6 +121,7 @@ impl DeviceMenu {
             "Korg Electribe",
             Some(Box::new(move || {
                 device.replace(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())));
+                Ok(true)
             }))
         ));
         menu.buttons.0.items.push(Button::new(

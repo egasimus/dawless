@@ -38,7 +38,7 @@ impl Electribe2TUI {
         }
     }
     fn feature (text: &str, feature: Box<dyn TUI>) -> Box<Collapsible> {
-        Box::new(Collapsible(Toggle::new(Button::new(String::from(text), None), feature)))
+        Box::new(Collapsible(Toggle::new(Button::new(String::from(text), Some(Box::new(||Ok(false)))), feature)))
     }
     fn enter (&mut self) {
         self.entered = true;

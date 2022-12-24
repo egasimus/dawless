@@ -314,7 +314,7 @@ pub struct Button {
     pub theme:   Theme,
     pub focused: bool,
     pub text:    String,
-    pub action:  Option<Box<dyn FnMut() -> ()>>
+    pub action:  Option<Box<dyn FnMut() -> Result<bool>>>
 }
 
 impl std::fmt::Debug for Button {
@@ -324,7 +324,7 @@ impl std::fmt::Debug for Button {
 }
 
 impl Button {
-    pub fn new (text: impl Into<String>, action: Option<Box<dyn FnMut() -> ()>>) -> Self {
+    pub fn new (text: impl Into<String>, action: Option<Box<dyn FnMut() -> Result<bool>>>) -> Self {
         Self { text: text.into(), action, ..Self::default() }
     }
 }
@@ -343,9 +343,10 @@ impl TUI for Button {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => KeyCode::Enter => {
             if let Some(action) = &mut self.action {
-                (action)();
+                (action)()?
+            } else {
+                false
             }
-            true
         }))
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
@@ -689,7 +690,7 @@ impl<'a> TUI for Inset {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Area(Point(x, y), Size(w, h)) = area;
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w-1, h-1)))?;
+        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
         let top_edge    = "▇".repeat((w) as usize);
         let bottom_edge = "▁".repeat((w) as usize);
         let left_edge   = "▊";
@@ -716,7 +717,7 @@ impl<'a> TUI for Outset {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Area(Point(x, y), Size(w, h)) = area;
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w-1, h-1)))?;
+        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
         let top_edge    = "▇".repeat(w as usize);
         let bottom_edge = "▁".repeat(w as usize);
         let right_edge  = "▎";
