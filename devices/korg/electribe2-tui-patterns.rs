@@ -48,34 +48,23 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, offset, bank, .. } = self;
-        stack(|add|{
-            add(&self.frame);
-            add(if let Some(bank) = &bank {
-                row(|add|{
+        if let Some(bank) = &bank {
+            stack(|add|{
+                add(&self.frame);
+                add(row(|add|{
                     add(&self.patterns);
                     add(&self.pattern);
-                })
-            } else {
-                col(|add|{
+                }));
+            })
+        } else {
+            stack(|add|{
+                add(&self.frame);
+                add(col(|add|{
                     add(&self.label);
                     add(&self.file_list);
-                })
-            });
-        })
-        //Layout::Layers(Sizing::Pad(1, &Sizing::AUTO), vec![
-            //Layout::Item(Sizing::AUTO, &self.frame),
-            //if let Some(bank) = &self.bank {
-                //Layout::Row(Sizing::AUTO, vec![
-                    //Layout::Item(Sizing::AUTO, &self.patterns),
-                    //Layout::Item(Sizing::AUTO, &self.pattern),
-                //])
-            //} else {
-                //Layout::Column(Sizing::AUTO, vec![
-                    //Layout::Item(Sizing::Min, &self.label),
-                    //Layout::Item(Sizing::Pad(1, &Sizing::AUTO), &self.file_list),
-                //])
-            //}
-        //]).render(term, area)
+                }));
+            })
+        }
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

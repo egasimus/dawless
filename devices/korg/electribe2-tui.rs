@@ -18,22 +18,23 @@ pub struct Electribe2TUI {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: FocusColumn<Collapsible>,
+    selector: FocusColumn<Box<dyn TUI>>,
 }
 
 impl Electribe2TUI {
     pub fn new () -> Self {
-        let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
-        let mut selector = FocusColumn::default();
-        let mut tui = Self { focused: false, entered: false, frame, selector, };
-        tui.add_button("Edit pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>);
-        tui.add_button("Edit sample bank... ", Box::new(Electribe2SamplesTUI::new()) as Box<dyn TUI>);
-        return tui
+        Self {
+            focused:  false,
+            entered:  false,
+            frame:    Frame::new("Electribe 2"),
+            selector: FocusColumn::new(vec![
+                Self::feature("Edit pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
+                Self::feature("Edit sample bank... ", Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>),
+            ]),
+        }
     }
-    fn add_button (&mut self, text: &str, feature: Box<dyn TUI>) {
-        self.selector.items.push(
-            Collapsible(Toggle::new(Button::new(String::from(text), None), feature))
-        );
+    fn feature (text: &str, feature: Box<dyn TUI>) -> Box<Collapsible> {
+        Box::new(Collapsible(Toggle::new(Button::new(String::from(text), None), feature)))
     }
     fn enter (&mut self) {
         self.entered = true;
@@ -46,14 +47,11 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
+    fn layout <'b> (&'b self) -> Thunk<'b> {
+        stack(|add| { add(&self.frame); add(&self.selector); })
+    }
     fn min_size (&self) -> Size {
         self.selector.min_size()
-    }
-    fn layout <'b> (&'b self) -> Thunk<'b> {
-        stack(|add| {
-            add(&self.frame);
-            add(&self.selector);//Layout::Item(Sizing::Pad(1, &Sizing::Min), &self.selector),
-        })
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

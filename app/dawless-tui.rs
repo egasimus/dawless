@@ -128,25 +128,25 @@ impl DeviceMenu {
             buttons: FocusColumn::default(),
             device:  Rc::clone(&device)
         };
-        menu.buttons.items.push(Button::new(
+        menu.buttons.0.items.push(Button::new(
             "Korg Electribe",
             Some(Box::new(move || {
                 device.replace(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())));
             }))
         ));
-        menu.buttons.items.push(Button::new(
+        menu.buttons.0.items.push(Button::new(
             "Korg Triton",
             None
         ));
-        menu.buttons.items.push(Button::new(
+        menu.buttons.0.items.push(Button::new(
             "AKAI S3000XL",
             None
         ));
-        menu.buttons.items.push(Button::new(
+        menu.buttons.0.items.push(Button::new(
             "AKAI MPC2000",
             None
         ));
-        menu.buttons.items.push(Button::new(
+        menu.buttons.0.items.push(Button::new(
             "iConnectivity mioXL",
             None
         ));

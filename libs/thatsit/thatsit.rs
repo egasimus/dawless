@@ -126,6 +126,30 @@ impl TUI for Box<dyn TUI> {
     }
 }
 
+impl TUI for &mut dyn TUI {
+    fn min_size (&self) -> Size {
+        (*self).min_size()
+    }
+    fn max_size (&self) -> Size {
+        (*self).max_size()
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        (*self).render(term, area)
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        (*self).handle(event)
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        (*self).focus(focus)
+    }
+    fn focused (&self) -> bool {
+        (*self).focused()
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        (*self).layout()
+    }
+}
+
 impl<T: TUI> TUI for Option<T> {
     fn min_size (&self) -> Size {
         match self { Some(x) => x.min_size(), None => Size::MIN }
