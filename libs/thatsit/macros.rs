@@ -1,3 +1,14 @@
+#[macro_export] macro_rules! key {
+    ($code:ident) => {
+        Event::Key(KeyEvent {
+            code:      KeyCode::$code,
+            modifiers: KeyModifiers::NONE,
+            kind:      KeyEventKind::Press,
+            state:     KeyEventState::NONE
+        })
+    }
+}
+
 #[macro_export] macro_rules! if_key {
     ($event:expr => $code:pat => $block:block) => {
         if let Event::Key(KeyEvent { code: $code, .. }) = $event {

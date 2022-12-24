@@ -67,53 +67,16 @@ impl TUI for Label {
     }
 }
 
-/// An inset border
-#[derive(Default, Debug)]
-pub struct Inset(
-    /// The amount of padding between the border and the content
-    pub Unit
-);
+/// A background rectangle of a fixed color
+#[derive(Debug)]
+pub struct Background(pub Color);
 
-impl Inset {
-    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding = self.0;
-        let padding_1 = Size(padding, padding * 2);
-        let padding_2 = Size(padding * 2, padding);
-        Thunk {
-            min_size: thunk.min_size + padding_1,
-            items: vec![self.into(), pad(padding_2, thunk.into()).into()],
-            render_fn: render_stack,
-        }
-    }
-}
-
-impl<'a> TUI for Inset {
+impl TUI for Background {
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let top_edge    = "▇".repeat((w) as usize);
-        let bottom_edge = "▁".repeat((w) as usize);
-        let left_edge   = "▊";
-        let right_edge  = "▎";
-        let background  = " ".repeat((w-1) as usize);
-        let bg = &Color::AnsiValue(235);
-        term.queue(ResetColor)?
-            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
-            .queue(SetForegroundColor(*bg))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(&top_edge))?;
+        let background  = " ".repeat(w as usize);
+        term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
         for y in y..y+h {
-            term.queue(MoveTo(x, y))?
-                .queue(Print(&left_edge))?;
-        }
-        term.queue(SetBackgroundColor(*bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(240)))?
-            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x+w, y))?
-                .queue(Print(&right_edge))?;
-        }
-        for y in y+1..y+h-1 {
-            term.queue(MoveTo(x+1, y))?
-                .queue(Print(&background))?;
+            term.queue(MoveTo(x, y))?.queue(Print(&background))?;
         }
         Ok(())
     }
@@ -186,6 +149,8 @@ pub struct FocusColumn<T: TUI>(pub Focus<T>);
 
 impl<T: TUI> FocusColumn<T> {
     pub fn new (items: Vec<T>) -> Self { Self(Focus::vertical(items)) }
+    pub fn get (&self) -> &T { &self.0.get() }
+    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
 }
 
 impl<T: TUI> TUI for FocusColumn<T> {
@@ -203,7 +168,7 @@ impl<T: TUI> TUI for FocusColumn<T> {
         size
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.0.get_mut().handle(event)? || false)
+        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
     }
 }
 
@@ -212,6 +177,8 @@ pub struct FocusRow<T: TUI>(pub Focus<T>);
 
 impl<T: TUI> FocusRow<T> {
     pub fn new (items: Vec<T>) -> Self { Self(Focus::horizontal(items)) }
+    pub fn get (&self) -> &T { &self.0.get() }
+    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
 }
 
 impl<T: TUI> TUI for FocusRow<T> {
@@ -229,7 +196,7 @@ impl<T: TUI> TUI for FocusRow<T> {
         size
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.0.get_mut().handle(event)? || false)
+        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
     }
 }
 
@@ -327,7 +294,7 @@ impl TUI for Collapsible {
         self.0.render(term, area)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match_key!((event) {
+        Ok(self.0.handle(event)? || match_key!((event) {
             KeyCode::Enter => { self.0.toggle(); true }
         }))
     }
@@ -381,7 +348,7 @@ impl TUI for Button {
             true
         }))
     }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
         let w           = self.text.len() as u16 + 4;
         let top_edge    = "▇".repeat(w as usize);
@@ -390,24 +357,12 @@ impl TUI for Button {
         let left_edge   = "▊";
         let background  = " ".repeat(w as usize);
         let bg          = Color::AnsiValue(235);
+        Outset(0).render(term, area)?;
+        let Area(Point(x, y), _) = area;
         term.queue(ResetColor)?
-            .queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
-            .queue(SetForegroundColor(bg))?
-            .queue(MoveTo(x,     y+0))?.queue(Print(&left_edge))?
-            .queue(MoveTo(x,     y+1))?.queue(Print(&left_edge))?
-            .queue(MoveTo(x,     y+2))?.queue(Print(&left_edge))?
-            .queue(SetForegroundColor(if self.focused { Color::AnsiValue(236) } else { bg }))?
-            .queue(MoveTo(x+1,   y+0))?.queue(Print(&top_edge))?
-            .queue(SetBackgroundColor(if self.focused { Color::AnsiValue(236) } else { bg }))?
-            .queue(MoveTo(x+1,   y+1))?.queue(Print(&background))?
+            //.queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
             .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-            .queue(MoveTo(x+3,   y+1))?.queue(Print(&self.text))?
-            .queue(SetForegroundColor(self.theme.bg))?
-            .queue(MoveTo(x+1,   y+2))?.queue(Print(&bottom_edge))?
-            .queue(SetBackgroundColor(bg))?
-            .queue(MoveTo(x+w+1, y+0))?.queue(Print(&right_edge))?
-            .queue(MoveTo(x+w+1, y+1))?.queue(Print(&right_edge))?
-            .queue(MoveTo(x+w+1, y+2))?.queue(Print(&right_edge))?;
+            .queue(MoveTo(x+3, y+1))?.queue(Print(&self.text))?;
         Ok(())
     }
 }
@@ -693,6 +648,94 @@ pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize)
         usize::min(offset + diff, length)
     } else {
         offset
+    }
+}
+
+/// An inset border
+#[derive(Default, Debug)]
+pub struct Inset(
+    /// The amount of padding between the border and the content
+    pub Unit
+);
+
+/// An outset border
+#[derive(Default, Debug)]
+pub struct Outset(
+    /// The amount of padding between the border and the content
+    pub Unit
+);
+
+impl Inset {
+    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding   = Size(self.0*2, self.0*2);
+        let min_size  = thunk.min_size + padding;
+        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+        let render_fn = render_stack;
+        Thunk { min_size, items, render_fn }
+    }
+}
+
+impl Outset {
+    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding   = Size(self.0*2, self.0*2);
+        let min_size  = thunk.min_size + padding;
+        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+        let render_fn = render_stack;
+        Thunk { min_size, items, render_fn }
+    }
+}
+
+impl<'a> TUI for Inset {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        let bg = Color::AnsiValue(235);
+        Background(bg).render(term, Area(Point(x, y), Size(w-1, h-1)))?;
+        let top_edge    = "▇".repeat((w) as usize);
+        let bottom_edge = "▁".repeat((w) as usize);
+        let left_edge   = "▊";
+        let right_edge  = "▎";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+        }
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(240)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> TUI for Outset {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        let bg = Color::AnsiValue(235);
+        Background(bg).render(term, Area(Point(x, y), Size(w-1, h-1)))?;
+        let top_edge    = "▇".repeat(w as usize);
+        let bottom_edge = "▁".repeat(w as usize);
+        let right_edge  = "▎";
+        let left_edge   = "▊";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(240)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+        }
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(16)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
+        }
+        Ok(())
     }
 }
 

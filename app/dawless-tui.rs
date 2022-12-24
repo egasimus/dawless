@@ -85,7 +85,7 @@ impl App {
 
 impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        Inset(1).around(row(|add|{add(&self.menu);}))
+        Outset(1).around(row(|add|{add(&self.menu);}))
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;

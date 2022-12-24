@@ -6,21 +6,17 @@
 //! Its main design goal is **brevity**, of both API and implementation.
 
 opt_mod::module_flat!(units);
-opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(themes);
-opt_mod::module_flat!(macros);
 opt_mod::module_flat!(layout);
+opt_mod::module_flat!(macros);
+opt_mod::module_flat!(widgets);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 pub use crossterm;
 pub use crossterm::QueueableCommand;
 pub(crate) use crossterm::{
     ExecutableCommand,
-    style::{
-        Print,
-        Color, ResetColor, SetForegroundColor, SetBackgroundColor,
-        Attribute, SetAttribute
-    },
+    style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
     cursor::{MoveTo, Show, Hide},
     event::{Event, KeyEvent, KeyCode},
     terminal::{

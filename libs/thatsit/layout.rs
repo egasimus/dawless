@@ -37,10 +37,10 @@ impl<'a, T: TUI> From<&'a T> for Thunk<'a> {
 /// alongside sizing, padding, and scrolling preferences.
 #[derive(Clone, Debug)]
 pub struct LayoutItem<'a> {
-    pub content: LayoutContent<'a>,
-    //pub sizing:  Sizing<'a>,
+    pub content:  LayoutContent<'a>,
     pub min_size: Size,
-    pub padding:  usize,
+    pub offset:   Point,
+    pub padding:  Size,
     pub scrolls:  bool
 }
 
@@ -48,7 +48,13 @@ pub struct LayoutItem<'a> {
 impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
     fn from (item: &'a T) -> LayoutItem<'a> {
         let content = LayoutContent::Item(item);
-        LayoutItem { content, min_size: item.min_size(), padding: 0, scrolls: false }
+        LayoutItem {
+            content,
+            min_size: item.min_size(),
+            offset:   Point::MIN,
+            padding:  Size::MIN,
+            scrolls:  false
+        }
     }
 }
 
@@ -57,7 +63,13 @@ impl<'a> From<Thunk<'a>> for LayoutItem<'a> {
     fn from (thunk: Thunk<'a>) -> LayoutItem<'a> {
         let min_size = thunk.min_size;
         let content = LayoutContent::Thunk(thunk);
-        LayoutItem { content, min_size, padding: 0, scrolls: false }
+        LayoutItem {
+            content,
+            min_size,
+            offset:  Point::MIN,
+            padding: Size::MIN,
+            scrolls: false
+        }
     }
 }
 
