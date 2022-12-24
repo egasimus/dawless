@@ -59,54 +59,60 @@ impl TUI for Label {
         true
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
-        let Theme { bg, fg, hi } = self.theme;
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
+        let Theme { fg, hi, .. } = self.theme;
+        term.queue(SetForegroundColor(if self.focused { hi } else { fg }))?
             .queue(MoveTo(x, y))?
             .queue(Print(&self.text))?;
         Ok(())
     }
 }
 
-/// A window border
+/// An inset border
 #[derive(Default, Debug)]
-pub struct Frame {
-    pub theme:   Theme,
-    pub title:   String,
-    pub focused: bool,
+pub struct Inset(
+    /// The amount of padding between the border and the content
+    pub Unit
+);
+
+impl Inset {
+    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding = self.0;
+        let padding_1 = Size(padding, padding * 2);
+        let padding_2 = Size(padding * 2, padding);
+        Thunk {
+            min_size: thunk.min_size + padding_1,
+            items: vec![self.into(), pad(padding_2, thunk.into()).into()],
+            render_fn: render_stack,
+        }
+    }
 }
 
-impl Frame {
-    pub fn new (title: &str) -> Self { Self { title: title.into(), ..Self::default() } }
-}
-
-impl<'a> TUI for Frame {
+impl<'a> TUI for Inset {
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let Self { theme: Theme { bg, fg, hi, .. }, title, focused } = self;
-        let top_edge    = "▇".repeat((w+2) as usize);
-        let bottom_edge = "▁".repeat((w+2) as usize);
+        let top_edge    = "▇".repeat((w) as usize);
+        let bottom_edge = "▁".repeat((w) as usize);
         let left_edge   = "▊";
         let right_edge  = "▎";
-        let background  = " ".repeat((w+2) as usize);
+        let background  = " ".repeat((w-1) as usize);
         let bg = &Color::AnsiValue(235);
         term.queue(ResetColor)?
             .queue(SetBackgroundColor(Color::AnsiValue(16)))?
             .queue(SetForegroundColor(*bg))?
-            .queue(MoveTo(x-1, y-1))?
+            .queue(MoveTo(x, y))?
             .queue(Print(&top_edge))?;
-        for y in y-1..y+h+1 {
-            term.queue(MoveTo(x-2, y))?
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?
                 .queue(Print(&left_edge))?;
         }
         term.queue(SetBackgroundColor(*bg))?
             .queue(SetForegroundColor(Color::AnsiValue(240)))?
-            .queue(MoveTo(x-1, y+h))?.queue(Print(&bottom_edge))?;
-        for y in y-1..y+h+1 {
-            term.queue(MoveTo(x+w+1, y))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w, y))?
                 .queue(Print(&right_edge))?;
         }
-        for y in y..y+h {
-            term.queue(MoveTo(x-1, y))?
+        for y in y+1..y+h-1 {
+            term.queue(MoveTo(x+1, y))?
                 .queue(Print(&background))?;
         }
         Ok(())
@@ -267,6 +273,18 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
     }
 }
 
+impl<T: TUI, U: TUI> Into<bool> for Toggle<T, U> {
+    fn into (self: Toggle<T, U>) -> bool {
+        self.state
+    }
+}
+
+impl<'a, T: TUI, U: TUI> Into<bool> for &'a Toggle<T, U> {
+    fn into (self: &'a Toggle<T, U>) -> bool {
+        self.state
+    }
+}
+
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     fn min_size (&self) -> Size {
         self.current().min_size()
@@ -296,7 +314,11 @@ pub struct Collapsible(pub Toggle<Button, Box<dyn TUI>>);
 
 impl TUI for Collapsible {
     fn min_size (&self) -> Size {
-        self.0.min_size()
+        if (&self.0).into() {
+            self.0.closed.min_size().stretch(self.0.open.min_size())
+        } else {
+            self.0.closed.min_size()
+        }
     }
     fn max_size (&self) -> Size {
         self.0.max_size()
@@ -400,9 +422,7 @@ pub struct List <T> {
 }
 
 impl<T> Default for List<T> {
-    fn default () -> Self {
-        Self::empty()
-    }
+    fn default () -> Self { Self::empty() }
 }
 
 impl <T> List <T> {
@@ -683,7 +703,7 @@ mod test {
 
     #[test]
     fn test_frame () {
-        let frame = Frame::default();
+        let frame = Inset;
         assert_rendered!(frame == "\u{1b}[0m\u{1b}[38;5;232m\u{1b}[6;6H▄▄▄▄▄▄▄▄▄▄\u{1b}[15;6H▀▀▀▀▀▀▀▀▀▀\u{1b}[0m\u{1b}[48;5;232m\u{1b}[7;6H          \u{1b}[8;6H          \u{1b}[9;6H          \u{1b}[10;6H          \u{1b}[11;6H          \u{1b}[12;6H          \u{1b}[13;6H          \u{1b}[14;6H          \u{1b}[48;5;232m\u{1b}[38;5;15m\u{1b}[6;6H \u{1b}[6;7H\u{1b}[1m\u{1b}[4m\u{1b}[0m\u{1b}[6;7H\u{1b}[48;5;232m\u{1b}[38;5;15m ");
     }
 }

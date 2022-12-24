@@ -14,7 +14,6 @@ use thatsit_fs::*;
 #[derive(Debug, Default)]
 pub struct Electribe2PatternsTUI {
     pub focused: bool,
-    pub frame: Frame,
     pub label: Label,
     pub file_list: FileList,
     pub bank: Option<Electribe2PatternBank>,
@@ -48,23 +47,20 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, offset, bank, .. } = self;
-        if let Some(bank) = &bank {
-            stack(|add|{
-                add(&self.frame);
-                add(row(|add|{
-                    add(&self.patterns);
-                    add(&self.pattern);
-                }));
+        Inset(0).around(if let Some(bank) = &bank {
+            row(|add|{
+                add(&self.patterns);
+                add(&self.pattern);
             })
         } else {
-            stack(|add|{
-                add(&self.frame);
-                add(col(|add|{
-                    add(&self.label);
-                    add(&self.file_list);
-                }));
+            col(|add|{
+                add(&self.label);
+                add(&self.file_list);
             })
-        }
+        })
+    }
+    fn min_size (&self) -> Size {
+        self.layout().min_size
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
@@ -169,7 +165,7 @@ impl TUI for Pattern {
         //let Theme { bg, fg, hi } = THEME;
         ////let  = *space;
         //let title = String::from("Pattern details");
-        ////Frame { theme: THEME, focused: true, title }
+        ////Inset { theme: THEME, focused: true, title }
             ////.render(term, &Space(Point(x, y), Point(46, 30)))?;
         //term.queue(SetForegroundColor(fg))?
             //.queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?

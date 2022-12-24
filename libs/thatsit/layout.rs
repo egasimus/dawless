@@ -22,38 +22,46 @@ impl<'a> Thunk<'a> {
     }
 }
 
+impl<'a, T: TUI> From<&'a T> for Thunk<'a> {
+    fn from (item: &'a T) -> Self {
+        Self {
+            min_size: item.min_size(),
+            items: vec![item.into()],
+            render_fn: render_one,
+        }
+    }
+}
+
+
 /// A leaf of the layout tree, containing either a widget or a thunk,
 /// alongside sizing, padding, and scrolling preferences.
 #[derive(Clone, Debug)]
 pub struct LayoutItem<'a> {
     pub content: LayoutContent<'a>,
     //pub sizing:  Sizing<'a>,
-    pub padding: usize,
-    pub scrolls: bool
+    pub min_size: Size,
+    pub padding:  usize,
+    pub scrolls:  bool
 }
 
 /// Add a widget to the layout.
 impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
     fn from (item: &'a T) -> LayoutItem<'a> {
         let content = LayoutContent::Item(item);
-        LayoutItem { content, padding: 0, scrolls: false }
+        LayoutItem { content, min_size: item.min_size(), padding: 0, scrolls: false }
     }
 }
 
 /// Add a thunk to the layout.
 impl<'a> From<Thunk<'a>> for LayoutItem<'a> {
     fn from (thunk: Thunk<'a>) -> LayoutItem<'a> {
+        let min_size = thunk.min_size;
         let content = LayoutContent::Thunk(thunk);
-        LayoutItem { content, padding: 0, scrolls: false }
+        LayoutItem { content, min_size, padding: 0, scrolls: false }
     }
 }
 
 impl<'a> LayoutItem<'a> {
-    pub fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<Self> {
-        let mut define = Define::default();
-        items(&mut define);
-        define.items
-    }
     pub fn min_size (&self) -> Size {
         self.content.min_size()
     }
@@ -63,12 +71,6 @@ impl<'a> LayoutItem<'a> {
             LayoutContent::Thunk(thunk) => thunk.render(term, area)
         }
     }
-}
-
-
-#[derive(Clone, Debug)]
-pub struct LayoutItemModifier {
-    index: usize
 }
 
 
@@ -83,7 +85,7 @@ pub enum LayoutContent<'a> {
 
 impl <'a> LayoutContent<'a> {
     /// Get the minimum size needed to render this layout item.
-    pub fn min_size (&self) -> Size {
+    #[inline] pub fn min_size (&self) -> Size {
         match self {
             Self::Item(item)   => item.min_size(),
             Self::Thunk(thunk) => thunk.min_size,
@@ -93,14 +95,28 @@ impl <'a> LayoutContent<'a> {
 
 
 /// A callable object passed into the layout closure. Calling it collects the layout item.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Define<'a> {
     items: Vec<LayoutItem<'a>>
 }
 
+impl<'a> Define<'a> {
+    pub fn collect (mut items: impl FnMut(&mut Define<'a>)) -> Vec<LayoutItem<'a>> {
+        let mut define = Self::default();
+        items(&mut define);
+        define.items
+    }
+    pub fn pad (&mut self, amount: Unit) -> &mut Self {
+        let index = self.items.len();
+        self.items[index].min_size.0 += amount * 2;
+        self.items[index].min_size.1 += amount * 2;
+        self
+    }
+}
+
 impl<'a, T: TUI> FnOnce<(&'a T,)> for Define<'a> {
     type Output = ();
-    extern "rust-call" fn call_once (self, _args: (&'a T,)) -> Self::Output {
+    extern "rust-call" fn call_once (self, _args: (&T,)) -> Self::Output {
         unreachable!()
     }
 }
@@ -108,7 +124,6 @@ impl<'a, T: TUI> FnOnce<(&'a T,)> for Define<'a> {
 impl<'a, T: TUI> FnMut<(&'a T,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (&'a T,)) -> Self::Output {
         self.items.push(args.0.into());
-        ()
     }
 }
 
@@ -122,7 +137,6 @@ impl<'a> FnOnce<(Thunk<'a>,)> for Define<'a> {
 impl<'a> FnMut<(Thunk<'a>,)> for Define<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (Thunk<'a>,)) -> Self::Output {
         self.items.push(args.0.into());
-        ()
     }
 }
 
@@ -137,7 +151,7 @@ pub fn render_nil <'a> (
 /// Collect widgets in a row thunk.
 pub fn row <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
-    let items = LayoutItem::collect(items);
+    let items = Define::collect(items);
     for item in items.iter() { min_size = min_size.expand_row(item.min_size()) }
     Thunk { items, min_size, render_fn: render_row }
 }
@@ -170,7 +184,7 @@ pub fn render_one <'a> (
 /// Collect widgets in a column thunk.
 pub fn col <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
-    let items = LayoutItem::collect(items);
+    let items = Define::collect(items);
     for item in items.iter() { min_size = min_size.expand_column(item.min_size()) }
     Thunk { items, min_size, render_fn: render_col }
 }
@@ -192,7 +206,7 @@ pub fn render_col <'a> (
 /// Collect widgets in a stack thunk.
 pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
     let mut min_size = Size::MIN;
-    let items = LayoutItem::collect(items);
+    let items = Define::collect(items);
     for item in items.iter() { min_size = min_size.stretch(item.min_size()) }
     Thunk { items, min_size, render_fn: render_stack }
 }
@@ -204,6 +218,32 @@ pub fn render_stack <'a> (
     for item in items.iter() {
         item.render(write, area)?;
     }
+    Ok(())
+}
+
+/// Wrap thunk into padding
+pub fn grow <'a> (size: Size, thunk: Thunk<'a>) -> Thunk<'a> {
+    let min_size = thunk.min_size + size;
+    Thunk { items: vec![thunk.into()], min_size, render_fn: render_pad }
+}
+
+/// Wrap thunk into padding
+pub fn shrink <'a> (size: Size, thunk: Thunk<'a>) -> Thunk<'a> {
+    let min_size = thunk.min_size - size;
+    Thunk { items: vec![thunk.into()], min_size, render_fn: render_pad }
+}
+
+/// Wrap thunk into padding
+pub fn pad <'a> (padding: Size, thunk: Thunk<'a>) -> Thunk<'a> {
+    let min_size = thunk.min_size + padding + padding;
+    Thunk { items: vec![thunk.into()], min_size, render_fn: render_pad }
+}
+
+/// Render a stack thunk.
+pub fn render_pad <'a> (
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    items[0].render(write, Area(area.0 + Point(1, 1), area.1))?;
     Ok(())
 }
 

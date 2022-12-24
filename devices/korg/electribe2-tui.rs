@@ -17,7 +17,6 @@ pub static THEME: Theme = Theme {
 pub struct Electribe2TUI {
     focused:  bool,
     entered:  bool,
-    frame:    Frame,
     selector: FocusColumn<Box<dyn TUI>>,
 }
 
@@ -26,7 +25,6 @@ impl Electribe2TUI {
         Self {
             focused:  false,
             entered:  false,
-            frame:    Frame::new("Electribe 2"),
             selector: FocusColumn::new(vec![
                 Self::feature("Edit pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
                 Self::feature("Edit sample bank... ", Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>),
@@ -47,15 +45,14 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
-    fn layout <'b> (&'b self) -> Thunk<'b> {
-        stack(|add| { add(&self.frame); add(&self.selector); })
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        Inset(0).around((&self.selector).into())
     }
     fn min_size (&self) -> Size {
         self.selector.min_size()
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        self.frame.focused = self.focused;// || self.patterns.focused() || self.samples.focused();
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

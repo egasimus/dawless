@@ -34,7 +34,6 @@ impl TUI for FileList {
         let Theme { bg, fg, hi } = self.list.theme;
         for (index, (_, (path, is_dir))) in self.list.items.iter().enumerate() {
             term.queue(SetAttribute(if *is_dir { Attribute::Bold } else { Attribute::Reset }))?
-                .queue(SetBackgroundColor(bg))?
                 .queue(SetForegroundColor(if self.list.index == index { hi } else { fg }))?
                 .queue(MoveTo(x, y + index as u16))?
                 .queue(Print(format!("{} {:<0width$}",

@@ -19,8 +19,8 @@ thread_local!(static APP: RefCell<App> = RefCell::new(App {
     },
 }));
 
-const fn bg (color: u8) -> Frame {
-    Frame {
+const fn bg (color: u8) -> Inset {
+    Inset {
         theme: Theme { bg: Color::AnsiValue(color), ..THEME },
         title: String::new(),
         focused: false
@@ -35,21 +35,21 @@ const THEME: Theme = Theme {
 
 #[derive(Default)]
 struct App {
-    frame: Frame,
+    frame: Inset,
     component1: Component,
     component2: Component,
 }
 
 #[derive(Default)]
 struct Component {
-    frame: Frame,
+    frame: Inset,
     subcomponent1: Subcomponent,
     subcomponent2: Subcomponent
 }
 
 #[derive(Default)]
 struct Subcomponent {
-    frame: Frame,
+    frame: Inset,
 }
 
 fn main () -> Result<()> {

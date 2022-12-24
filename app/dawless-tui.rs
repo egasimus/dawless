@@ -23,18 +23,11 @@ thread_local!(static APP: RefCell<App> = RefCell::new(App {
         text: "Devices:".into(),
         ..Label::default()
     },
-    frame: Frame {
-        theme: THEME,
-        title: "Select device:".into(),
-        focused: true,
-        ..Frame::default()
-    },
 }));
 
 struct App {
     exited:  &'static AtomicBool,
     focused: bool,
-    frame:   Frame,
     label:   Label,
     menu:    DeviceMenu,
 }
@@ -92,14 +85,10 @@ impl App {
 
 impl TUI for App {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        stack(|add|{
-            add(&self.frame);
-            add(&self.menu);
-        })
+        Inset(1).around(row(|add|{add(&self.menu);}))
     }
     fn focus (&mut self, focus: bool) -> bool {
         self.focused = focus;
-        self.frame.focused = focus;
         true
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {

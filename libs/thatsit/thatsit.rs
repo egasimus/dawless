@@ -5,11 +5,9 @@
 //! `thatsit` is a toy TUI framework based on `crossterm`, containing a basic layout engine.
 //! Its main design goal is **brevity**, of both API and implementation.
 
+opt_mod::module_flat!(units);
 opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(themes);
-opt_mod::module_flat!(display);
-opt_mod::module_flat!(default);
-opt_mod::module_flat!(ops);
 opt_mod::module_flat!(macros);
 opt_mod::module_flat!(layout);
 
@@ -32,8 +30,7 @@ pub(crate) use crossterm::{
     }
 };
 
-
-use std::{sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}}, ops::{Deref, DerefMut}};
+use std::{fmt::Debug, sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}}, ops::{Deref, DerefMut}};
 
 pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     if better_panic {
@@ -126,29 +123,29 @@ impl TUI for Box<dyn TUI> {
     }
 }
 
-impl TUI for &mut dyn TUI {
-    fn min_size (&self) -> Size {
-        (*self).min_size()
-    }
-    fn max_size (&self) -> Size {
-        (*self).max_size()
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        (*self).render(term, area)
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        (*self).handle(event)
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        (*self).focus(focus)
-    }
-    fn focused (&self) -> bool {
-        (*self).focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        (*self).layout()
-    }
-}
+//impl TUI for &mut dyn TUI {
+    //fn min_size (&self) -> Size {
+        //(*self).min_size()
+    //}
+    //fn max_size (&self) -> Size {
+        //(*self).max_size()
+    //}
+    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        //(*self).render(term, area)
+    //}
+    //fn handle (&mut self, event: &Event) -> Result<bool> {
+        //(*self).handle(event)
+    //}
+    //fn focus (&mut self, focus: bool) -> bool {
+        //(*self).focus(focus)
+    //}
+    //fn focused (&self) -> bool {
+        //(*self).focused()
+    //}
+    //fn layout <'a> (&'a self) -> Thunk<'a> {
+        //(*self).layout()
+    //}
+//}
 
 impl<T: TUI> TUI for Option<T> {
     fn min_size (&self) -> Size {
@@ -222,70 +219,38 @@ impl<T: TUI> TUI for std::rc::Rc<std::cell::RefCell<T>> {
     }
 }
 
-/// The unit of the coordinate system
-pub type Unit = u16;
-
-/// A pair of coordinates
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Point (/** Column */ pub Unit, /** Row */ pub Unit);
-
-/// A pair of dimensions
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Size (/** Width */ pub Unit, /** Height */ pub Unit);
-
-/// A rectangle, made of a `Point` and a `Size`
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Area (/** Position */ pub Point, /** Size */ pub Size);
-
-impl Point {
-    pub const NIL: Self = Self(0, 0);
-    pub const MIN: Self = Self(Unit::MIN, Unit::MIN);
-    pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
-    #[inline] pub fn x (self) -> Unit { self.0 }
-    #[inline] pub fn y (self) -> Unit { self.1 }
-    pub fn clip (self, other: Self) -> Self {
-        Self(self.0.min(other.0), self.1.min(other.1))
+impl<'a> Default for &'a dyn TUI {
+    fn default () -> Self {
+        &Blank {}
     }
 }
 
-impl Size {
-    pub const MIN: Self = Self(0, 0);
-    pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
-    #[inline] pub fn width  (self) -> Unit { self.0 }
-    #[inline] pub fn height (self) -> Unit { self.1 }
-    /// Increase own size to fit other
-    #[inline] pub fn stretch (self, other: Self) -> Self {
-        Self(self.0.max(other.0), self.1.max(other.1))
-    }
-    /// Grow width, stretch height
-    #[inline] pub fn expand_row (self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0), self.1.max(other.1))
-    }
-    /// Stretch width, grow height
-    #[inline] pub fn expand_column (self, other: Self) -> Self {
-        Self(self.0.max(other.0), self.1.saturating_add(other.1))
-    }
-    /// Limit the size to the other size
-    #[inline] pub fn crop_to (self, other: Self) -> Self {
-        Self(self.0.min(other.0), self.1.min(other.1))
-    }
-    /// Return error if the other area is too small
-    pub fn fits_in (self, other: Self) -> Result<()> {
-        if self.0 > other.0 {
-            let message = format!("need {} columns", self.0);
-            return Err(Error::new(ErrorKind::Other, message))
-        }
-        if self.1 > other.1 {
-            let message = format!("need {} rows", self.0);
-            return Err(Error::new(ErrorKind::Other, message))
-        }
-        Ok(())
+impl<'a> Default for Box<dyn TUI> {
+    fn default () -> Self {
+        Box::new(Blank {})
     }
 }
 
-impl Area {
-    #[inline] pub fn x (self) -> Unit { self.0.x() }
-    #[inline] pub fn y (self) -> Unit { self.0.y() }
-    #[inline] pub fn width (self) -> Unit { self.1.width() }
-    #[inline] pub fn height (self) -> Unit { self.1.height() }
+impl Debug for &mut dyn TUI {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}-{}|mut)", self.min_size(), self.max_size())
+    }
+}
+
+impl Debug for &dyn TUI {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}-{})", self.min_size(), self.max_size())
+    }
+}
+
+impl Debug for Box<dyn TUI> {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}-{})", self.min_size(), self.max_size())
+    }
+}
+
+impl<'a> Debug for Thunk<'a> {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "(thunk: {} items, min {})", self.items.len(), self.min_size)
+    }
 }

@@ -5,7 +5,6 @@ use thatsit_fs::*;
 #[derive(Debug, Default)]
 pub struct Electribe2SamplesTUI {
     pub focused: bool,
-    pub frame: Frame,
     pub file_list: FileList,
     pub bank: Option<Electribe2SampleBank>,
     pub sample_list: List<String>,
@@ -15,20 +14,17 @@ pub struct Electribe2SamplesTUI {
 impl TUI for Electribe2SamplesTUI {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, .. } = *self;
-        if let Some(bank) = &self.bank {
-            stack(|add| {
-                add(&self.frame);
-                col(|add| {
-                    add(&self.sample_list);
-                    add(&self.sample);
-                });
+        Inset(0).around(if let Some(bank) = &self.bank {
+            col(|add| {
+                add(&self.sample_list);
+                add(&self.sample);
             })
         } else {
-            stack(|add| {
-                add(&self.frame);
-                add(&self.file_list);
-            })
-        }
+            (&self.file_list).into()
+        })
+    }
+    fn min_size (&self) -> Size {
+        self.layout().min_size
     }
 }
 
