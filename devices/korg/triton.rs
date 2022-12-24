@@ -11,20 +11,23 @@ pub(crate) fn cli (command: &Triton) {
     unimplemented!()
 }
 
+#[derive(Default)]
 pub struct TritonTUI {
-    menu: List<()>
+    menu: FocusColumn<Box<dyn TUI>>
 }
+
 impl TritonTUI {
     pub fn new () -> Self {
-        let mut menu = List::default();
-        menu.add("Edit program".into(), ())
-             .add("Edit combi".into(),  ())
-             .add("Edit multi".into(),  ())
-             .add("Edit arp".into(),    ())
-             .add("Edit PRRP".into(),   ());
+        let mut menu = FocusColumn::default();
+        //menu.add("Edit program".into(), ())
+             //.add("Edit combi".into(),  ())
+             //.add("Edit multi".into(),  ())
+             //.add("Edit arp".into(),    ())
+             //.add("Edit PRRP".into(),   ());
         Self { menu }
     }
 }
+
 impl TUI for TritonTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)

@@ -44,6 +44,23 @@ pub struct LayoutItem<'a> {
     pub scrolls:  bool
 }
 
+/// This trait is used to bypass the Sized bound that makes `dyn Into<LayoutItem<'a>>` impossible.
+trait IntoLayout<'a> {
+    fn into_layout (self) -> LayoutItem<'a>;
+}
+
+impl<'a, T: TUI> IntoLayout<'a> for &'a T {
+    fn into_layout (self) -> LayoutItem<'a> {
+        LayoutItem::from(self)
+    }
+}
+
+impl<'a> IntoLayout<'a> for Thunk<'a> {
+    fn into_layout (self) -> LayoutItem<'a> {
+        LayoutItem::from(self)
+    }
+}
+
 /// Add a widget to the layout.
 impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
     fn from (item: &'a T) -> LayoutItem<'a> {

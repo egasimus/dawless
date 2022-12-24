@@ -8,8 +8,9 @@
 opt_mod::module_flat!(units);
 opt_mod::module_flat!(themes);
 opt_mod::module_flat!(layout);
-opt_mod::module_flat!(macros);
+opt_mod::module_flat!(focus);
 opt_mod::module_flat!(widgets);
+opt_mod::module_flat!(macros);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
 pub use crossterm;
@@ -96,26 +97,16 @@ pub trait TUI {
 }
 
 impl TUI for Box<dyn TUI> {
-    fn min_size (&self) -> Size {
-        (*self).deref().min_size()
-    }
-    fn max_size (&self) -> Size {
-        (*self).deref().max_size()
-    }
+    fn min_size (&self) -> Size { (*self).deref().min_size() }
+    fn max_size (&self) -> Size { (*self).deref().max_size() }
+    fn focus (&mut self, focus: bool) -> bool { (*self).deref_mut().focus(focus) }
+    fn focused (&self) -> bool { (*self).deref().focused() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { (*self).deref().layout() }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         (*self).deref().render(term, area)
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         (*self).deref_mut().handle(event)
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        (*self).deref_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        (*self).deref().focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        (*self).deref().layout()
     }
 }
 
@@ -144,87 +135,57 @@ impl TUI for Box<dyn TUI> {
 //}
 
 impl<T: TUI> TUI for Option<T> {
-    fn min_size (&self) -> Size {
-        match self { Some(x) => x.min_size(), None => Size::MIN }
-    }
-    fn max_size (&self) -> Size {
-        match self { Some(x) => x.max_size(), None => Size::MIN }
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        match self { Some(x) => x.render(term, area), None => Ok(()) }
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        match self { Some(x) => x.handle(event), None => Ok(false) }
-    }
+    fn min_size (&self) -> Size { match self { Some(x) => x.min_size(), None => Size::MIN } }
+    fn max_size (&self) -> Size { match self { Some(x) => x.max_size(), None => Size::MIN } }
     fn focus (&mut self, focus: bool) -> bool {
         match self { Some(x) => x.focus(focus), None => false }
     }
     fn focused (&self) -> bool {
         match self { Some(x) => x.focused(), None => false }
     }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        match self { Some(x) => x.handle(event), None => Ok(false) }
+    }
     fn layout <'a> (&'a self) -> Thunk<'a> {
         match self { Some(x) => x.layout(), None => Thunk::NIL }
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        match self { Some(x) => x.render(term, area), None => Ok(()) }
     }
 }
 
 impl<T: TUI> TUI for std::cell::RefCell<T> {
-    fn min_size (&self) -> Size {
-        self.borrow().min_size()
-    }
-    fn max_size (&self) -> Size {
-        self.borrow().max_size()
+    fn min_size (&self) -> Size { self.borrow().min_size() }
+    fn max_size (&self) -> Size { self.borrow().max_size() }
+    fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
+    fn focused (&self) -> bool { self.borrow().focused() }
+    fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.borrow().render(term, area)
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.borrow_mut().handle(event)
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.borrow_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.borrow().focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
     }
 }
 
 impl<T: TUI> TUI for std::rc::Rc<std::cell::RefCell<T>> {
-    fn min_size (&self) -> Size {
-        self.borrow().min_size()
-    }
-    fn max_size (&self) -> Size {
-        self.borrow().max_size()
+    fn min_size (&self) -> Size { self.borrow().min_size() }
+    fn max_size (&self) -> Size { self.borrow().max_size() }
+    fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
+    fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
+    fn focused (&self) -> bool { self.borrow().focused() }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.borrow().render(term, area)
     }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.borrow_mut().handle(event)
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.borrow_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.borrow().focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
-    }
 }
 
-impl<'a> Default for &'a dyn TUI {
-    fn default () -> Self {
-        &Blank {}
-    }
-}
+impl<'a> Default for &'a dyn TUI { fn default () -> Self { BLANK } }
 
 impl<'a> Default for Box<dyn TUI> {
-    fn default () -> Self {
-        Box::new(Blank {})
-    }
+    fn default () -> Self { Box::new(BLANK.clone()) }
 }
 
 impl Debug for &mut dyn TUI {

@@ -1,14 +1,14 @@
 use thatsit::*;
 
 pub struct MioXLTUI {
-    menu: List<()>
+    menu: FocusColumn<Box<dyn TUI>>
 }
 
 impl MioXLTUI {
     pub fn new () -> Self {
-        let mut menu = List::default();
-        menu.add("Edit preset".into(), ())
-            .add("Route MIDI".into(),  ());
+        let mut menu = FocusColumn::default();
+        //menu.add("Edit preset".into(), ())
+            //.add("Route MIDI".into(),  ());
         Self { menu }
     }
 }

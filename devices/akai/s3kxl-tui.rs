@@ -1,13 +1,13 @@
 use thatsit::*;
 
 pub struct S3000XLTUI {
-    menu: List<()>
+    menu: FocusColumn<Box<dyn TUI>>
 }
 
 impl S3000XLTUI {
     pub fn new () -> Self {
-        let mut menu = List::default();
-        menu.add("Edit sample".into(), ());
+        let mut menu = FocusColumn::default();
+        //menu.add("Edit sample".into(), ());
         Self { menu }
     }
 }

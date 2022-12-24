@@ -1,13 +1,19 @@
 use crate::*;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 /// An empty widget
-pub struct Blank;
+pub struct Spacer(Size);
 
-/// An instance of the empty widget
-pub const BLANK: &'static Blank = &Blank;
+/// An empty widget
+pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 
-impl TUI for Blank {}
+/// A 1x1 empty widget
+pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
+
+impl TUI for Spacer {
+    fn min_size (&self) -> Size { self.0 }
+    fn max_size (&self) -> Size { self.0 }
+}
 
 /// A debug widget
 pub struct DebugBox { pub bg: Color }
@@ -16,20 +22,40 @@ impl TUI for DebugBox {
     fn min_size (&self) -> Size { Size(16, 3) }
     fn max_size (&self) -> Size { Size::MAX }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let min = self.min_size();
-        let max = self.max_size();
         let background = " ".repeat(w as usize);
         term.queue(SetBackgroundColor(self.bg))?
             .queue(SetForegroundColor(Color::AnsiValue(234)))?;
-        for row in y..y+h {
-            term.queue(MoveTo(x, row))?.queue(Print(&background))?;
-        }
+        for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
         let text = format!("{w}x{h}+{x}+{y}");
-        let pad = w.saturating_sub(text.len() as u16) / 2;
-        //term.queue(MoveTo(x+pad, y+1))?
-        term.queue(MoveTo(x, y))?
-            .queue(Print(&text))?;
+        term.queue(MoveTo(x, y))?.queue(Print(&text))?;
         Ok(())
+    }
+}
+
+pub struct Text<'a>(pub &'a str);
+
+impl<'a> Text<'a> {
+    pub fn color (self, color: Color) -> Foreground<Text<'a>> { Foreground(color, self) }
+}
+
+impl<'a> TUI for Text<'a> {
+    fn min_size (&self) -> Size { Size(self.0.len() as u16, 1) }
+    fn max_size (&self) -> Size { self.min_size() }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+        term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
+        Ok(())
+    }
+}
+
+pub struct Foreground<T: TUI>(Color, T);
+
+impl<T: TUI> TUI for Foreground<T> {
+    fn layout <'a> (&'a self) -> Thunk<'a> { self.1.layout() }
+    fn min_size (&self) -> Size { self.1.min_size() }
+    fn max_size (&self) -> Size { self.1.max_size() }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        term.queue(SetForegroundColor(self.0))?;
+        self.1.render(term, area)
     }
 }
 
@@ -42,22 +68,13 @@ pub struct Label {
 }
 
 impl Label {
-    pub fn new (text: impl Into<String>) -> Self {
-        Self { text: text.into(), ..Self::default() }
-    }
+    pub fn new (text: impl Into<String>) -> Self { Self { text: text.into(), ..Self::default() } }
 }
 
 impl TUI for Label {
-    fn min_size (&self) -> Size {
-        Size(self.text.len() as u16, 1)
-    }
-    fn max_size (&self) -> Size {
-        self.min_size()
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.focused = focus;
-        true
-    }
+    fn min_size (&self) -> Size { Size(self.text.len() as u16, 1) }
+    fn max_size (&self) -> Size { self.min_size() }
+    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
         term.queue(SetForegroundColor(if self.focused { hi } else { fg }))?
@@ -82,124 +99,6 @@ impl TUI for Background {
     }
 }
 
-/// A list of sequentially selectable items
-#[derive(Debug)]
-pub struct Focus<T: TUI> {
-    /// The currently focused item
-    index: usize,
-    /// The key to switch to the next item
-    next: KeyCode,
-    /// The key to switch to the previous item
-    prev: KeyCode,
-    /// The list of items
-    pub items: Vec<T>,
-}
-
-impl<T: TUI> Default for Focus<T> {
-    fn default () -> Self {
-        Self { items: vec![], index: 0, next: KeyCode::Down, prev: KeyCode::Up }
-    }
-}
-
-impl<T: TUI> Focus<T> {
-    pub fn vertical (items: Vec<T>) -> Focus<T> {
-        Self { items, index: 0, next: KeyCode::Down, prev: KeyCode::Up }
-    }
-    pub fn horizontal (items: Vec<T>) -> Focus<T> {
-        Self { items, index: 0, next: KeyCode::Right, prev: KeyCode::Left }
-    }
-    pub fn focus (&mut self, index: usize) -> bool {
-        if self.items.get(self.index).is_some() {
-            self.index = index;
-            self.items[self.index].focus(true);
-            true
-        } else {
-            false
-        }
-    }
-    pub fn get (&self) -> &T {
-        &self.items[self.index]
-    }
-    pub fn get_mut (&mut self) -> &mut T {
-        &mut self.items[self.index]
-    }
-    pub fn unfocus (&mut self) {
-        if let Some(item) = self.items.get_mut(self.index) { item.focus(false); }
-    }
-    pub fn next (&mut self) {
-        self.unfocus();
-        self.index = if self.index >= self.items.len() - 1 { 0 } else { self.index + 1 };
-        self.focus(self.index);
-    }
-    pub fn prev (&mut self) {
-        self.unfocus();
-        self.index = if self.index == 0 { self.items.len() - 1 } else { self.index - 1 };
-        self.focus(self.index);
-    }
-    pub fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match_key!((event) {
-            self.next => { self.next(); true },
-            self.prev => { self.prev(); true }
-        }))
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct FocusColumn<T: TUI>(pub Focus<T>);
-
-impl<T: TUI> FocusColumn<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(Focus::vertical(items)) }
-    pub fn get (&self) -> &T { &self.0.get() }
-    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
-}
-
-impl<T: TUI> TUI for FocusColumn<T> {
-    fn layout <'b> (&'b self) -> Thunk<'b> {
-        col(|add|{ for item in self.0.items.iter() { add(&*item); } })
-    }
-    fn min_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_column(item.min_size()) }
-        size
-    }
-    fn max_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_column(item.max_size()) }
-        size
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct FocusRow<T: TUI>(pub Focus<T>);
-
-impl<T: TUI> FocusRow<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(Focus::horizontal(items)) }
-    pub fn get (&self) -> &T { &self.0.get() }
-    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
-}
-
-impl<T: TUI> TUI for FocusRow<T> {
-    fn layout <'b> (&'b self) -> Thunk<'b> {
-        row(|add|{ for item in self.0.items.iter() { add(&*item); } })
-    }
-    fn min_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_row(item.min_size()) }
-        size
-    }
-    fn max_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_row(item.max_size()) }
-        size
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
-    }
-}
-
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
     pub closed: T,
@@ -208,30 +107,14 @@ pub struct Toggle<T: TUI, U: TUI> {
 }
 
 impl<T: TUI, U: TUI> Toggle<T, U> {
-    pub fn new (closed: T, open: U) -> Self {
-        Self { state: false, closed, open }
-    }
-    pub fn toggle (&mut self) {
-        self.state = !self.state
-    }
-    pub fn get (&mut self) -> bool {
-        self.state
-    }
-    pub fn set (&mut self, value: bool) {
-        self.state = value
-    }
-    pub fn closed (&self) -> &T {
-        &self.closed
-    }
-    pub fn closed_mut (&mut self) -> &mut T {
-        &mut self.closed
-    }
-    pub fn open (&mut self) -> &U {
-        &self.open
-    }
-    pub fn open_mut (&mut self) -> &mut U {
-        &mut self.open
-    }
+    pub fn new (closed: T, open: U) -> Self { Self { state: false, closed, open } }
+    pub fn toggle (&mut self) { self.state = !self.state }
+    pub fn get (&mut self) -> bool { self.state }
+    pub fn set (&mut self, value: bool) { self.state = value }
+    pub fn closed (&self) -> &T { &self.closed }
+    pub fn closed_mut (&mut self) -> &mut T { &mut self.closed }
+    pub fn open (&mut self) -> &U { &self.open }
+    pub fn open_mut (&mut self) -> &mut U { &mut self.open }
     pub fn current (&self) -> &dyn TUI {
         if self.state { &self.open } else { &self.closed }
     }
@@ -240,34 +123,20 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
     }
 }
 
-impl<T: TUI, U: TUI> Into<bool> for Toggle<T, U> {
-    fn into (self: Toggle<T, U>) -> bool {
-        self.state
-    }
+impl<T: TUI, U: TUI> From<Toggle<T, U>> for bool {
+    fn from (it: Toggle<T, U>) -> Self { it.state }
 }
 
-impl<'a, T: TUI, U: TUI> Into<bool> for &'a Toggle<T, U> {
-    fn into (self: &'a Toggle<T, U>) -> bool {
-        self.state
-    }
+impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
+    fn from (it: &'a Toggle<T, U>) -> Self { it.state }
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn min_size (&self) -> Size {
-        self.current().min_size()
-    }
-    fn max_size (&self) -> Size {
-        self.current().max_size()
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.current_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.current().focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        self.current().layout()
-    }
+    fn min_size (&self) -> Size { self.current().min_size() }
+    fn max_size (&self) -> Size { self.current().max_size() }
+    fn focus (&mut self, focus: bool) -> bool { self.current_mut().focus(focus) }
+    fn focused (&self) -> bool { self.current().focused() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { self.current().layout() }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         self.current().render(term, rect)
     }
@@ -279,6 +148,11 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
 #[derive(Debug, Default)]
 pub struct Collapsible(pub Toggle<Button, Box<dyn TUI>>);
 
+impl Collapsible {
+    pub fn expand (&mut self) { self.0.set(true) }
+    pub fn collapse (&mut self) { self.0.set(false) }
+}
+
 impl TUI for Collapsible {
     fn min_size (&self) -> Size {
         if (&self.0).into() {
@@ -287,9 +161,10 @@ impl TUI for Collapsible {
             self.0.closed.min_size()
         }
     }
-    fn max_size (&self) -> Size {
-        self.0.max_size()
-    }
+    fn max_size (&self) -> Size { self.0.max_size() }
+    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
+    fn focused (&self) -> bool { self.0.focused() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { self.0.layout() }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.0.render(term, area)
     }
@@ -297,15 +172,6 @@ impl TUI for Collapsible {
         Ok(self.0.handle(event)? || match_key!((event) {
             KeyCode::Enter => { self.0.toggle(); true }
         }))
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.0.focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.0.focused()
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        self.0.layout()
     }
 }
 
@@ -330,16 +196,9 @@ impl Button {
 }
 
 impl TUI for Button {
-    fn min_size (&self) -> Size {
-        Size(self.text.len() as u16 + 6, 3)
-    }
-    fn max_size (&self) -> Size {
-        self.min_size()
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.focused = focus;
-        true
-    }
+    fn min_size (&self) -> Size { Size(self.text.len() as u16 + 6, 3) }
+    fn max_size (&self) -> Size { self.min_size() }
+    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => KeyCode::Enter => {
             if let Some(action) = &mut self.action {
@@ -351,13 +210,6 @@ impl TUI for Button {
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
-        let w           = self.text.len() as u16 + 4;
-        let top_edge    = "▇".repeat(w as usize);
-        let bottom_edge = "▁".repeat(w as usize);
-        let right_edge  = "▎";
-        let left_edge   = "▊";
-        let background  = " ".repeat(w as usize);
-        let bg          = Color::AnsiValue(235);
         Outset(0).render(term, area)?;
         let Area(Point(x, y), _) = area;
         term.queue(ResetColor)?
@@ -403,54 +255,29 @@ impl <T> List <T> {
         }
         self
     }
-    pub fn get (&self) -> Option<&T> {
-        self.items.get(self.index).map(|x| &x.1)
-    }
+    pub fn len (&self) -> usize { self.items.len() }
+    pub fn get (&self) -> Option<&T> { self.items.get(self.index).map(|x| &x.1) }
     pub fn get_mut (&mut self) -> Option<&mut T> {
         self.items.get_mut(self.index).map(|x| &mut x.1)
-    }
-    pub fn len (&self) -> usize {
-        self.items.len()
     }
     pub fn width (&self) -> u16 {
         let mut max_len = 0;
         for (label, _) in self.items.iter() {
             let len = label.text.len();
-            if len > max_len {
-                max_len = len
-            }
+            if len > max_len { max_len = len }
         }
         max_len as u16
     }
 }
 
 impl<T: Sync> TUI for List<T> {
+    fn min_size (&self) -> Size { Size(self.width(), u16::max(1, self.len() as u16)) }
+    fn max_size (&self) -> Size { Size(self.width(), u16::max(1, self.len() as u16)) }
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        col(|add| {
-            for (label, _) in self.items.iter() {
-                add(label);
-            }
-        })
-    }
-    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        //let mut items = vec![];
-        //for (label, _) in self.items.iter() {
-            //items.push(Layout::Item(Sizing::Fixed(Size(self.width(), 1)), label));
-        //}
-        //Layout::Column(
-            //Sizing::Scroll(&self.scrollbar, &Sizing::Range(self.min_size(), self.max_size())),
-            //items
-        //).render(term, area)
-    //}
-    fn min_size (&self) -> Size {
-        Size(self.width(), u16::max(1, self.len() as u16))
-    }
-    fn max_size (&self) -> Size {
-        Size(self.width(), u16::max(1, self.len() as u16))
+        col(|add| { for (label, _) in self.items.iter() { add(label); } })
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(match_key!((event) {
-
             KeyCode::Up => {
                 self.items[self.index].0.focus(false);
                 self.index = if self.index == 0 {
@@ -461,7 +288,6 @@ impl<T: Sync> TUI for List<T> {
                 self.items[self.index].0.focus(true);
                 true
             },
-
             KeyCode::Down => {
                 self.items[self.index].0.focus(false);
                 self.index = if self.index >= self.items.len() - 1 {
@@ -472,142 +298,100 @@ impl<T: Sync> TUI for List<T> {
                 self.items[self.index].0.focus(true);
                 true
             }
-
         }))
     }
 }
 
-#[macro_export] macro_rules! handle_menu_focus {
-    ($event:expr, $parent:expr, $child:expr, $focused:expr) => {
-        {
-            use ::thatsit::crossterm::event::{Event, KeyEvent, KeyCode};
-            Ok(match $event {
-                Event::Key(KeyEvent { code: KeyCode::Left, .. }) => {
-                    if $focused {
-                        false
-                    } else {
-                        if $child.focus(false) {
-                            $parent.focus(true);
-                        }
-                        true
-                    }
-                },
-                Event::Key(KeyEvent { code: KeyCode::Right, .. }) => {
-                    if $child.focus(true) {
-                        $parent.focus(false);
-                    }
-                    true
-                },
-                Event::Key(KeyEvent { code: KeyCode::Esc, .. }) => {
-                    if $focused {
-                        false
-                    } else {
-                        if $child.focus(false) {
-                            $parent.focus(true);
-                        }
-                        true
-                    }
-                },
-                Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-                    if $child.focus(true) {
-                        $parent.focus(false);
-                    }
-                    true
-                },
-                _ => {
-                    false
-                }
-            })
-        }
+
+/// An inset border
+#[derive(Default, Debug, Copy, Clone)]
+pub struct Inset(
+    /// The amount of padding between the border and the content
+    pub Unit
+);
+
+pub trait Border {
+    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a>;
+}
+
+impl Border for Inset {
+    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding   = Size(self.0*2, self.0*2);
+        let min_size  = thunk.min_size + padding;
+        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+        let render_fn = render_stack;
+        Thunk { min_size, items, render_fn }
     }
 }
 
-#[derive(Default, Debug)]
-pub struct Accordion <T: TUI> {
-    pub theme: Theme,
-    pub index: usize,
-    pub items: Vec<Toggle<Label, T>>,
-    pub focused: bool,
-    pub entered: bool
+impl<'a> TUI for Inset {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        let bg = Color::AnsiValue(235);
+        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
+        let top_edge    = "▇".repeat((w) as usize);
+        let bottom_edge = "▁".repeat((w) as usize);
+        let left_edge   = "▊";
+        let right_edge  = "▎";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+        }
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(240)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
+        }
+        Ok(())
+    }
 }
 
-impl <T: TUI> Accordion<T> {
-    pub fn add (&mut self, text: &str, item: T) -> &mut Self {
-        let label = Label { theme: self.theme, focused: self.items.len() == 0, text: text.into() };
-        self.items.push(Toggle::new(label, item));
-        self
-    }
-    pub fn get (&self) -> &Toggle<Label, T> {
-        &self.items[self.index]
-    }
-    pub fn get_mut (&mut self) -> &mut Toggle<Label, T> {
-        &mut self.items[self.index]
+/// An outset border
+#[derive(Default, Debug, Copy, Clone)]
+pub struct Outset(
+    /// The amount of padding between the border and the content
+    pub Unit
+);
+
+impl Border for Outset {
+    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding   = Size(self.0*2, self.0*2);
+        let min_size  = thunk.min_size + padding;
+        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+        let render_fn = render_stack;
+        Thunk { min_size, items, render_fn }
     }
 }
 
-impl<T: TUI> TUI for Accordion<T> {
-    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        //let mut items = vec![];
-        //for item in self.items.iter() {
-            ////items.push(Layout::Item(Sizing::Min, item));
-        //}
-        //Layout::Column(Sizing::Range(self.min_size(), self.max_size()), items)
-            //.render(term, area)
-    //}
-    fn min_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.items.iter() {
-            size = size.expand_column(item.min_size())
+impl<'a> TUI for Outset {
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        let bg = Color::AnsiValue(235);
+        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
+        let top_edge    = "▇".repeat(w as usize);
+        let bottom_edge = "▁".repeat(w as usize);
+        let right_edge  = "▎";
+        let left_edge   = "▊";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(240)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
         }
-        size
-    }
-    fn max_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.items.iter() {
-            size = size.expand_column(item.max_size())
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(16)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
         }
-        size
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(if self.entered {
-            if_key!(event => KeyCode::Esc => {
-                self.items[self.index].set(false);
-                self.entered = false;
-                true
-            }) || self.items[self.index].handle(event)?
-        } else {
-            match_key!((event) {
-
-                KeyCode::Up => {
-                    self.items[self.index].focus(false);
-                    self.index = if self.index == 0 {
-                        self.items.len() - 1
-                    } else {
-                        self.index - 1
-                    };
-                    self.items[self.index].focus(true);
-                    true
-                },
-
-                KeyCode::Down => {
-                    self.items[self.index].focus(false);
-                    self.index = if self.index >= self.items.len() - 1 {
-                        0
-                    } else {
-                        self.index + 1
-                    };
-                    self.items[self.index].focus(true);
-                    true
-                },
-
-                KeyCode::Enter => {
-                    self.items[self.index].set(true);
-                    self.entered = true;
-                    true
-                }
-
-            })
-        })
+        Ok(())
     }
 }
 
@@ -649,94 +433,6 @@ pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize)
         usize::min(offset + diff, length)
     } else {
         offset
-    }
-}
-
-/// An inset border
-#[derive(Default, Debug)]
-pub struct Inset(
-    /// The amount of padding between the border and the content
-    pub Unit
-);
-
-/// An outset border
-#[derive(Default, Debug)]
-pub struct Outset(
-    /// The amount of padding between the border and the content
-    pub Unit
-);
-
-impl Inset {
-    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0*2, self.0*2);
-        let min_size  = thunk.min_size + padding;
-        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
-        let render_fn = render_stack;
-        Thunk { min_size, items, render_fn }
-    }
-}
-
-impl Outset {
-    pub fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0*2, self.0*2);
-        let min_size  = thunk.min_size + padding;
-        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
-        let render_fn = render_stack;
-        Thunk { min_size, items, render_fn }
-    }
-}
-
-impl<'a> TUI for Inset {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Area(Point(x, y), Size(w, h)) = area;
-        let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
-        let top_edge    = "▇".repeat((w) as usize);
-        let bottom_edge = "▁".repeat((w) as usize);
-        let left_edge   = "▊";
-        let right_edge  = "▎";
-        term.queue(ResetColor)?
-            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
-            .queue(SetForegroundColor(bg))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(&top_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-        }
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(240)))?
-            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
-        }
-        Ok(())
-    }
-}
-
-impl<'a> TUI for Outset {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Area(Point(x, y), Size(w, h)) = area;
-        let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
-        let top_edge    = "▇".repeat(w as usize);
-        let bottom_edge = "▁".repeat(w as usize);
-        let right_edge  = "▎";
-        let left_edge   = "▊";
-        term.queue(ResetColor)?
-            .queue(SetBackgroundColor(Color::AnsiValue(240)))?
-            .queue(SetForegroundColor(bg))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(&top_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-        }
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(16)))?
-            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
-        }
-        Ok(())
     }
 }
 

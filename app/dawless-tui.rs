@@ -140,6 +140,7 @@ impl DeviceMenu {
             "iConnectivity mioXL",
             None
         ));
+        menu.buttons.0.items[0].focus(true);
         menu
         //.add("Korg Electribe",      Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
         //.add("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
@@ -151,13 +152,13 @@ impl DeviceMenu {
 
 impl TUI for DeviceMenu {
     fn min_size (&self) -> Size {
-        self.buttons.min_size().expand_row(self.device.min_size())
+        self.buttons.min_size().expand_row(Size(1, 1)).expand_row(self.device.min_size())
     }
     fn max_size (&self) -> Size {
-        self.buttons.max_size().expand_row(self.device.max_size())
+        self.buttons.max_size().expand_row(Size(1, 1)).expand_row(self.device.max_size())
     }
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        row(|add|{ add(&self.buttons); add(&self.device); })
+        row(|add|{ add(&self.buttons); add(SPACE); add(&self.device); })
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         let entered = self.device.borrow().is_some();
