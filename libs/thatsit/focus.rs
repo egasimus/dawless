@@ -26,6 +26,9 @@ impl<T: TUI> Focus<T> {
     pub fn horizontal (items: Vec<T>) -> Focus<T> {
         Self { items, index: 0, next: KeyCode::Right, prev: KeyCode::Left }
     }
+    pub fn len (&self) -> usize {
+        self.items.len()
+    }
     pub fn get (&self) -> &T {
         &self.items[self.index]
     }
@@ -74,6 +77,7 @@ impl<T: TUI> FocusColumn<T> {
     pub fn get (&self) -> &T { &self.0.get() }
     pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
     pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
+    pub fn len (&self) -> usize { self.0.len() }
 }
 
 impl<T: TUI> TUI for FocusColumn<T> {
@@ -103,6 +107,7 @@ impl<T: TUI> FocusRow<T> {
     pub fn get (&self) -> &T { &self.0.get() }
     pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
     pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
+    pub fn len (&self) -> usize { self.0.len() }
 }
 
 impl<T: TUI> TUI for FocusRow<T> {

@@ -29,8 +29,8 @@ pub struct Electribe2TUI {
 impl Electribe2TUI {
     pub fn new () -> Self {
         let mut selector = FocusColumn::new(vec![
-            Self::feature("Edit pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
-            Self::feature("Edit sample bank... ", Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>),
+            Self::feature("Load pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
+            Self::feature("Load sample bank... ", Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>),
         ]);
         selector.0.items[0].focus(true);
         Self { focused: false, entered: false, selector, }
@@ -143,7 +143,8 @@ impl TUI for Electribe2PatternsTUI {
             }
         } else {
             Ok(if_key!(event => KeyCode::Enter => {
-                let (path, is_dir) = &self.file_list.0.items.get(self.file_list.0.index).unwrap().1;
+                let index = self.file_list.0.0.index;
+                let FileListItem(path, is_dir) = &self.file_list.0.0.items.get(index).unwrap();
                 if *is_dir {
                     std::env::set_current_dir(path)?;
                     self.update_listing();
@@ -275,7 +276,7 @@ pub struct Electribe2SamplesTUI {
     pub focused: bool,
     pub file_list: FileList,
     pub bank: Option<Electribe2SampleBank>,
-    pub sample_list: List<String>,
+    pub sample_list: Spacer,//List<String>,
     pub sample: Spacer
 }
 
