@@ -5,7 +5,7 @@ pub struct Button {
     pub theme:   Theme,
     pub focused: bool,
     pub text:    String,
-    pub click:   Option<Box<dyn FnMut() -> ()>>
+    pub action:  Option<Box<dyn FnMut() -> ()>>
 }
 
 impl std::fmt::Debug for Button {
@@ -15,11 +15,8 @@ impl std::fmt::Debug for Button {
 }
 
 impl Button {
-    pub fn new (
-        text:  impl Into<String>,
-        click: Option<Box<dyn FnMut() -> ()>>
-    ) -> Self {
-        Self { text: text.into(), click, ..Self::default() }
+    pub fn new (text: impl Into<String>, action: Option<Box<dyn FnMut() -> ()>>) -> Self {
+        Self { text: text.into(), action, ..Self::default() }
     }
 }
 
@@ -36,8 +33,8 @@ impl TUI for Button {
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => KeyCode::Enter => {
-            if let Some(click) = &mut self.click {
-                (click)();
+            if let Some(action) = &mut self.action {
+                (action)();
             }
             true
         }))

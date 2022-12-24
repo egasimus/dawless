@@ -9,11 +9,12 @@
 }
 
 #[macro_export] macro_rules! match_key {
-    (($event:expr) { $($code:pat => $block:block),+ }) => {
+    (($event:expr) { $($code:expr => $block:block),+ }) => {
         {
-            match $event {
-                $(Event::Key(KeyEvent { code: $code, .. }) => $block),*,
-                _ => false
+            if let Event::Key(event) = $event {
+                $(if event.code == $code $block else)* { false }
+            } else {
+                false
             }
         }
     }

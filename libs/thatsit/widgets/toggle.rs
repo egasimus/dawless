@@ -1,18 +1,16 @@
 use crate::*;
 
 #[derive(Default, Debug)]
-pub struct Toggle<'a, T: TUI, U: TUI> {
-    phantom: std::marker::PhantomData<&'a dyn TUI>,
+pub struct Toggle<T: TUI, U: TUI> {
     pub theme:  Theme,
     pub closed: T,
     pub open:   U,
     state: bool,
 }
 
-impl<'a, T: TUI, U: TUI> Toggle<'a, T, U> {
+impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn new (closed: T, open: U) -> Self {
         Self {
-            phantom: std::marker::PhantomData,
             theme:  Theme::default(),
             state: false,
             closed,
@@ -42,7 +40,7 @@ impl<'a, T: TUI, U: TUI> Toggle<'a, T, U> {
     }
 }
 
-impl<'a, T: TUI, U: TUI> TUI for Toggle<'a, T, U> {
+impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     fn min_size (&self) -> Size {
         if self.state {
             self.open.min_size()
@@ -95,5 +93,34 @@ impl<'a, T: TUI, U: TUI> TUI for Toggle<'a, T, U> {
             //},
             //_ => false
         //})
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Collapsible(pub Toggle<Button, Box<dyn TUI>>);
+
+impl TUI for Collapsible {
+    fn min_size (&self) -> Size {
+        self.0.min_size()
+    }
+    fn max_size (&self) -> Size {
+        self.0.max_size()
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        self.0.render(term, area)
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(match_key!((event) {
+            KeyCode::Enter => { self.0.toggle(); true }
+        }))
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.0.focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.0.focused()
+    }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        self.0.layout()
     }
 }

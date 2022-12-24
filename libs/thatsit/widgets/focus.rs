@@ -1,5 +1,56 @@
 use crate::*;
 
+#[derive(Debug)]
+pub struct Focus<'a> {
+    index: usize,
+    items: Vec<&'a mut dyn TUI>,
+    next:  KeyCode,
+    prev:  KeyCode
+}
+
+impl<'a> Focus<'a> {
+    pub fn vertical (items: Vec<&'a mut dyn TUI>) -> Self {
+        Self { items, index: 0, next: KeyCode::Down, prev: KeyCode::Up }
+    }
+    pub fn focus (&mut self, index: usize) -> bool {
+        if self.items.get(self.index).is_some() {
+            self.index = index;
+            true
+        } else {
+            false
+        }
+    }
+    pub fn unfocus (&mut self) {
+        if let Some(item) = self.items.get_mut(self.index) {
+            item.focus(false);
+        }
+    }
+    pub fn next (&mut self) {
+        self.unfocus();
+        self.index = if self.index >= self.items.len() - 1 {
+            0
+        } else {
+            self.index + 1
+        };
+        self.items[self.index].focus(true);
+    }
+    pub fn prev (&mut self) {
+        self.items[self.index].focus(false);
+        self.index = if self.index == 0 {
+            self.items.len() - 1
+        } else {
+            self.index - 1
+        };
+        self.items[self.index].focus(true);
+    }
+    pub fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(match_key!((event) {
+            self.next => { self.prev(); true },
+            self.prev => { self.next(); true }
+        }))
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct FocusColumn<T: TUI> {
     pub theme:   Theme,

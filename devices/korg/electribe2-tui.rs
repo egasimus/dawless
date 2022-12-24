@@ -1,6 +1,7 @@
 use crate::electribe2::*;
 use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}, style::Color}};
 use thatsit_fs::*;
+use std::{rc::Rc, cell::RefCell};
 use laterna;
 
 opt_mod::module_flat!(electribe2_tui_patterns @ "electribe2-tui-patterns.rs");
@@ -13,31 +14,26 @@ pub static THEME: Theme = Theme {
 };
 
 #[derive(Debug)]
-pub struct Electribe2TUI<'a> {
+pub struct Electribe2TUI {
     focused:  bool,
     entered:  bool,
     frame:    Frame,
-    selector: FocusColumn<Toggle<'a, Button, Box<dyn TUI>>>,
+    selector: FocusColumn<Collapsible>,
 }
 
-impl<'a> Electribe2TUI<'a> {
+impl Electribe2TUI {
     pub fn new () -> Self {
         let frame = Frame { title: "Electribe 2".into(), ..Frame::default() };
         let mut selector = FocusColumn::default();
-        selector.items.push(Toggle::new(
-            Button::new("Edit pattern bank...", None),
-            Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
-        ));
-        selector.items.push(Toggle::new(
-            Button::new("Edit sample bank...", None),
-            Box::new(Electribe2SamplesTUI::new()) as Box<dyn TUI>
-        ));
-        Self {
-            focused: false,
-            entered: false,
-            frame,
-            selector,
-        }
+        let mut tui = Self { focused: false, entered: false, frame, selector, };
+        tui.add_button("Edit pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>);
+        tui.add_button("Edit sample bank... ", Box::new(Electribe2SamplesTUI::new()) as Box<dyn TUI>);
+        return tui
+    }
+    fn add_button (&mut self, text: &str, feature: Box<dyn TUI>) {
+        self.selector.items.push(
+            Collapsible(Toggle::new(Button::new(String::from(text), None), feature))
+        );
     }
     fn enter (&mut self) {
         self.entered = true;
@@ -49,7 +45,7 @@ impl<'a> Electribe2TUI<'a> {
     }
 }
 
-impl<'a> TUI for Electribe2TUI<'a> {
+impl TUI for Electribe2TUI {
     fn min_size (&self) -> Size {
         self.selector.min_size()
     }

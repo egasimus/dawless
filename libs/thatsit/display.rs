@@ -1,23 +1,6 @@
 use crate::*;
 use std::fmt::{Debug, Display};
 
-//impl<'a> Debug for Layout<'a> {
-    //fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        //write!(f, "Layout::{}", match self {
-            //Self::Item(sizing, _) =>
-                //format!("Item({sizing:?})"),
-            //Self::Layers(_,_) =>
-                //String::from("Layers"),
-            //Self::Column(_,_) =>
-                //String::from("Column"),
-            //Self::Row(_,_) =>
-                //String::from("Row"),
-            //Self::Grid(_,_) =>
-                //String::from("Grid")
-        //})
-    //}
-//}
-
 impl Display for Area {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", self.1, self.0)
@@ -35,6 +18,12 @@ impl Display for Size {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let Size(w, h) = self;
         write!(f, "{w}x{h}")
+    }
+}
+
+impl Debug for &mut dyn TUI {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}-{}|mut)", self.min_size(), self.max_size())
     }
 }
 
