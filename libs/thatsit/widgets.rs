@@ -15,30 +15,16 @@ impl TUI for Spacer {
     fn max_size (&self) -> Size { self.0 }
 }
 
-/// A debug widget
-pub struct DebugBox { pub bg: Color }
+/// A line of text
+#[derive(Debug, Default)]
+pub struct Text(pub String);
 
-impl TUI for DebugBox {
-    fn min_size (&self) -> Size { Size(16, 3) }
-    fn max_size (&self) -> Size { Size::MAX }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let background = " ".repeat(w as usize);
-        term.queue(SetBackgroundColor(self.bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
-        for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
-        let text = format!("{w}x{h}+{x}+{y}");
-        term.queue(MoveTo(x, y))?.queue(Print(&text))?;
-        Ok(())
-    }
+impl Text {
+    pub fn set (&mut self, text: String) -> &mut Self { self.0 = text; self }
+    pub fn fg (self, color: Color) -> Foreground<Text> { Foreground(color, self) }
 }
 
-pub struct Text<'a>(pub &'a str);
-
-impl<'a> Text<'a> {
-    pub fn color (self, color: Color) -> Foreground<Text<'a>> { Foreground(color, self) }
-}
-
-impl<'a> TUI for Text<'a> {
+impl TUI for Text {
     fn min_size (&self) -> Size { Size(self.0.len() as u16, 1) }
     fn max_size (&self) -> Size { self.min_size() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
@@ -47,6 +33,7 @@ impl<'a> TUI for Text<'a> {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Foreground<T: TUI>(Color, T);
 
 impl<T: TUI> TUI for Foreground<T> {
@@ -84,6 +71,24 @@ impl TUI for Label {
     }
 }
 
+
+/// A debug widget
+pub struct DebugBox { pub bg: Color }
+
+impl TUI for DebugBox {
+    fn min_size (&self) -> Size { Size(16, 3) }
+    fn max_size (&self) -> Size { Size::MAX }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
+        let background = " ".repeat(w as usize);
+        term.queue(SetBackgroundColor(self.bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
+        for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
+        let text = format!("{w}x{h}+{x}+{y}");
+        term.queue(MoveTo(x, y))?.queue(Print(&text))?;
+        Ok(())
+    }
+}
+
 /// A background rectangle of a fixed color
 #[derive(Debug)]
 pub struct Background(pub Color);
@@ -99,6 +104,7 @@ impl TUI for Background {
     }
 }
 
+/// A widget that switches between two states
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
     pub closed: T,
@@ -145,6 +151,7 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     }
 }
 
+/// A button that can turn into another widget
 #[derive(Debug, Default)]
 pub struct Collapsible(pub Toggle<Button, Box<dyn TUI>>);
 
@@ -200,7 +207,7 @@ impl TUI for Button {
     fn max_size (&self) -> Size { self.min_size() }
     fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(if_key!(event => KeyCode::Enter => {
+        Ok(if_key!(event => Enter => {
             if let Some(action) = &mut self.action {
                 (action)()?
             } else {

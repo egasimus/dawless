@@ -13,13 +13,13 @@ opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(macros);
 
 pub use std::io::{Result, Error, ErrorKind, Write};
-pub use crossterm;
+pub use crossterm::{self, event::{KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}};
 pub use crossterm::QueueableCommand;
 pub(crate) use crossterm::{
     ExecutableCommand,
     style::{Print, Color, ResetColor, SetForegroundColor, SetBackgroundColor},
     cursor::{MoveTo, Show, Hide},
-    event::{Event, KeyEvent, KeyCode},
+    event::{Event},
     terminal::{
         Clear, ClearType,
         enable_raw_mode, disable_raw_mode,

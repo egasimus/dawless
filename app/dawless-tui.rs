@@ -1,35 +1,49 @@
 use std::cell::RefCell;
 use std::io::{Result, Write};
 use std::sync::{atomic::{AtomicBool, Ordering}, mpsc::channel};
-use thatsit::{*, crossterm::{
-    event::{Event, KeyEvent, KeyCode},
-    terminal::{size},
-    style::Color
-}};
-
-static THEME: Theme = Theme {
-    bg: Color::AnsiValue(232),
-    fg: Color::White,
-    hi: Color::Yellow
-};
+use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}, terminal::{size}}};
 
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
     focused: true,
-    exited: &EXITED,
-    menu: DeviceMenu::new(),
-    label: Label {
-        text: "Devices:".into(),
-        ..Label::default()
-    },
+    exited:  &EXITED,
+    devices: TabbedVertical::new(vec![
+        (Button::new("Korg Electribe 2",    None), Box::new(dawless_korg::electribe2::Electribe2TUI::new())),
+        (Button::new("Korg Triton",         None), Box::new(dawless_korg::triton::TritonTUI::new())),
+        (Button::new("AKAI S3000XL",        None), Box::new(dawless_akai::S3000XLTUI::new())),
+        (Button::new("AKAI MPC2000",        None), Box::new(dawless_akai::MPC2000TUI::new())),
+        (Button::new("iConnectivity mioXL", None), Box::new(dawless_iconnectivity::MioXLTUI::new())),
+    ])
 }));
 
 struct App {
     exited:  &'static AtomicBool,
     focused: bool,
-    label:   Label,
-    menu:    DeviceMenu,
+    devices: TabbedVertical<Box<dyn TUI>>,
+}
+
+impl App {
+    /// Set the exit flag, terminating the main loop before the next render.
+    fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
+}
+
+impl TUI for App {
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        Outset(1).around(self.devices.layout())
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.focused = focus;
+        true
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
+            self.exit();
+            true
+        } else {
+            self.devices.handle(event)?
+        })
+    }
 }
 
 pub(crate) fn main () -> Result<()> {
@@ -75,102 +89,4 @@ pub(crate) fn main () -> Result<()> {
     // Clean up
     teardown(&mut term)?;
     Ok(())
-}
-
-impl App {
-    fn exit (&mut self) {
-        self.exited.store(true, Ordering::Relaxed);
-    }
-}
-
-impl TUI for App {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        Outset(1).around(row(|add|{add(&self.menu);}))
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.focused = focus;
-        true
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(
-            if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
-                self.exit();
-                true
-            } else {
-                self.menu.handle(event)?
-            }
-        )
-    }
-}
-
-use std::{rc::Rc};
-
-struct DeviceMenu {
-    buttons: FocusColumn<Button>,
-    device:  Rc<RefCell<Option<Box<dyn TUI>>>>
-}
-
-impl DeviceMenu {
-    fn new () -> Self {
-        let device = Rc::new(RefCell::new(None));
-        let mut menu = Self {
-            buttons: FocusColumn::default(),
-            device:  Rc::clone(&device)
-        };
-        menu.buttons.0.items.push(Button::new(
-            "Korg Electribe",
-            Some(Box::new(move || {
-                device.replace(Some(Box::new(dawless_korg::electribe2::Electribe2TUI::new())));
-                Ok(true)
-            }))
-        ));
-        menu.buttons.0.items.push(Button::new(
-            "Korg Triton",
-            None
-        ));
-        menu.buttons.0.items.push(Button::new(
-            "AKAI S3000XL",
-            None
-        ));
-        menu.buttons.0.items.push(Button::new(
-            "AKAI MPC2000",
-            None
-        ));
-        menu.buttons.0.items.push(Button::new(
-            "iConnectivity mioXL",
-            None
-        ));
-        menu.buttons.0.items[0].focus(true);
-        menu
-        //.add("Korg Electribe",      Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
-        //.add("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
-        //.add("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
-        //.add("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
-        //.add("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
-    }
-}
-
-impl TUI for DeviceMenu {
-    fn min_size (&self) -> Size {
-        self.buttons.min_size().expand_row(Size(1, 1)).expand_row(self.device.min_size())
-    }
-    fn max_size (&self) -> Size {
-        self.buttons.max_size().expand_row(Size(1, 1)).expand_row(self.device.max_size())
-    }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        row(|add|{ add(&self.buttons); add(SPACE); add(&self.device); })
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        let entered = self.device.borrow().is_some();
-        if entered {
-            let mut device = self.device.borrow_mut();
-            if let Some(device) = &mut *device {
-                device.handle(event)
-            } else {
-                unreachable!()
-            }
-        } else {
-            self.buttons.handle(event)
-        }
-    }
 }

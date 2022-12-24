@@ -1,3 +1,4 @@
+/// Generate an `Event::Key(KeyEvent { ... })` variant
 #[macro_export] macro_rules! key {
     ($code:ident) => {
         Event::Key(KeyEvent {
@@ -9,9 +10,10 @@
     }
 }
 
+/// Match an input event against a specified key event
 #[macro_export] macro_rules! if_key {
-    ($event:expr => $code:pat => $block:block) => {
-        if let Event::Key(KeyEvent { code: $code, .. }) = $event {
+    ($event:expr => $code:ident => $block:block) => {
+        if $event == &key!($code) {
             $block
         } else {
             false
@@ -19,6 +21,7 @@
     }
 }
 
+/// Match an input event against a list of key events
 #[macro_export] macro_rules! match_key {
     (($event:expr) { $($code:expr => $block:block),+ }) => {
         {
@@ -31,6 +34,7 @@
     }
 }
 
+/// Compare render output against an expected value.
 #[macro_export] macro_rules! assert_rendered {
     ($layout:ident == $expected:expr) => {
         let mut output = Vec::<u8>::new();

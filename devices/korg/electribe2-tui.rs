@@ -38,8 +38,15 @@ impl Electribe2TUI {
     fn feature (text: &str, feature: Box<dyn TUI>) -> Collapsible {
         Collapsible(Toggle::new(Button::new(String::from(text), Some(Box::new(||Ok(false)))), feature))
     }
-    fn enter (&mut self) {
+    fn enter_feature (&mut self) -> bool {
         self.entered = true;
+        self.selector.get_mut().expand();
+        true
+    }
+    fn exit_feature (&mut self) -> bool {
+        self.entered = false;
+        self.selector.get_mut().collapse();
+        true
     }
 }
 
@@ -57,21 +64,16 @@ impl TUI for Electribe2TUI {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             self.selector.get_mut().handle(event)? || if event == &key!(Esc) {
-                self.entered = false;
-                self.selector.get_mut().collapse();
-                true
+                self.exit_feature()
             } else if event == &key!(Enter) {
-                self.entered = false;
-                self.selector.get_mut().collapse();
-                true
+                self.exit_feature()
             } else {
                 false
             }
         } else {
             self.selector.handle(event)?;
             if event == &key!(Enter) {
-                self.entered = true;
-                true
+                self.enter_feature()
             } else {
                 false
             }
@@ -79,10 +81,10 @@ impl TUI for Electribe2TUI {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Electribe2PatternsTUI {
     pub focused:   bool,
-    pub label:     Label,
+    pub label:     Foreground<Text>,
     pub file_list: FileList,
     pub bank:      Option<Electribe2PatternBank>,
     pub patterns:  Electribe2PatternList,
@@ -91,11 +93,19 @@ pub struct Electribe2PatternsTUI {
 }
 
 impl Electribe2PatternsTUI {
+    const SELECT_PATTERN_BANK: &'static str = " Select pattern bank:";
     pub fn new () -> Self {
-        let mut new = Self::default();
-        new.label.text = " Select pattern bank:".into();
-        new.update_listing();
-        return new
+        let mut file_list = FileList::default();
+        file_list.update();
+        Self {
+            focused:   false,
+            label:     Text(Self::SELECT_PATTERN_BANK.into()).fg(Color::White),
+            bank:      None,
+            patterns:  Electribe2PatternList::default(),
+            pattern:   Electribe2PatternTUI::default(),
+            offset:    0,
+            file_list,
+        }
     }
     pub fn import (&mut self, bank: &std::path::Path) {
         let data = crate::read(bank);
@@ -107,8 +117,7 @@ impl Electribe2PatternsTUI {
         self.patterns.0.replace(patterns);
     }
     fn update_listing (&mut self) {
-        let (entries, _) = list_current_directory();
-        self.file_list.replace(entries);
+        self.file_list.update();
     }
 }
 
@@ -118,7 +127,7 @@ impl TUI for Electribe2PatternsTUI {
         Inset(1).around(if let Some(bank) = &bank {
             row(|add|{ add(&self.patterns); add(&self.pattern); })
         } else {
-            col(|add|{ add(&self.label); add(&self.file_list); })
+            col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
         })
     }
     fn min_size (&self) -> Size {
@@ -142,7 +151,7 @@ impl TUI for Electribe2PatternsTUI {
                 Ok(false)
             }
         } else {
-            Ok(if_key!(event => KeyCode::Enter => {
+            Ok(if_key!(event => Enter => {
                 let index = self.file_list.0.0.index;
                 let FileListItem(path, is_dir) = &self.file_list.0.0.items.get(index).unwrap();
                 if *is_dir {
@@ -283,7 +292,7 @@ pub struct Electribe2SamplesTUI {
 impl TUI for Electribe2SamplesTUI {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, .. } = *self;
-        Inset(1).around(if let Some(bank) = &self.bank {
+        Inset(1).around(if self.bank.is_some() {
             col(|add| {
                 add(&self.sample_list);
                 add(&self.sample);

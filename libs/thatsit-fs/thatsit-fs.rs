@@ -27,6 +27,11 @@ impl FileList {
         self.0.replace(items);
         self
     }
+    pub fn update (&mut self) -> &mut Self {
+        let (entries, _) = list_current_directory();
+        self.replace(entries);
+        self
+    }
 }
 
 impl TUI for FileList {
