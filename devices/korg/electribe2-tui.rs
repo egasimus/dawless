@@ -23,14 +23,23 @@ pub struct Electribe2TUI {
 impl Electribe2TUI {
     pub fn new () -> Self {
         let mut selector = FocusColumn::new(vec![
-            Self::feature("Load pattern bank...", Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>),
-            Self::feature("Load sample bank... ", Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>),
+            Self::feature(
+                "Load pattern bank...",
+                Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
+            ),
+            Self::feature(
+                "Load sample bank... ",
+                Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>
+            ),
         ]);
         selector.0.items[0].focus(true);
         Self { focused: false, entered: false, selector, }
     }
     fn feature (text: &str, feature: Box<dyn TUI>) -> Collapsible {
-        Collapsible(Toggle::new(Button::new(String::from(text), Some(Box::new(||Ok(false)))), feature))
+        Collapsible(Toggle::new(
+            Button::new(String::from(text), Some(Box::new(||Ok(false)))),
+            feature
+        ))
     }
     fn enter_feature (&mut self) -> bool {
         self.entered = true;
@@ -68,14 +77,17 @@ impl TUI for Electribe2TUI {
     }
 }
 
+/// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
 pub struct Electribe2PatternsTUI {
-    pub focused:   bool,
     pub label:     Foreground<Text>,
+    /// File explorer for selecting a pattern bank
     pub file_list: FileList,
+    /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
-    pub patterns:  Electribe2PatternList,
-    pub pattern:   Electribe2PatternTUI,
+    /// Selector for editing an individual pattern
+    pub patterns:  TabbedVertical<Electribe2PatternTUI>,
+    /// FIXME: Scroll offset. Need to implement generic scrollable
     pub offset:    usize,
 }
 
@@ -85,12 +97,10 @@ impl Electribe2PatternsTUI {
         let mut file_list = FileList::default();
         file_list.update();
         Self {
-            focused:   false,
-            label:     Text(Self::SELECT_PATTERN_BANK.into()).fg(Color::White),
-            bank:      None,
-            patterns:  Electribe2PatternList::default(),
-            pattern:   Electribe2PatternTUI::default(),
-            offset:    0,
+            label: Text(Self::SELECT_PATTERN_BANK.into()).fg(Color::White),
+            bank: None,
+            patterns: TabbedVertical::default(),
+            offset: 0,
             file_list,
         }
     }
@@ -99,19 +109,20 @@ impl Electribe2PatternsTUI {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        let patterns: Vec<Electribe2PatternTUI> = self.bank.as_ref().unwrap().patterns.iter()
-            .map(|pattern|Electribe2PatternTUI(pattern.clone()))
-            .collect();
-        self.patterns.0.replace(patterns);
+        self.patterns.tabs.replace(self.bank.as_ref().unwrap().patterns.iter()
+            .map(|pattern|Button::new(pattern.name.clone(), None))
+            .collect::<Vec<_>>());
+        self.patterns.pages.replace(self.bank.as_ref().unwrap().patterns.iter()
+            .map(|pattern|Electribe2PatternTUI::new(pattern))
+            .collect::<Vec<_>>());
     }
 }
 
 impl TUI for Electribe2PatternsTUI {
-    impl_focus!(focused);
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        let Self { focused, offset, bank, .. } = self;
+        let Self { offset, bank, .. } = self;
         Inset(1).around(if let Some(bank) = &bank {
-            row(|add|{ add(&self.patterns); add(&self.pattern); })
+            (&self.patterns).into()
         } else {
             col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
         })
@@ -119,7 +130,7 @@ impl TUI for Electribe2PatternsTUI {
     fn min_size (&self) -> Size { self.layout().min_size }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some(bank) = &self.bank {
-            if self.patterns.0.handle(event)? {
+            if self.patterns.handle(event)? {
                 let len     = self.patterns.len();
                 let index   = self.patterns.index();
                 self.offset = handle_scroll(len, index, 36, self.offset);
@@ -146,7 +157,7 @@ impl TUI for Electribe2PatternsTUI {
 pub struct Electribe2PatternList(FocusColumn<Electribe2PatternTUI>);
 
 impl Electribe2PatternList {
-    pub fn len   (&self) -> usize { self.0.len() }
+    pub fn len (&self) -> usize { self.0.len() }
     pub fn index (&self) -> usize { self.0.index() }
 }
 
@@ -198,11 +209,33 @@ impl TUI for Electribe2PatternList {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternTUI(Electribe2Pattern);
+pub struct Electribe2PatternTUI {
+    pattern: Electribe2Pattern,
+    name:    Text,
+    level:   Text,
+    bpm:     Text,
+}
+
+impl Electribe2PatternTUI {
+    fn new (pattern: &Electribe2Pattern) -> Self {
+        Self {
+            pattern: pattern.clone(),
+            name:    Text(String::from("Pattern name:")),
+            level:   Text(String::from("Level:")),
+            bpm:     Text(String::from("BPM:")),
+        }
+    }
+}
 
 impl TUI for Electribe2PatternTUI {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        return Ok(())
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        Inset(1).around(col(|add|{
+            row(|add|{add(&self.name);add(&self.level);});
+            row(|add|{add(&self.bpm);});
+        }))
+    }
+    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        //return Ok(())
         //return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
             //.render(term, area);
 
@@ -251,7 +284,7 @@ impl TUI for Electribe2PatternTUI {
                 //})?;
         //}
         //Ok(())
-    }
+    //}
 }
 
 #[derive(Debug, Default)]

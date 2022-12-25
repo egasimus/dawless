@@ -32,7 +32,6 @@ impl<'a, T: TUI> From<&'a T> for Thunk<'a> {
     }
 }
 
-
 /// A leaf of the layout tree, containing either a widget or a thunk,
 /// alongside sizing, padding, and scrolling preferences.
 #[derive(Clone, Debug)]
@@ -323,4 +322,3 @@ mod test {
     }
 
 }
-

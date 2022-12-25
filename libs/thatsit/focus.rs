@@ -148,7 +148,7 @@ impl<T: TUI> TUI for FocusStack<T> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TabbedVertical<T: TUI> {
     pub tabs:    FocusColumn<Button>,
     pub pages:   FocusStack<T>,
@@ -164,10 +164,7 @@ impl<T: TUI> TabbedVertical<T> {
         for (tab, page) in pairs { tabs.push(tab); pages.push(page); }
         let mut tabs  = FocusColumn::new(tabs);
         let mut pages = FocusStack::new(pages);
-        if tabs.len() > 0 {
-            tabs.0.items[0].focus(true);
-            pages.0.items[0].focus(true);
-        }
+        if tabs.len() > 0 { tabs.0.items[0].focus(true); pages.0.items[0].focus(true); }
         Self { tabs, pages, open: false, entered: false }
     }
     /// Show and focus the active page
@@ -183,6 +180,14 @@ impl<T: TUI> TabbedVertical<T> {
     pub fn open (&mut self) -> bool { self.open = true; true }
     /// Hide the pages
     pub fn close (&mut self) -> bool { self.open = false; true }
+    /// Currently selected tab
+    pub fn index (&self) -> usize { self.tabs.index() }
+    /// Number of tabs
+    pub fn len (&self) -> usize {
+        let len = self.tabs.len();
+        if len != self.pages.len() { panic!("tabs and pages went out of sync") }
+        len
+    }
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
@@ -201,7 +206,7 @@ impl<T: TUI> TUI for TabbedVertical<T> {
                 next => { self.tabs.0.next() },
                 prev => { self.tabs.0.prev() },
                 KeyCode::Enter => { self.enter() },
-                KeyCode::Esc => { self.close() }
+                KeyCode::Esc   => { self.close() }
             })
         } else {
             false
