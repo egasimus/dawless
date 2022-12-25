@@ -27,7 +27,13 @@ pub(crate) use crossterm::{
     }
 };
 
-use std::{fmt::Debug, sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}}, ops::{Deref, DerefMut}};
+use std::{
+    fmt::Debug,
+    sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}},
+    ops::{Deref, DerefMut},
+    cell::RefCell,
+    rc::Rc
+};
 
 pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     if better_panic {
@@ -80,20 +86,27 @@ pub trait TUI {
     fn focus (&mut self, _focus: bool) -> bool { unimplemented!() }
     /// Is this widget focused?
     fn focused (&self) -> bool { unimplemented!() }
-    /// Define the layout for this widget
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        Thunk { items: vec![], min_size: Size::MIN, render_fn: render_nil }
+    /// Describe this widget out of renderable elements
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Thunk { items: vec![], min_size: Size::MIN, render_fn: render_nil })
     }
-    /// Draw this widget.
+    /// Render this widget by directly emitting draw commands
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.layout().render(term, area)
+        self.layout(area.1)?.render(term, area)
     }
 }
 
+/// Box widgets to transfer ownership where you don't want to specify the type.
 impl TUI for Box<dyn TUI> {
-    fn focus (&mut self, focus: bool) -> bool { (*self).deref_mut().focus(focus) }
-    fn focused (&self) -> bool { (*self).deref().focused() }
-    fn layout <'a> (&'a self) -> Thunk<'a> { (*self).deref().layout() }
+    fn focus (&mut self, focus: bool) -> bool {
+        (*self).deref_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        (*self).deref().focused()
+    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        (*self).deref().layout(max) 
+    }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         (*self).deref().render(term, area)
     }
@@ -102,30 +115,8 @@ impl TUI for Box<dyn TUI> {
     }
 }
 
-//impl TUI for &mut dyn TUI {
-    //fn min_size (&self) -> Size {
-        //(*self).min_size()
-    //}
-    //fn max_size (&self) -> Size {
-        //(*self).max_size()
-    //}
-    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        //(*self).render(term, area)
-    //}
-    //fn handle (&mut self, event: &Event) -> Result<bool> {
-        //(*self).handle(event)
-    //}
-    //fn focus (&mut self, focus: bool) -> bool {
-        //(*self).focus(focus)
-    //}
-    //fn focused (&self) -> bool {
-        //(*self).focused()
-    //}
-    //fn layout <'a> (&'a self) -> Thunk<'a> {
-        //(*self).layout()
-    //}
-//}
-
+/// Optional widgets can be hidden by setting them to `None`
+/// (losing their state)
 impl<T: TUI> TUI for Option<T> {
     fn focus (&mut self, focus: bool) -> bool {
         match self { Some(x) => x.focus(focus), None => false }
@@ -136,64 +127,78 @@ impl<T: TUI> TUI for Option<T> {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         match self { Some(x) => x.handle(event), None => Ok(false) }
     }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        match self { Some(x) => x.layout(), None => Thunk::NIL }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        match self { Some(x) => x.layout(max), None => Ok(Thunk::NIL) }
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         match self { Some(x) => x.render(term, area), None => Ok(()) }
     }
 }
 
-impl<T: TUI> TUI for std::cell::RefCell<T> {
-    fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
-    fn focused (&self) -> bool { self.borrow().focused() }
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
+/// `RefCell<T> where T: TUI` transparently wraps widgets
+impl<T: TUI> TUI for RefCell<T> {
+    fn focus (&mut self, focus: bool) -> bool {
+        self.borrow_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.borrow().focused()
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.borrow_mut().handle(event)
+    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.borrow().render(term, area)
     }
 }
 
-impl<T: TUI> TUI for std::rc::Rc<std::cell::RefCell<T>> {
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
-    fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
-    fn focused (&self) -> bool { self.borrow().focused() }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout()
+/// `Rc<RefCell<T>> where T: TUI`s transparently wraps widgets
+impl<T: TUI> TUI for Rc<RefCell<T>> {
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.borrow_mut().handle(event)
+    }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.borrow_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.borrow().focused()
+    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.borrow().render(term, area)
     }
 }
 
+/// Where an unspecified widget is used, the blank one is provided.
 impl<'a> Default for &'a dyn TUI { fn default () -> Self { BLANK } }
 
-impl<'a> Default for Box<dyn TUI> {
-    fn default () -> Self { Box::new(BLANK.clone()) }
-}
+/// Where an unspecified boxed widget is used, the blank one is provided, in a box.
+impl<'a> Default for Box<dyn TUI> { fn default () -> Self { Box::new(BLANK.clone()) } }
 
 impl Debug for &mut dyn TUI {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}|mut)", self.layout().min_size)
+        write!(f, "&mut dyn[{:?}]", self.layout(Size::MAX))
     }
 }
 
 impl Debug for &dyn TUI {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({})", self.layout().min_size)
+        write!(f, "&dyn[{:?}]", self.layout(Size::MAX))
     }
 }
 
 impl Debug for Box<dyn TUI> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({})", self.layout().min_size)
+        write!(f, "Box<dyn[{:?}]>", self.layout(Size::MAX))
     }
 }
 
 impl<'a> Debug for Thunk<'a> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "(thunk: {} items, min {})", self.items.len(), self.min_size)
+        write!(f, "Thunk[{}; {}; {:?}]>", self.min_size, self.items.len(), self.items)
     }
 }

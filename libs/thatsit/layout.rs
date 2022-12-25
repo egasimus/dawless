@@ -31,7 +31,7 @@ impl<'a> From<Size> for Thunk<'a> {
 impl<'a, T: TUI> From<&'a T> for Thunk<'a> {
     fn from (item: &'a T) -> Self {
         Self {
-            min_size: item.layout().min_size,
+            min_size: item.layout(Size::MAX).unwrap().min_size,
             items: vec![item.into()],
             render_fn: render_one,
         }
@@ -72,7 +72,7 @@ impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
         let content = LayoutContent::Item(item);
         LayoutItem {
             content,
-            min_size: item.layout().min_size,
+            min_size: item.layout(Size::MAX).unwrap().min_size,
             offset:   Point::MIN,
             padding:  Size::MIN,
             scrolls:  false
@@ -121,7 +121,7 @@ impl <'a> LayoutContent<'a> {
     /// Get the minimum size needed to render this layout item.
     #[inline] pub fn min_size (&self) -> Size {
         match self {
-            Self::Item(item)   => item.layout().min_size,
+            Self::Item(item)   => item.layout(Size::MAX).unwrap().min_size,
             Self::Thunk(thunk) => thunk.min_size,
         }
     }
@@ -206,7 +206,7 @@ pub fn render_row <'a> (
 
 /// Create a thunk containing one item.
 pub fn one <'a, T: TUI> (item: &'a T) -> Thunk<'a> {
-    Thunk { items: vec![item.into()], min_size: item.layout().min_size, render_fn: render_one }
+    Thunk { items: vec![item.into()], min_size: item.layout(Size::MAX).unwrap().min_size, render_fn: render_one }
 }
 
 pub fn render_one <'a> (
@@ -249,8 +249,7 @@ pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
 pub fn render_stack <'a> (
     items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
-    for item in items.iter() { item.render(write, area)?; }
-    Ok(())
+    for item in items.iter() { item.render(write, area)?; } Ok(())
 }
 
 /// Wrap thunk into padding
@@ -275,8 +274,7 @@ pub fn pad <'a> (padding: Size, thunk: Thunk<'a>) -> Thunk<'a> {
 pub fn render_pad <'a> (
     items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
-    items[0].render(write, Area(area.0 + Point(1, 1), area.1))?;
-    Ok(())
+    items[0].render(write, Area(area.0 + Point(1, 1), area.1))?; Ok(())
 }
 
 #[cfg(test)]

@@ -1,18 +1,36 @@
 use crate::*;
 
+/// The empty widget
 #[derive(Debug, Default, Copy, Clone)]
-/// An empty widget
 pub struct Spacer(Size);
 
-/// An empty widget
+/// A global instance of the 0x0 empty widget
 pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 
-/// A 1x1 empty widget
+/// A global instance of the 1x1 empty widget
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
 impl TUI for Spacer {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        Thunk { items: vec![], min_size: self.0, render_fn: render_nil }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(self.0.into())
+    }
+}
+
+/// A debug widget that displays its size and position on a colored background
+pub struct DebugBox { pub bg: Color }
+
+impl TUI for DebugBox {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Size(16, 3).into())
+    }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
+        let background = " ".repeat(w as usize);
+        term.queue(SetBackgroundColor(self.bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
+        for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
+        let text = format!("{w}x{h}+{x}+{y}");
+        term.queue(MoveTo(x, y))?.queue(Print(&text))?;
+        Ok(())
     }
 }
 
@@ -26,7 +44,9 @@ impl Text {
 }
 
 impl TUI for Text {
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.0.len() as u16, 1).into() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Size(self.0.len() as u16, 1).into())
+    }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
         Ok(())
@@ -37,50 +57,12 @@ impl TUI for Text {
 pub struct Foreground<T: TUI>(Color, T);
 
 impl<T: TUI> TUI for Foreground<T> {
-    fn layout <'a> (&'a self) -> Thunk<'a> { self.1.layout() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(self.1.layout(max)?)
+    }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         term.queue(SetForegroundColor(self.0))?;
         self.1.render(term, area)
-    }
-}
-
-/// A line of text
-#[derive(Default, Debug)]
-pub struct Label {
-    pub theme:   Theme,
-    pub focused: bool,
-    pub text:    String
-}
-
-impl Label {
-    pub fn new (text: impl Into<String>) -> Self { Self { text: text.into(), ..Self::default() } }
-}
-
-impl TUI for Label {
-    impl_focus!(focused);
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.text.len() as u16, 1).into() }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
-        let Theme { fg, hi, .. } = self.theme;
-        term.queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(&self.text))?;
-        Ok(())
-    }
-}
-
-/// A debug widget
-pub struct DebugBox { pub bg: Color }
-
-impl TUI for DebugBox {
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(16, 3).into() }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let background = " ".repeat(w as usize);
-        term.queue(SetBackgroundColor(self.bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
-        for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
-        let text = format!("{w}x{h}+{x}+{y}");
-        term.queue(MoveTo(x, y))?.queue(Print(&text))?;
-        Ok(())
     }
 }
 
@@ -134,9 +116,15 @@ impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn focus (&mut self, focus: bool) -> bool { self.current_mut().focus(focus) }
-    fn focused (&self) -> bool { self.current().focused() }
-    fn layout <'a> (&'a self) -> Thunk<'a> { self.current().layout() }
+    fn focus (&mut self, focus: bool) -> bool {
+        self.current_mut().focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.current().focused()
+    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        self.current().layout(max)
+    }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         self.current().render(term, rect)
     }
@@ -155,12 +143,16 @@ impl Collapsible {
 }
 
 impl TUI for Collapsible {
-    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
-    fn focused (&self) -> bool { self.0.focused() }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        let layout = self.0.layout();
-        if self.0.state { layout.min_size.stretch(self.0.closed.layout().min_size); }
-        layout
+    fn focus (&mut self, focus: bool) -> bool {
+        self.0.focus(focus)
+    }
+    fn focused (&self) -> bool {
+        self.0.focused()
+    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        let layout = self.0.layout(max)?;
+        if self.0.state { layout.min_size.stretch(self.0.closed.layout(max)?.min_size); }
+        Ok(layout)
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.0.render(term, area)
@@ -180,21 +172,26 @@ pub struct Button {
     pub action:  Option<Box<dyn FnMut() -> Result<bool>>>
 }
 
-impl std::fmt::Debug for Button {
+impl Debug for Button {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[Button ({}): {}]", self.layout().min_size, self.text)
+        write!(f, "Button[{}; {:?}]", self.text, self.layout(Size::MAX))
     }
 }
 
 impl Button {
-    pub fn new (text: impl Into<String>, action: Option<Box<dyn FnMut() -> Result<bool>>>) -> Self {
+    pub fn new (
+        text:   impl Into<String>,
+        action: Option<Box<dyn FnMut() -> Result<bool>>>
+    ) -> Self {
         Self { text: text.into(), action, ..Self::default() }
     }
 }
 
 impl TUI for Button {
     impl_focus!(focused);
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.text.len() as u16 + 6, 3).into() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Size(self.text.len() as u16 + 6, 3).into())
+    }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => Enter => {
             if let Some(action) = &mut self.action {
@@ -318,7 +315,9 @@ pub struct Scrollbar {
 }
 
 impl TUI for Scrollbar {
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(1, 3).into() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Size(1, 3).into())
+    }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(_, h)): Area) -> Result<()> {
         //let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
         //let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;

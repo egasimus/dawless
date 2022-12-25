@@ -55,7 +55,9 @@ impl Electribe2TUI {
 
 impl TUI for Electribe2TUI {
     impl_focus!(focused);
-    fn layout <'a> (&'a self) -> Thunk<'a> { (&self.selector).into() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok((&self.selector).into())
+    }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             self.selector.get_mut().handle(event)? || if event == &key!(Esc) {
@@ -127,13 +129,13 @@ impl Electribe2PatternsTUI {
 }
 
 impl TUI for Electribe2PatternsTUI {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let Self { offset, bank, .. } = self;
-        Inset(1).around(if let Some(bank) = &bank {
+        Ok(Inset(1).around(if let Some(bank) = &bank {
             (&self.patterns).into()
         } else {
             col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
-        })
+        }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some(bank) = &self.bank {
@@ -169,11 +171,13 @@ impl Electribe2PatternList {
 }
 
 impl TUI for Electribe2PatternList {
-    fn layout <'a> (&'a self) -> Thunk<'a> { self.0.layout() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        self.0.layout(max)
+    }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
         //return Layout::Item(
-            //Sizing::Range(self.min_size(), self.max_size()), &self.0
+            //Sizing::Range(self.min_size(), self.max()), &self.0
         //).render(term, area);
         //let Area(Point(x, y), Size(w, h)) = area;
         //let Self { offset, .. } = *self;
@@ -233,11 +237,11 @@ impl Electribe2PatternTUI {
 }
 
 impl TUI for Electribe2PatternTUI {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        Inset(2).around(col(|add|{
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Inset(2).around(col(|add|{
             add(row(|add|{add(&self.name);add(SPACE);add(&self.level);}));
             add(row(|add|{add(&self.bpm);}));
-        }))
+        })))
     }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return Ok(())
@@ -302,13 +306,13 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let Self { focused, .. } = *self;
-        Inset(1).around(if self.bank.is_some() {
+        Ok(Inset(1).around(if self.bank.is_some() {
             col(|add| { add(&self.sample_list); add(&self.sample); })
         } else {
             col(|add| { add(&self.file_list); })
-        })
+        }))
     }
 }
 

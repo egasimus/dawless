@@ -78,8 +78,8 @@ impl<T: TUI> FocusColumn<T> {
 
 impl<T: TUI> TUI for FocusColumn<T> {
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        col(|add|{ for item in self.0.items.iter() { add(&*item); } })
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(col(|add|{ for item in self.0.items.iter() { add(&*item); } }))
     }
 }
 
@@ -101,9 +101,11 @@ impl<T: TUI> FocusRow<T> {
 }
 
 impl<T: TUI> TUI for FocusRow<T> {
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'b> (&'b self) -> Thunk<'b> {
-        row(|add|{ for item in self.0.items.iter() { add(&*item); } })
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(row(|add|{ for item in self.0.items.iter() { add(&*item); } }))
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        self.0.handle(event)
     }
 }
 
@@ -120,7 +122,9 @@ impl<T: TUI> FocusStack<T> {
 }
 
 impl<T: TUI> TUI for FocusStack<T> {
-    fn layout <'a> (&'a self) -> Thunk<'a> { self.get().layout() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        self.get().layout(max)
+    }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
     }
@@ -169,8 +173,8 @@ impl<T: TUI> TabbedVertical<T> {
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        row(|add|{ add(&self.tabs); if self.open { add(SPACE); add(&self.pages); } })
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(row(|add|{ add(&self.tabs); if self.open { add(SPACE); add(&self.pages); } }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {

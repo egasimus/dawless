@@ -83,34 +83,26 @@ fn main () -> Result<()> {
 }
 
 impl TUI for App {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        stack(|add|{
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(stack(|add|{
             add(&self.frame);
-            col(|add|{
-                add(&self.component1);
-                add(&self.component2);
-            });
-        })
+            col(|add|{ add(&self.component1); add(&self.component2); });
+        }))
     }
 }
 
 impl TUI for Component {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        stack(|add|{
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(stack(|add|{
             add(&self.frame);
-            col(|add|{
-                add(&self.subcomponent1);
-                add(&self.subcomponent2);
-            });
-        })
+            col(|add|{ add(&self.subcomponent1); add(&self.subcomponent2); });
+        }))
     }
 }
 
 impl TUI for Subcomponent {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        stack(|add|{
-            add(&self.frame);
-        })
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(stack(|add|{ add(&self.frame); }))
     }
 }
 

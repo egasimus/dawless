@@ -30,7 +30,9 @@ impl FileEntry {
 
 impl TUI for FileEntry {
     impl_focus!(focused);
-    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.path.len() as u16, 1).into() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+        Ok(Size(self.path.len() as u16, 1).into())
+    }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let fg = Color::White;
         let hi = Color::Yellow;
@@ -66,10 +68,10 @@ impl FileList {
 
 impl TUI for FileList {
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'a> (&'a self) -> Thunk<'a> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let mut layout = col(|add|{ for item in self.0.0.items.iter() { add(item) } });
         layout.min_size = layout.min_size + Size(4, 0);
-        layout
+        Ok(layout)
     }
 }
 

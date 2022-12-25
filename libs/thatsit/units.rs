@@ -41,6 +41,8 @@ impl From<(Unit, Unit)> for Point {
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Size (/** Width */ pub Unit, /** Height */ pub Unit);
 
+/// The width and height of a rectangle.
+/// TODO implement layout as partitioning of `Size` objects.
 impl Size {
     pub const MIN: Self = Self(0, 0);
     pub const MAX: Self = Self(Unit::MAX, Unit::MAX);
@@ -101,6 +103,8 @@ impl From<(Unit, Unit)> for Size {
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Area (/** Position */ pub Point, /** Size */ pub Size);
 
+/// A rectangle of the drawing area.
+/// TODO implement layout as partitioning of `self.1` objects offset by `self.0`
 impl Area {
     #[inline] pub fn x (self) -> Unit { self.0.x() }
     #[inline] pub fn y (self) -> Unit { self.0.y() }
