@@ -52,19 +52,20 @@ impl<T: TUI> Focus<T> {
     }
     pub fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some((prev, next)) = self.keys {
-            match_key!((event) {
-                next => { self.next(); true },
-                prev => { self.prev(); true }
-            })
+            match_key!((event) { next => { self.next() }, prev => { self.prev() } })
         } else {
             false
-        })
+        } || self.get_mut().handle(event)?)
     }
 }
 
 /// A vertical list of focusable items
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FocusColumn<T: TUI>(pub Focus<T>);
+
+impl<T: TUI> Default for FocusColumn<T> {
+    fn default () -> Self { Self(Focus::vertical(vec![])) }
+}
 
 impl<T: TUI> FocusColumn<T> {
     pub fn new (items: Vec<T>) -> Self { Self(Focus::vertical(items)) }
@@ -72,9 +73,11 @@ impl<T: TUI> FocusColumn<T> {
     pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
     pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
     pub fn len (&self) -> usize { self.0.len() }
+    pub fn index (&self) -> usize { self.0.index }
 }
 
 impl<T: TUI> TUI for FocusColumn<T> {
+    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
     fn layout <'a> (&'a self) -> Thunk<'a> {
         col(|add|{ for item in self.0.items.iter() { add(&*item); } })
     }
@@ -88,14 +91,15 @@ impl<T: TUI> TUI for FocusColumn<T> {
         for item in self.0.items.iter() { size = size.expand_column(item.max_size()) }
         size
     }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
-    }
 }
 
 /// A horizontal list of focusable items
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FocusRow<T: TUI>(pub Focus<T>);
+
+impl<T: TUI> Default for FocusRow<T> {
+    fn default () -> Self { Self(Focus::horizontal(vec![])) }
+}
 
 impl<T: TUI> FocusRow<T> {
     pub fn new (items: Vec<T>) -> Self { Self(Focus::horizontal(items)) }
@@ -103,9 +107,11 @@ impl<T: TUI> FocusRow<T> {
     pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
     pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
     pub fn len (&self) -> usize { self.0.len() }
+    pub fn index (&self) -> usize { self.0.index }
 }
 
 impl<T: TUI> TUI for FocusRow<T> {
+    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
     fn layout <'b> (&'b self) -> Thunk<'b> {
         row(|add|{ for item in self.0.items.iter() { add(&*item); } })
     }
@@ -118,9 +124,6 @@ impl<T: TUI> TUI for FocusRow<T> {
         let mut size = Size::MIN;
         for item in self.0.items.iter() { size = size.expand_row(item.max_size()) }
         size
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
     }
 }
 
@@ -154,14 +157,12 @@ pub struct TabbedVertical<T: TUI> {
 }
 
 impl<T: TUI> TabbedVertical<T> {
+    /// Create a new selector with vertical tabs from a list of `(Button, TUI)` pairs.
     pub fn new (pairs: Vec<(Button, T)>) -> Self {
         let mut tabs  = vec![];
         let mut pages = vec![];
-        for (tab, page) in pairs {
-            tabs.push(tab);
-            pages.push(page);
-        }
-        let mut tabs = FocusColumn::new(tabs);
+        for (tab, page) in pairs { tabs.push(tab); pages.push(page); }
+        let mut tabs  = FocusColumn::new(tabs);
         let mut pages = FocusStack::new(pages);
         if tabs.len() > 0 {
             tabs.0.items[0].focus(true);
@@ -169,35 +170,24 @@ impl<T: TUI> TabbedVertical<T> {
         }
         Self { tabs, pages, open: false, entered: false }
     }
+    /// Show and focus the active page
     pub fn enter (&mut self) -> bool {
         self.open = true;
         self.entered = true;
         self.pages.0.index = self.tabs.0.index;
         true
     }
-    pub fn exit (&mut self) -> bool {
-        self.entered = false;
-        true
-    }
-    pub fn open (&mut self) -> bool {
-        self.open = true;
-        true
-    }
-    pub fn close (&mut self) -> bool {
-        self.open = false;
-        true
-    }
+    /// Move the focus to the tabs
+    pub fn exit (&mut self) -> bool { self.entered = false; true }
+    /// Show the active page
+    pub fn open (&mut self) -> bool { self.open = true; true }
+    /// Hide the pages
+    pub fn close (&mut self) -> bool { self.open = false; true }
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        row(|add|{
-            add(&self.tabs);
-            if self.open {
-                add(SPACE);
-                add(&self.pages);
-            }
-        })
+        row(|add|{ add(&self.tabs); if self.open { add(SPACE); add(&self.pages); } })
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {

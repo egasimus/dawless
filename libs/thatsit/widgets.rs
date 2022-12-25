@@ -59,9 +59,9 @@ impl Label {
 }
 
 impl TUI for Label {
+    impl_focus!(focused);
     fn min_size (&self) -> Size { Size(self.text.len() as u16, 1) }
     fn max_size (&self) -> Size { self.min_size() }
-    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
         term.queue(SetForegroundColor(if self.focused { hi } else { fg }))?
@@ -70,7 +70,6 @@ impl TUI for Label {
         Ok(())
     }
 }
-
 
 /// A debug widget
 pub struct DebugBox { pub bg: Color }
@@ -97,9 +96,7 @@ impl TUI for Background {
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
         let background  = " ".repeat(w as usize);
         term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x, y))?.queue(Print(&background))?;
-        }
+        for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
         Ok(())
     }
 }
@@ -107,8 +104,11 @@ impl TUI for Background {
 /// A widget that switches between two states
 #[derive(Default, Debug)]
 pub struct Toggle<T: TUI, U: TUI> {
+    /// The widget displayed when `state == false`
     pub closed: T,
-    pub open:   U,
+    /// The widget displayed when `state == true`
+    pub open: U,
+    /// Which widget to display
     state: bool,
 }
 
@@ -203,9 +203,9 @@ impl Button {
 }
 
 impl TUI for Button {
+    impl_focus!(focused);
     fn min_size (&self) -> Size { Size(self.text.len() as u16 + 6, 3) }
     fn max_size (&self) -> Size { self.min_size() }
-    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => Enter => {
             if let Some(action) = &mut self.action {

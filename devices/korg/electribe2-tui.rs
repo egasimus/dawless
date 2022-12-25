@@ -13,13 +13,7 @@ use thatsit::{*, crossterm::{
 use thatsit_fs::*;
 use laterna;
 
-pub static THEME: Theme = Theme {
-    bg: Color::AnsiValue(232),
-    fg: Color::White,
-    hi: Color::Yellow
-};
-
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Electribe2TUI {
     focused:  bool,
     entered:  bool,
@@ -51,16 +45,9 @@ impl Electribe2TUI {
 }
 
 impl TUI for Electribe2TUI {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        (&self.selector).into()
-    }
-    fn min_size (&self) -> Size {
-        self.selector.min_size()
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.focused = focus;
-        true
-    }
+    impl_focus!(focused);
+    fn layout <'a> (&'a self) -> Thunk<'a> { (&self.selector).into() }
+    fn min_size (&self) -> Size { self.selector.min_size() }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             self.selector.get_mut().handle(event)? || if event == &key!(Esc) {
@@ -71,11 +58,11 @@ impl TUI for Electribe2TUI {
                 false
             }
         } else {
-            self.selector.handle(event)?;
+            let handled = self.selector.handle(event)?;
             if event == &key!(Enter) {
                 self.enter_feature()
             } else {
-                false
+                handled
             }
         })
     }
@@ -107,6 +94,7 @@ impl Electribe2PatternsTUI {
             file_list,
         }
     }
+    pub fn update (&mut self) { self.file_list.update(); }
     pub fn import (&mut self, bank: &std::path::Path) {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
@@ -116,12 +104,10 @@ impl Electribe2PatternsTUI {
             .collect();
         self.patterns.0.replace(patterns);
     }
-    fn update_listing (&mut self) {
-        self.file_list.update();
-    }
 }
 
 impl TUI for Electribe2PatternsTUI {
+    impl_focus!(focused);
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, offset, bank, .. } = self;
         Inset(1).around(if let Some(bank) = &bank {
@@ -130,56 +116,44 @@ impl TUI for Electribe2PatternsTUI {
             col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
         })
     }
-    fn min_size (&self) -> Size {
-        self.layout().min_size
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.focused = focus;
-        true
-    }
-    fn focused (&self) -> bool {
-        self.focused
-    }
+    fn min_size (&self) -> Size { self.layout().min_size }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        if let Some(bank) = &self.bank {
+        Ok(if let Some(bank) = &self.bank {
             if self.patterns.0.handle(event)? {
-                self.offset = handle_scroll(
-                    self.patterns.0.0.items.len(), self.patterns.0.0.index, 36, self.offset
-                );
-                Ok(true)
+                let len     = self.patterns.len();
+                let index   = self.patterns.index();
+                self.offset = handle_scroll(len, index, 36, self.offset);
+                true
             } else {
-                Ok(false)
+                false
             }
         } else {
-            Ok(if_key!(event => Enter => {
-                let index = self.file_list.0.0.index;
-                let FileListItem(path, is_dir) = &self.file_list.0.0.items.get(index).unwrap();
+            self.file_list.handle(event)? || if_key!(event => Enter => {
+                let FileEntry { path, is_dir, .. } = self.file_list.selected();
                 if *is_dir {
                     std::env::set_current_dir(path)?;
-                    self.update_listing();
+                    self.update();
                 } else {
-                    let path = std::path::PathBuf::from(path);
-                    self.import(&path);
+                    self.import(&std::path::PathBuf::from(path));
                 }
                 true
-            }) || self.file_list.handle(event)?)
-        }
+            })
+        })
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Electribe2PatternList(FocusColumn<Electribe2PatternTUI>);
 
+impl Electribe2PatternList {
+    pub fn len   (&self) -> usize { self.0.len() }
+    pub fn index (&self) -> usize { self.0.index() }
+}
+
 impl TUI for Electribe2PatternList {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        self.0.layout()
-    }
-    fn min_size (&self) -> Size {
-        Size(24, 10)
-    }
-    fn max_size (&self) -> Size {
-        Size(24, Unit::MAX)
-    }
+    fn layout <'a> (&'a self) -> Thunk<'a> { self.0.layout() }
+    fn min_size (&self) -> Size { Size(24, 10) }
+    fn max_size (&self) -> Size { Size(24, Unit::MAX) }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
         //return Layout::Item(
@@ -290,6 +264,7 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
+    fn min_size (&self) -> Size { self.layout().min_size }
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, .. } = *self;
         Inset(1).around(if self.bank.is_some() {
@@ -303,18 +278,15 @@ impl TUI for Electribe2SamplesTUI {
             })
         })
     }
-    fn min_size (&self) -> Size {
-        self.layout().min_size
-    }
 }
 
 impl Electribe2SamplesTUI {
     pub fn new () -> Self {
         let mut new = Self::default();
-        new.update_listing();
+        new.update();
         return new
     }
-    fn update_listing (&mut self) {
+    fn update (&mut self) {
         let (entries, _) = list_current_directory();
         self.file_list.replace(entries);
     }

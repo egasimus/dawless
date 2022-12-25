@@ -53,9 +53,7 @@ pub fn clear (term: &mut dyn Write) -> Result<()> {
 pub fn spawn_input_thread (tx: Sender<Event>, exited: &'static AtomicBool) {
     std::thread::spawn(move || {
         loop {
-            if exited.fetch_and(true, Ordering::Relaxed) {
-                break
-            }
+            if exited.fetch_and(true, Ordering::Relaxed) { break }
             if crossterm::event::poll(std::time::Duration::from_millis(100)).is_ok() {
                 if tx.send(crossterm::event::read().unwrap()).is_err() { break }
             }
@@ -83,9 +81,9 @@ pub trait TUI {
     /// Handle input events.
     fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
     /// Handle focus changes.
-    fn focus (&mut self, _focus: bool) -> bool { false }
+    fn focus (&mut self, _focus: bool) -> bool { unimplemented!() }
     /// Is this widget focused?
-    fn focused (&self) -> bool { false }
+    fn focused (&self) -> bool { unimplemented!() }
     /// Define the layout for this widget
     fn layout <'a> (&'a self) -> Thunk<'a> {
         Thunk { items: vec![], min_size: self.min_size(), render_fn: render_nil }
