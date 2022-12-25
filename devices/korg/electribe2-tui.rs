@@ -56,7 +56,6 @@ impl Electribe2TUI {
 impl TUI for Electribe2TUI {
     impl_focus!(focused);
     fn layout <'a> (&'a self) -> Thunk<'a> { (&self.selector).into() }
-    fn min_size (&self) -> Size { self.selector.min_size() }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             self.selector.get_mut().handle(event)? || if event == &key!(Esc) {
@@ -109,8 +108,17 @@ impl Electribe2PatternsTUI {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        self.patterns.tabs.replace(self.bank.as_ref().unwrap().patterns.iter()
-            .map(|pattern|Button::new(pattern.name.clone(), None))
+        self.patterns.tabs.replace(self.bank.as_ref().unwrap().patterns.iter().enumerate()
+            .map(|(index, pattern)|Button::new(format!(
+                "{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
+                index + self.offset + 1,
+                pattern.name.trim(),
+                pattern.bpm,
+                pattern.length,
+                pattern.beats,
+                pattern.key,
+                pattern.scale,
+            ), None))
             .collect::<Vec<_>>());
         self.patterns.pages.replace(self.bank.as_ref().unwrap().patterns.iter()
             .map(|pattern|Electribe2PatternTUI::new(pattern))
@@ -127,7 +135,6 @@ impl TUI for Electribe2PatternsTUI {
             col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
         })
     }
-    fn min_size (&self) -> Size { self.layout().min_size }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some(bank) = &self.bank {
             if self.patterns.handle(event)? {
@@ -163,8 +170,6 @@ impl Electribe2PatternList {
 
 impl TUI for Electribe2PatternList {
     fn layout <'a> (&'a self) -> Thunk<'a> { self.0.layout() }
-    fn min_size (&self) -> Size { Size(24, 10) }
-    fn max_size (&self) -> Size { Size(24, Unit::MAX) }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
         //return Layout::Item(
@@ -229,9 +234,9 @@ impl Electribe2PatternTUI {
 
 impl TUI for Electribe2PatternTUI {
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        Inset(1).around(col(|add|{
-            row(|add|{add(&self.name);add(&self.level);});
-            row(|add|{add(&self.bpm);});
+        Inset(2).around(col(|add|{
+            add(row(|add|{add(&self.name);add(SPACE);add(&self.level);}));
+            add(row(|add|{add(&self.bpm);}));
         }))
     }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
@@ -297,28 +302,18 @@ pub struct Electribe2SamplesTUI {
 }
 
 impl TUI for Electribe2SamplesTUI {
-    fn min_size (&self) -> Size { self.layout().min_size }
     fn layout <'a> (&'a self) -> Thunk<'a> {
         let Self { focused, .. } = *self;
         Inset(1).around(if self.bank.is_some() {
-            col(|add| {
-                add(&self.sample_list);
-                add(&self.sample);
-            })
+            col(|add| { add(&self.sample_list); add(&self.sample); })
         } else {
-            col(|add|{
-                add(&self.file_list);
-            })
+            col(|add| { add(&self.file_list); })
         })
     }
 }
 
 impl Electribe2SamplesTUI {
-    pub fn new () -> Self {
-        let mut new = Self::default();
-        new.update();
-        return new
-    }
+    pub fn new () -> Self { let mut new = Self::default(); new.update(); return new }
     fn update (&mut self) {
         let (entries, _) = list_current_directory();
         self.file_list.replace(entries);

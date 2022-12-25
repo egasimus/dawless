@@ -81,16 +81,6 @@ impl<T: TUI> TUI for FocusColumn<T> {
     fn layout <'a> (&'a self) -> Thunk<'a> {
         col(|add|{ for item in self.0.items.iter() { add(&*item); } })
     }
-    fn min_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_column(item.min_size()) }
-        size
-    }
-    fn max_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_column(item.max_size()) }
-        size
-    }
 }
 
 /// A horizontal list of focusable items
@@ -115,16 +105,6 @@ impl<T: TUI> TUI for FocusRow<T> {
     fn layout <'b> (&'b self) -> Thunk<'b> {
         row(|add|{ for item in self.0.items.iter() { add(&*item); } })
     }
-    fn min_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_row(item.min_size()) }
-        size
-    }
-    fn max_size (&self) -> Size {
-        let mut size = Size::MIN;
-        for item in self.0.items.iter() { size = size.expand_row(item.max_size()) }
-        size
-    }
 }
 
 /// A stack of focusable items, rendering one at a time
@@ -141,8 +121,6 @@ impl<T: TUI> FocusStack<T> {
 
 impl<T: TUI> TUI for FocusStack<T> {
     fn layout <'a> (&'a self) -> Thunk<'a> { self.get().layout() }
-    fn min_size (&self) -> Size { self.get().min_size() }
-    fn max_size (&self) -> Size { self.get().max_size() }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(self.0.handle(event)? || self.get_mut().handle(event)? || false)
     }

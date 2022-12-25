@@ -11,8 +11,9 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
 impl TUI for Spacer {
-    fn min_size (&self) -> Size { self.0 }
-    fn max_size (&self) -> Size { self.0 }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        Thunk { items: vec![], min_size: self.0, render_fn: render_nil }
+    }
 }
 
 /// A line of text
@@ -25,8 +26,7 @@ impl Text {
 }
 
 impl TUI for Text {
-    fn min_size (&self) -> Size { Size(self.0.len() as u16, 1) }
-    fn max_size (&self) -> Size { self.min_size() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.0.len() as u16, 1).into() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
         Ok(())
@@ -38,8 +38,6 @@ pub struct Foreground<T: TUI>(Color, T);
 
 impl<T: TUI> TUI for Foreground<T> {
     fn layout <'a> (&'a self) -> Thunk<'a> { self.1.layout() }
-    fn min_size (&self) -> Size { self.1.min_size() }
-    fn max_size (&self) -> Size { self.1.max_size() }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         term.queue(SetForegroundColor(self.0))?;
         self.1.render(term, area)
@@ -60,8 +58,7 @@ impl Label {
 
 impl TUI for Label {
     impl_focus!(focused);
-    fn min_size (&self) -> Size { Size(self.text.len() as u16, 1) }
-    fn max_size (&self) -> Size { self.min_size() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.text.len() as u16, 1).into() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
         term.queue(SetForegroundColor(if self.focused { hi } else { fg }))?
@@ -75,8 +72,7 @@ impl TUI for Label {
 pub struct DebugBox { pub bg: Color }
 
 impl TUI for DebugBox {
-    fn min_size (&self) -> Size { Size(16, 3) }
-    fn max_size (&self) -> Size { Size::MAX }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(16, 3).into() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
         let background = " ".repeat(w as usize);
         term.queue(SetBackgroundColor(self.bg))?
@@ -138,8 +134,6 @@ impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn min_size (&self) -> Size { self.current().min_size() }
-    fn max_size (&self) -> Size { self.current().max_size() }
     fn focus (&mut self, focus: bool) -> bool { self.current_mut().focus(focus) }
     fn focused (&self) -> bool { self.current().focused() }
     fn layout <'a> (&'a self) -> Thunk<'a> { self.current().layout() }
@@ -161,17 +155,13 @@ impl Collapsible {
 }
 
 impl TUI for Collapsible {
-    fn min_size (&self) -> Size {
-        if (&self.0).into() {
-            self.0.closed.min_size().stretch(self.0.open.min_size())
-        } else {
-            self.0.closed.min_size()
-        }
-    }
-    fn max_size (&self) -> Size { self.0.max_size() }
     fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
     fn focused (&self) -> bool { self.0.focused() }
-    fn layout <'a> (&'a self) -> Thunk<'a> { self.0.layout() }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        let layout = self.0.layout();
+        if self.0.state { layout.min_size.stretch(self.0.closed.layout().min_size); }
+        layout
+    }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.0.render(term, area)
     }
@@ -192,7 +182,7 @@ pub struct Button {
 
 impl std::fmt::Debug for Button {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[Button ({}-{}): {}]", self.min_size(), self.max_size(), self.text)
+        write!(f, "[Button ({}): {}]", self.layout().min_size, self.text)
     }
 }
 
@@ -204,8 +194,7 @@ impl Button {
 
 impl TUI for Button {
     impl_focus!(focused);
-    fn min_size (&self) -> Size { Size(self.text.len() as u16 + 6, 3) }
-    fn max_size (&self) -> Size { self.min_size() }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.text.len() as u16 + 6, 3).into() }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => Enter => {
             if let Some(action) = &mut self.action {
@@ -251,8 +240,9 @@ impl Border for Inset {
 impl<'a> TUI for Inset {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Area(Point(x, y), Size(w, h)) = area;
+        if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
+        Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
         let top_edge    = "▇".repeat((w) as usize);
         let bottom_edge = "▁".repeat((w) as usize);
         let left_edge   = "▊";
@@ -328,12 +318,7 @@ pub struct Scrollbar {
 }
 
 impl TUI for Scrollbar {
-    fn min_size (&self) -> Size {
-        Size(1, 3)
-    }
-    fn max_size (&self) -> Size {
-        Size(1, Unit::MAX)
-    }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(1, 3).into() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(_, h)): Area) -> Result<()> {
         //let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
         //let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;

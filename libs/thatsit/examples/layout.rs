@@ -59,13 +59,12 @@ fn main () -> Result<()> {
         APP.with(|app| {
             let app = app.borrow();
             //let layout = app.layout();
-            let min_size = app.min_size();
+            let min_size = app.layout().min_size;
             let screen_size: Size = size().unwrap().into();
             if let Err(e) = min_size.fits_in(screen_size) {
                 write_error(&mut term, format!("{e}").as_str()).unwrap();
             } else {
-                let max_size = app.max_size();
-                let size = screen_size.crop_to(max_size);
+                let size = screen_size.crop_to(min_size);
                 let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                 let area = Area(xy, size);
                 app.render(&mut term, area).unwrap();

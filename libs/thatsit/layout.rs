@@ -22,10 +22,16 @@ impl<'a> Thunk<'a> {
     }
 }
 
+impl<'a> From<Size> for Thunk<'a> {
+    fn from (size: Size) -> Self {
+        Self { min_size: size, items: vec![], render_fn: render_nil }
+    }
+}
+
 impl<'a, T: TUI> From<&'a T> for Thunk<'a> {
     fn from (item: &'a T) -> Self {
         Self {
-            min_size: item.min_size(),
+            min_size: item.layout().min_size,
             items: vec![item.into()],
             render_fn: render_one,
         }
@@ -66,7 +72,7 @@ impl<'a, T: TUI> From<&'a T> for LayoutItem<'a> {
         let content = LayoutContent::Item(item);
         LayoutItem {
             content,
-            min_size: item.min_size(),
+            min_size: item.layout().min_size,
             offset:   Point::MIN,
             padding:  Size::MIN,
             scrolls:  false
@@ -115,7 +121,7 @@ impl <'a> LayoutContent<'a> {
     /// Get the minimum size needed to render this layout item.
     #[inline] pub fn min_size (&self) -> Size {
         match self {
-            Self::Item(item)   => item.min_size(),
+            Self::Item(item)   => item.layout().min_size,
             Self::Thunk(thunk) => thunk.min_size,
         }
     }
@@ -200,7 +206,7 @@ pub fn render_row <'a> (
 
 /// Create a thunk containing one item.
 pub fn one <'a, T: TUI> (item: &'a T) -> Thunk<'a> {
-    Thunk { items: vec![item.into()], min_size: item.min_size(), render_fn: render_one }
+    Thunk { items: vec![item.into()], min_size: item.layout().min_size, render_fn: render_one }
 }
 
 pub fn render_one <'a> (
@@ -282,10 +288,7 @@ mod test {
 
     impl<'a> TUI for One {
         fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-            write!(term, "\n{}", Area(area.0, self.min_size()))
-        }
-        fn min_size (&self) -> Size {
-            Size(1, 1)
+            write!(term, "\n{}", Area(area.0, self.layout().min_size))
         }
     }
 

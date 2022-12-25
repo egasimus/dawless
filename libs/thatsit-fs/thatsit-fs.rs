@@ -30,7 +30,7 @@ impl FileEntry {
 
 impl TUI for FileEntry {
     impl_focus!(focused);
-    fn min_size (&self) -> Size { Size(self.path.len() as u16, 1) }
+    fn layout <'a> (&'a self) -> Thunk<'a> { Size(self.path.len() as u16, 1).into() }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         let fg = Color::White;
         let hi = Color::Yellow;
@@ -65,12 +65,12 @@ impl FileList {
 }
 
 impl TUI for FileList {
-    fn layout <'a> (&'a self) -> Thunk<'a> {
-        col(|add|{ for item in self.0.0.items.iter() { add(item) } })
-    }
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn min_size (&self) -> Size { self.0.min_size() + Size(4, 0) }
-    fn max_size (&self) -> Size { self.min_size() }
+    fn layout <'a> (&'a self) -> Thunk<'a> {
+        let mut layout = col(|add|{ for item in self.0.0.items.iter() { add(item) } });
+        layout.min_size = layout.min_size + Size(4, 0);
+        layout
+    }
 }
 
 pub fn list_current_directory () -> (Vec<FileEntry>, usize) {

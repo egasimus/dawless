@@ -74,10 +74,6 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 
 /// A terminal UI widget
 pub trait TUI {
-    /// Return the minimum size for this component.
-    fn min_size (&self) -> Size { Size::MIN }
-    /// Return the minimum size for this component.
-    fn max_size (&self) -> Size { Size::MAX }
     /// Handle input events.
     fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
     /// Handle focus changes.
@@ -86,7 +82,7 @@ pub trait TUI {
     fn focused (&self) -> bool { unimplemented!() }
     /// Define the layout for this widget
     fn layout <'a> (&'a self) -> Thunk<'a> {
-        Thunk { items: vec![], min_size: self.min_size(), render_fn: render_nil }
+        Thunk { items: vec![], min_size: Size::MIN, render_fn: render_nil }
     }
     /// Draw this widget.
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
@@ -95,8 +91,6 @@ pub trait TUI {
 }
 
 impl TUI for Box<dyn TUI> {
-    fn min_size (&self) -> Size { (*self).deref().min_size() }
-    fn max_size (&self) -> Size { (*self).deref().max_size() }
     fn focus (&mut self, focus: bool) -> bool { (*self).deref_mut().focus(focus) }
     fn focused (&self) -> bool { (*self).deref().focused() }
     fn layout <'a> (&'a self) -> Thunk<'a> { (*self).deref().layout() }
@@ -133,8 +127,6 @@ impl TUI for Box<dyn TUI> {
 //}
 
 impl<T: TUI> TUI for Option<T> {
-    fn min_size (&self) -> Size { match self { Some(x) => x.min_size(), None => Size::MIN } }
-    fn max_size (&self) -> Size { match self { Some(x) => x.max_size(), None => Size::MIN } }
     fn focus (&mut self, focus: bool) -> bool {
         match self { Some(x) => x.focus(focus), None => false }
     }
@@ -153,8 +145,6 @@ impl<T: TUI> TUI for Option<T> {
 }
 
 impl<T: TUI> TUI for std::cell::RefCell<T> {
-    fn min_size (&self) -> Size { self.borrow().min_size() }
-    fn max_size (&self) -> Size { self.borrow().max_size() }
     fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
     fn focused (&self) -> bool { self.borrow().focused() }
     fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
@@ -167,8 +157,6 @@ impl<T: TUI> TUI for std::cell::RefCell<T> {
 }
 
 impl<T: TUI> TUI for std::rc::Rc<std::cell::RefCell<T>> {
-    fn min_size (&self) -> Size { self.borrow().min_size() }
-    fn max_size (&self) -> Size { self.borrow().max_size() }
     fn handle (&mut self, event: &Event) -> Result<bool> { self.borrow_mut().handle(event) }
     fn focus (&mut self, focus: bool) -> bool { self.borrow_mut().focus(focus) }
     fn focused (&self) -> bool { self.borrow().focused() }
@@ -188,19 +176,19 @@ impl<'a> Default for Box<dyn TUI> {
 
 impl Debug for &mut dyn TUI {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}-{}|mut)", self.min_size(), self.max_size())
+        write!(f, "({}|mut)", self.layout().min_size)
     }
 }
 
 impl Debug for &dyn TUI {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}-{})", self.min_size(), self.max_size())
+        write!(f, "({})", self.layout().min_size)
     }
 }
 
 impl Debug for Box<dyn TUI> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}-{})", self.min_size(), self.max_size())
+        write!(f, "({})", self.layout().min_size)
     }
 }
 
