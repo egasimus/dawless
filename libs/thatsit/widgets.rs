@@ -240,8 +240,8 @@ pub trait Border {
 
 impl Border for Inset {
     fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0*2, self.0*2);
-        let min_size  = thunk.min_size + padding;
+        let padding   = Size(self.0, self.0);
+        let min_size  = thunk.min_size + padding + padding;
         let items     = vec![self.into(), pad(padding, thunk.into()).into()];
         let render_fn = render_stack;
         Thunk { min_size, items, render_fn }
@@ -284,8 +284,8 @@ pub struct Outset(
 
 impl Border for Outset {
     fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0*2, self.0*2);
-        let min_size  = thunk.min_size + padding;
+        let padding   = Size(self.0, self.0);
+        let min_size  = thunk.min_size + padding + padding;
         let items     = vec![self.into(), pad(padding, thunk.into()).into()];
         let render_fn = render_stack;
         Thunk { min_size, items, render_fn }
@@ -295,8 +295,9 @@ impl Border for Outset {
 impl<'a> TUI for Outset {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Area(Point(x, y), Size(w, h)) = area;
+        if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h-1)))?;
+        Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
         let top_edge    = "▇".repeat(w as usize);
         let bottom_edge = "▁".repeat(w as usize);
         let right_edge  = "▎";

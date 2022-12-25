@@ -78,7 +78,7 @@ pub(crate) fn main () -> Result<()> {
             } else {
                 // Render to output buffer
                 let size = screen_size.crop_to(min_size);
-                let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
+                let xy   = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
                 if let Err(e) = app.borrow().render(&mut term, Area(xy, size)) {
                     write_error(&mut term, format!("{e}").as_str()).unwrap();
                 };

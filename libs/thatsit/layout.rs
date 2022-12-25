@@ -243,9 +243,7 @@ pub fn stack <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
 pub fn render_stack <'a> (
     items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
-    for item in items.iter() {
-        item.render(write, area)?;
-    }
+    for item in items.iter() { item.render(write, area)?; }
     Ok(())
 }
 
