@@ -14,68 +14,23 @@ use thatsit_fs::*;
 use laterna;
 
 #[derive(Debug, Default)]
-pub struct Electribe2TUI {
-    focused:  bool,
-    entered:  bool,
-    selector: FocusColumn<Collapsible>,
-}
+pub struct Electribe2TUI(TabbedVertical<Box<dyn TUI>>);
 
 impl Electribe2TUI {
     pub fn new () -> Self {
-        let mut selector = FocusColumn::new(vec![
-            Self::feature(
-                "Load pattern bank...",
-                Box::new(Electribe2PatternsTUI::new()) as Box<dyn TUI>
-            ),
-            Self::feature(
-                "Load sample bank... ",
-                Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>
-            ),
-        ]);
-        selector.items.items[0].focus(true);
-        Self { focused: false, entered: false, selector, }
-    }
-    fn feature (text: &str, feature: Box<dyn TUI>) -> Collapsible {
-        Collapsible(Toggle::new(
-            Button::new(String::from(text), Some(Box::new(||Ok(false)))),
-            feature
-        ))
-    }
-    fn enter_feature (&mut self) -> bool {
-        self.entered = true;
-        self.selector.get_mut().expand();
-        true
-    }
-    fn exit_feature (&mut self) -> bool {
-        self.entered = false;
-        self.selector.get_mut().collapse();
-        true
+        let mut selector = TabbedVertical::<Box<dyn TUI>>::default();
+        selector.add("Load pattern bank...", Box::new(Electribe2PatternsTUI::new()));
+        selector.add("Load sample bank...",  Box::new(Electribe2SamplesTUI::new()));
+        selector.tabs.items.items[0].focus(true);
+        Self(selector)
     }
 }
 
 impl TUI for Electribe2TUI {
-    impl_focus!(focused);
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok((&self.selector).into())
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(if self.entered {
-            self.selector.get_mut().handle(event)? || if event == &key!(Esc) {
-                self.exit_feature()
-            } else if event == &key!(Enter) {
-                self.exit_feature()
-            } else {
-                false
-            }
-        } else {
-            let handled = self.selector.handle(event)?;
-            if event == &key!(Enter) {
-                self.enter_feature()
-            } else {
-                handled
-            }
-        })
-    }
+    fn focused (&self) -> bool { self.0.focused() }
+    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.0.layout(max) }
+    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
 }
 
 /// UI for editing a Korg Electribe 2 pattern bank

@@ -152,6 +152,11 @@ impl<T: TUI> TabbedVertical<T> {
         if tabs.len() > 0 { tabs.items.items[0].focus(true); pages.0.items[0].focus(true); }
         Self { tabs, pages, open: false, entered: false }
     }
+    /// Add a tab/page pair.
+    pub fn add (&mut self, label: &str, page: T) {
+        self.tabs.items.items.push(Button::new(String::from(label), None));
+        self.pages.0.items.push(page);
+    }
     /// Show and focus the active page
     pub fn enter (&mut self) -> bool {
         self.open = true;

@@ -171,7 +171,8 @@ impl Button {
 }
 
 impl TUI for Button {
-    impl_focus!(focused);
+    fn focused (&self) -> bool { self.focused }
+    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.text.len() as u16 + 6, 3).into())
     }

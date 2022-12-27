@@ -43,14 +43,6 @@
     }
 }
 
-/// Implement a focus flag
-#[macro_export] macro_rules! impl_focus {
-    ($field:ident) => {
-        fn focused (&self) -> bool { self.$field }
-        fn focus (&mut self, focus: bool) -> bool { self.$field = focus; true }
-    }
-}
-
 // TODO:
 /*
 macro_rules! layout {

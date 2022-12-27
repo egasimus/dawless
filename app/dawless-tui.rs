@@ -1,12 +1,21 @@
-use std::cell::RefCell;
-use std::io::{Result, Write};
-use std::sync::{atomic::{AtomicBool, Ordering}, mpsc::channel};
-use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}, terminal::{size}}};
+use std::io::Result;
+use std::sync::atomic::{AtomicBool, Ordering};
+use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}}};
 
 /// Exit flag. Setting this to true terminates the main loop.
 static EXITED: AtomicBool = AtomicBool::new(false);
 
+pub(crate) fn main () -> Result<()> {
+    run(&EXITED, &mut std::io::stdout(), App::new()
+        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
+        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
+        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
+        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
+        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new())))
+}
+
 /// The main app object, containing a menu of supported devices.
+#[derive(Debug)]
 struct App {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
@@ -15,8 +24,14 @@ struct App {
 }
 
 impl App {
+    fn new () -> Self { Self { exited: &EXITED, devices: TabbedVertical::default() } }
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
+    /// Add a device page to the app
+    fn page (mut self, label: &str, device: Box<dyn TUI>) -> Self {
+        self.devices.add(label, device);
+        self
+    }
 }
 
 impl TUI for App {
@@ -31,22 +46,4 @@ impl TUI for App {
             self.devices.handle(event)?
         })
     }
-}
-
-pub(crate) fn main () -> Result<()> {
-    run(&EXITED, &mut std::io::stdout(), App {
-        exited: &EXITED,
-        devices: TabbedVertical::new(vec![
-            (Button::new("Korg Electribe 2",    None),
-                Box::new(dawless_korg::electribe2::Electribe2TUI::new())),
-            (Button::new("Korg Triton",         None),
-                Box::new(dawless_korg::triton::TritonTUI::new())),
-            (Button::new("AKAI S3000XL",        None),
-                Box::new(dawless_akai::S3000XLTUI::new())),
-            (Button::new("AKAI MPC2000",        None),
-                Box::new(dawless_akai::MPC2000TUI::new())),
-            (Button::new("iConnectivity mioXL", None),
-                Box::new(dawless_iconnectivity::MioXLTUI::new())),
-        ])
-    })
 }
