@@ -65,7 +65,7 @@ impl Size {
         Self(self.0.min(other.0), self.1.min(other.1))
     }
     /// Return error if the other area is too small
-    pub fn fits_in (self, other: Self) -> Result<()> {
+    pub fn at_least (self, other: Self) -> Result<()> {
         if self.0 > other.0 {
             let message = format!("need {} columns", self.0);
             return Err(Error::new(ErrorKind::Other, message))

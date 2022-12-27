@@ -206,7 +206,11 @@ pub fn render_row <'a> (
 
 /// Create a thunk containing one item.
 pub fn one <'a, T: TUI> (item: &'a T) -> Thunk<'a> {
-    Thunk { items: vec![item.into()], min_size: item.layout(Size::MAX).unwrap().min_size, render_fn: render_one }
+    Thunk {
+        items: vec![item.into()],
+        min_size: item.layout(Size::MAX).unwrap().min_size,
+        render_fn: render_one
+    }
 }
 
 pub fn render_one <'a> (

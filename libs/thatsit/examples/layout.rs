@@ -59,9 +59,9 @@ fn main () -> Result<()> {
         APP.with(|app| {
             let app = app.borrow();
             //let layout = app.layout();
-            let min_size = app.layout().min_size;
+            let min_size = app.layout(Size::MAX).unwrap().min_size;
             let screen_size: Size = size().unwrap().into();
-            if let Err(e) = min_size.fits_in(screen_size) {
+            if let Err(e) = min_size.at_least(screen_size) {
                 write_error(&mut term, format!("{e}").as_str()).unwrap();
             } else {
                 let size = screen_size.crop_to(min_size);

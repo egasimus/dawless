@@ -307,6 +307,30 @@ impl<'a> TUI for Outset {
     }
 }
 
+#[derive(Default, Debug, Copy, Clone)]
+pub struct Centered;
+
+impl Border for Centered {
+    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        let min_size  = thunk.min_size;
+        let items     = vec![thunk.into()];
+        let render_fn = render_centered;
+        Thunk { min_size, items, render_fn }
+    }
+}
+
+impl<'a> TUI for Centered {}
+
+pub fn render_centered <'a> (
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    let size = items[0].min_size;
+    items[0].render(write, Area(Point(
+        (area.1.0.saturating_sub(size.0)) / 2,
+        (area.1.1.saturating_sub(size.1)) / 2
+    ), size))
+}
+
 #[derive(Debug, Default)]
 pub struct Scrollbar {
     pub theme:  Theme,
