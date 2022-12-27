@@ -14,25 +14,6 @@ struct App {
     devices: TabbedVertical<Box<dyn TUI>>,
 }
 
-thread_local!(
-    /// A global instance of the app object, owned by the render thread.
-    static APP: RefCell<App> = RefCell::new(App {
-        exited:  &EXITED,
-        devices: TabbedVertical::new(vec![
-            (Button::new("Korg Electribe 2",    None),
-                Box::new(dawless_korg::electribe2::Electribe2TUI::new())),
-            (Button::new("Korg Triton",         None),
-                Box::new(dawless_korg::triton::TritonTUI::new())),
-            (Button::new("AKAI S3000XL",        None),
-                Box::new(dawless_akai::S3000XLTUI::new())),
-            (Button::new("AKAI MPC2000",        None),
-                Box::new(dawless_akai::MPC2000TUI::new())),
-            (Button::new("iConnectivity mioXL", None),
-                Box::new(dawless_iconnectivity::MioXLTUI::new())),
-        ])
-    })
-);
-
 impl App {
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
@@ -53,45 +34,19 @@ impl TUI for App {
 }
 
 pub(crate) fn main () -> Result<()> {
-    // Set up event channel and input thread
-    let (tx, rx) = channel::<Event>();
-    spawn_input_thread(tx, &EXITED);
-    // Setup terminal and panic hook
-    let mut term = std::io::stdout();
-    setup(&mut term, true)?;
-    // Render app and listen for updates
-    loop {
-        let mut done = false;
-        APP.with(|app| {
-            // Clear screen
-            clear(&mut term).unwrap();
-            // Break loop if exited
-            if app.borrow().exited.fetch_and(true, Ordering::Relaxed) == true {
-                done = true;
-                return
-            }
-            // Render
-            let screen_size: Size = size().unwrap().into();
-            match app.borrow().layout(screen_size) {
-                Ok(layout) => if let Err(error) = layout.render(
-                    &mut term, Area(Point::MIN, screen_size)
-                ) {
-                    write_error(&mut term, format!("{error}").as_str()).unwrap();
-                },
-                Err(error) => {
-                    write_error(&mut term, format!("{error}").as_str()).unwrap();
-                }
-            }
-            // Flush output buffer
-            term.flush().unwrap();
-            // Wait for input and update
-            app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
-        });
-        if done {
-            break
-        }
-    }
-    // Clean up
-    teardown(&mut term)?;
-    Ok(())
+    run(&EXITED, &mut std::io::stdout(), App {
+        exited: &EXITED,
+        devices: TabbedVertical::new(vec![
+            (Button::new("Korg Electribe 2",    None),
+                Box::new(dawless_korg::electribe2::Electribe2TUI::new())),
+            (Button::new("Korg Triton",         None),
+                Box::new(dawless_korg::triton::TritonTUI::new())),
+            (Button::new("AKAI S3000XL",        None),
+                Box::new(dawless_akai::S3000XLTUI::new())),
+            (Button::new("AKAI MPC2000",        None),
+                Box::new(dawless_akai::MPC2000TUI::new())),
+            (Button::new("iConnectivity mioXL", None),
+                Box::new(dawless_iconnectivity::MioXLTUI::new())),
+        ])
+    })
 }

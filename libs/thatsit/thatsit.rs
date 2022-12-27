@@ -21,6 +21,7 @@ pub(crate) use crossterm::{
     cursor::{MoveTo, Show, Hide},
     event::{Event},
     terminal::{
+        size,
         Clear, ClearType,
         enable_raw_mode, disable_raw_mode,
         EnterAlternateScreen, LeaveAlternateScreen
@@ -29,11 +30,63 @@ pub(crate) use crossterm::{
 
 use std::{
     fmt::Debug,
-    sync::{mpsc::Sender, atomic::{AtomicBool, Ordering}},
+    sync::{
+        mpsc::{channel, Sender},
+        atomic::{AtomicBool, Ordering}
+    },
     ops::{Deref, DerefMut},
     cell::RefCell,
     rc::Rc
 };
+
+/// Run the main loop. The main thread goes into a render loop. A separate input thread is
+/// launched, which sends input to the main thread.
+///
+/// # Arguments
+///
+/// * `exited` - Atomic exit flag. Setting this to `true` tells both threads to end.
+/// * `term` - A writable output, such as `std::io::stdout()`.
+/// * `app` - An instance of the root widget that contains your application.
+pub fn run <T: TUI> (
+    exited: &'static std::sync::atomic::AtomicBool,
+    term:   &mut dyn Write,
+    app:    T
+) -> Result<()> {
+    let app: std::cell::RefCell<T> = RefCell::new(app);
+    // Set up event channel and input thread
+    let (tx, rx) = channel::<Event>();
+    spawn_input_thread(tx, exited);
+    // Setup terminal and panic hook
+    setup(term, true)?;
+    // Render app and listen for updates
+    loop {
+        // Clear screen
+        clear(term).unwrap();
+        // Break loop if exited
+        if exited.fetch_and(true, Ordering::Relaxed) == true {
+            break
+        }
+        // Render
+        let screen_size: Size = size().unwrap().into();
+        match app.borrow().layout(screen_size) {
+            Ok(layout) => if let Err(error) = layout.render(
+                term, Area(Point::MIN, screen_size)
+            ) {
+                write_error(term, format!("{error}").as_str()).unwrap();
+            },
+            Err(error) => {
+                write_error(term, format!("{error}").as_str()).unwrap();
+            }
+        }
+        // Flush output buffer
+        term.flush().unwrap();
+        // Wait for input and update
+        app.borrow_mut().handle(&rx.recv().unwrap()).unwrap();
+    }
+    // Clean up
+    teardown(term)?;
+    Ok(())
+}
 
 pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     if better_panic {
