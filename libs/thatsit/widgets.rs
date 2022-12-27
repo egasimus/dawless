@@ -11,18 +11,14 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
 impl TUI for Spacer {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(self.0.into())
-    }
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> { Ok(self.0.into()) }
 }
 
 /// A debug widget that displays its size and position on a colored background
 pub struct DebugBox { pub bg: Color }
 
 impl TUI for DebugBox {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(Size(16, 3).into())
-    }
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> { Ok(Size(16, 3).into()) }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
         let background = " ".repeat(w as usize);
         term.queue(SetBackgroundColor(self.bg))?
@@ -44,7 +40,7 @@ impl Text {
 }
 
 impl TUI for Text {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.0.len() as u16, 1).into())
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
@@ -57,9 +53,7 @@ impl TUI for Text {
 pub struct Foreground<T: TUI>(Color, T);
 
 impl<T: TUI> TUI for Foreground<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(self.1.layout(max)?)
-    }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { Ok(self.1.layout(max)?) }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         term.queue(SetForegroundColor(self.0))?;
         self.1.render(term, area)
@@ -99,9 +93,7 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn closed_mut (&mut self) -> &mut T { &mut self.closed }
     pub fn open (&mut self) -> &U { &self.open }
     pub fn open_mut (&mut self) -> &mut U { &mut self.open }
-    pub fn current (&self) -> &dyn TUI {
-        if self.state { &self.open } else { &self.closed }
-    }
+    pub fn current (&self) -> &dyn TUI { if self.state { &self.open } else { &self.closed } }
     pub fn current_mut (&mut self) -> &mut dyn TUI {
         if self.state { &mut self.open } else { &mut self.closed }
     }
@@ -116,15 +108,9 @@ impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn focus (&mut self, focus: bool) -> bool {
-        self.current_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.current().focused()
-    }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        self.current().layout(max)
-    }
+    fn focus (&mut self, focus: bool) -> bool { self.current_mut().focus(focus) }
+    fn focused (&self) -> bool { self.current().focused() }
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.current().layout(max) }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         self.current().render(term, rect)
     }
@@ -143,12 +129,8 @@ impl Collapsible {
 }
 
 impl TUI for Collapsible {
-    fn focus (&mut self, focus: bool) -> bool {
-        self.0.focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.0.focused()
-    }
+    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
+    fn focused (&self) -> bool { self.0.focused() }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let layout = self.0.layout(max)?;
         if self.0.state { layout.min_size.stretch(self.0.closed.layout(max)?.min_size); }
@@ -169,6 +151,7 @@ pub struct Button {
     pub theme:   Theme,
     pub focused: bool,
     pub text:    String,
+    pub pressed: bool,
     pub action:  Option<Box<dyn FnMut() -> Result<bool>>>
 }
 
@@ -189,7 +172,7 @@ impl Button {
 
 impl TUI for Button {
     impl_focus!(focused);
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.text.len() as u16 + 6, 3).into())
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
@@ -203,7 +186,11 @@ impl TUI for Button {
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         let Theme { fg, hi, .. } = self.theme;
-        Outset(0).render(term, area)?;
+        if self.pressed {
+            Inset(0).render(term, area)?;
+        } else {
+            Outset(0).render(term, area)?;
+        }
         let Area(Point(x, y), _) = area;
         term.queue(ResetColor)?
             //.queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
@@ -225,10 +212,11 @@ pub trait Border {
 }
 
 impl Border for Inset {
-    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+    fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
         let padding   = Size(self.0, self.0);
         let min_size  = thunk.min_size + padding + padding;
-        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+        if self.0 > 0 { thunk = pad(padding, thunk.into()) }
+        let items = vec![self.into(), thunk.into()];
         let render_fn = render_stack;
         Thunk { min_size, items, render_fn }
     }
@@ -240,8 +228,8 @@ impl<'a> TUI for Inset {
         if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
         Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
-        let top_edge    = "▇".repeat((w) as usize);
-        let bottom_edge = "▁".repeat((w) as usize);
+        let top_edge    = "▇".repeat((w - 1) as usize);
+        let bottom_edge = "▁".repeat((w - 1) as usize);
         let left_edge   = "▊";
         let right_edge  = "▎";
         term.queue(ResetColor)?
@@ -256,7 +244,7 @@ impl<'a> TUI for Inset {
             .queue(SetForegroundColor(Color::AnsiValue(240)))?
             .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
         for y in y..y+h {
-            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
+            term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
         }
         Ok(())
     }
@@ -270,10 +258,11 @@ pub struct Outset(
 );
 
 impl Border for Outset {
-    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0, self.0);
-        let min_size  = thunk.min_size + padding + padding;
-        let items     = vec![self.into(), pad(padding, thunk.into()).into()];
+    fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
+        let padding = Size(self.0, self.0);
+        let min_size = thunk.min_size + padding + padding;
+        if self.0 > 0 { thunk = pad(padding, thunk.into()) }
+        let items = vec![self.into(), thunk.into()];
         let render_fn = render_stack;
         Thunk { min_size, items, render_fn }
     }
@@ -285,8 +274,8 @@ impl<'a> TUI for Outset {
         if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
         Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
-        let top_edge    = "▇".repeat(w as usize);
-        let bottom_edge = "▁".repeat(w as usize);
+        let top_edge    = "▇".repeat((w - 1) as usize);
+        let bottom_edge = "▁".repeat((w - 1) as usize);
         let right_edge  = "▎";
         let left_edge   = "▊";
         term.queue(ResetColor)?
@@ -301,7 +290,7 @@ impl<'a> TUI for Outset {
             .queue(SetForegroundColor(Color::AnsiValue(16)))?
             .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
         for y in y..y+h {
-            term.queue(MoveTo(x+w, y))?.queue(Print(&right_edge))?;
+            term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
         }
         Ok(())
     }
@@ -329,44 +318,6 @@ pub fn render_centered <'a> (
         (area.1.0.saturating_sub(size.0)) / 2,
         (area.1.1.saturating_sub(size.1)) / 2
     ), size))
-}
-
-#[derive(Debug, Default)]
-pub struct Scrollbar {
-    pub theme:  Theme,
-    pub length: usize,
-    pub offset: usize
-}
-
-impl TUI for Scrollbar {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(Size(1, 3).into())
-    }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(_, h)): Area) -> Result<()> {
-        //let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
-        //let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;
-        //let h = h as usize;
-        //for index in 0..h {
-            //let scroll_offset = (offset * h) / length;
-            //let scroll_index  = (index  * h) / length;
-            //term.queue(SetForegroundColor(if scroll_offset == scroll_index { hi } else { fg }))?
-                //.queue(MoveTo(x, y + index as u16))?
-                //.queue(Print("▒"))?;
-        //}
-        Ok(())
-    }
-}
-
-pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {
-    if index < offset {
-        let diff = offset - index;
-        usize::max(offset - diff, 0)
-    } else if index >= offset + height {
-        let diff = index - (offset + height) + 1;
-        usize::min(offset + diff, length)
-    } else {
-        offset
-    }
 }
 
 #[cfg(test)]

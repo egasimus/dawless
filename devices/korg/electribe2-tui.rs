@@ -32,7 +32,7 @@ impl Electribe2TUI {
                 Box::new(Electribe2SamplesTUI::new())  as Box<dyn TUI>
             ),
         ]);
-        selector.0.items[0].focus(true);
+        selector.items.items[0].focus(true);
         Self { focused: false, entered: false, selector, }
     }
     fn feature (text: &str, feature: Box<dyn TUI>) -> Collapsible {
@@ -131,10 +131,10 @@ impl Electribe2PatternsTUI {
 impl TUI for Electribe2PatternsTUI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let Self { offset, bank, .. } = self;
-        Ok(Inset(1).around(if let Some(bank) = &bank {
+        Ok(Inset(0).around(if let Some(bank) = &bank {
             (&self.patterns).into()
         } else {
-            col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); })
+            pad(Size(1, 1), col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); }))
         }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
@@ -223,15 +223,19 @@ pub struct Electribe2PatternTUI {
     name:    Text,
     level:   Text,
     bpm:     Text,
+    length:  Text,
+    beats:   Text,
 }
 
 impl Electribe2PatternTUI {
     fn new (pattern: &Electribe2Pattern) -> Self {
         Self {
             pattern: pattern.clone(),
-            name:    Text(String::from("Pattern name:")),
-            level:   Text(String::from("Level:")),
-            bpm:     Text(String::from("BPM:")),
+            name:    Text(format!("Pattern name: {}", pattern.name)),
+            level:   Text(format!("  Level: {}",      pattern.level)),
+            bpm:     Text(format!("BPM: {}",          pattern.bpm)),
+            length:  Text(format!("  Length: {}",     pattern.length)),
+            beats:   Text(format!("  Beats: {}",      pattern.beats)),
         }
     }
 }
@@ -239,8 +243,8 @@ impl Electribe2PatternTUI {
 impl TUI for Electribe2PatternTUI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         Ok(Inset(2).around(col(|add|{
-            add(row(|add|{add(&self.name);add(SPACE);add(&self.level);}));
-            add(row(|add|{add(&self.bpm);}));
+            add(row(|add|{add(SPACE);add(&self.name);add(&self.level);}));
+            add(row(|add|{add(SPACE);add(&self.bpm);add(&self.length);add(&self.beats)}));
         })))
     }
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {

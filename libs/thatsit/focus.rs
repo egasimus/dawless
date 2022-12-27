@@ -2,26 +2,19 @@ use crate::*;
 
 /// A list of sequentially selectable items
 #[derive(Debug)]
-pub struct Focus<T: TUI> {
+pub struct FocusList<T: TUI> {
     /// The currently focused item
     pub index: usize,
     /// The list of items
     pub items: Vec<T>,
-    /// The keys for previous and next items
-    pub keys: Option<(KeyCode, KeyCode)>,
 }
 
-impl<T: TUI> Default for Focus<T> {
-    fn default () -> Self { Self { items: vec![], index: 0, keys: None } }
+impl<T: TUI> Default for FocusList<T> {
+    fn default () -> Self { Self::new(vec![]) }
 }
 
-impl<T: TUI> Focus<T> {
-    pub fn vertical (items: Vec<T>) -> Focus<T> {
-        Self { items, index: 0, keys: Some((KeyCode::Up,   KeyCode::Down)) }
-    }
-    pub fn horizontal (items: Vec<T>) -> Focus<T> {
-        Self { items, index: 0, keys: Some((KeyCode::Left, KeyCode::Right)) }
-    }
+impl<T: TUI> FocusList<T> {
+    pub fn new (items: Vec<T>) -> Self { Self { items, index: 0 } }
     pub fn len (&self) -> usize { self.items.len() }
     pub fn get (&self) -> &T { &self.items[self.index] }
     pub fn get_mut (&mut self) -> &mut T { &mut self.items[self.index] }
@@ -51,70 +44,80 @@ impl<T: TUI> Focus<T> {
         true
     }
     pub fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(if let Some((prev, next)) = self.keys {
-            match_key!((event) { next => { self.next() }, prev => { self.prev() } })
-        } else {
-            false
-        } || self.get_mut().handle(event)?)
+        self.get_mut().handle(event)
     }
 }
 
 /// A vertical list of focusable items
-#[derive(Debug)]
-pub struct FocusColumn<T: TUI>(pub Focus<T>);
-
-impl<T: TUI> Default for FocusColumn<T> {
-    fn default () -> Self { Self(Focus::vertical(vec![])) }
+#[derive(Debug, Default)]
+pub struct FocusColumn<T: TUI> {
+    /// A focus list of the contained widgets
+    pub items:  FocusList<T>,
+    /// A scroll offset
+    pub offset: usize
 }
 
 impl<T: TUI> FocusColumn<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(Focus::vertical(items)) }
-    pub fn get (&self) -> &T { &self.0.get() }
-    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
-    pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
-    pub fn len (&self) -> usize { self.0.len() }
-    pub fn index (&self) -> usize { self.0.index }
+    pub fn new (items: Vec<T>) -> Self {
+        Self { items: FocusList::new(items), offset: 0 }
+    }
+    pub fn get (&self) -> &T { &self.items.get() }
+    pub fn get_mut (&mut self) -> &mut T { self.items.get_mut() }
+    pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.items.replace(items); self }
+    pub fn len (&self) -> usize { self.items.len() }
+    pub fn next (&mut self) -> bool { self.items.next() }
+    pub fn prev (&mut self) -> bool { self.items.prev() }
+    pub fn index (&self) -> usize { self.items.index }
 }
 
 impl<T: TUI> TUI for FocusColumn<T> {
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(col(|add|{ for item in self.0.items.iter() { add(&*item); } }))
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        Ok(col_stretch(|add|{ for item in self.items.items.iter() { add(&*item); } }))
+    }
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(self.items.handle(event)? || match_key!((event) {
+            KeyCode::Up   => { self.prev() },
+            KeyCode::Down => { self.next() }
+        }))
     }
 }
 
 /// A horizontal list of focusable items
-#[derive(Debug)]
-pub struct FocusRow<T: TUI>(pub Focus<T>);
-
-impl<T: TUI> Default for FocusRow<T> {
-    fn default () -> Self { Self(Focus::horizontal(vec![])) }
+#[derive(Debug, Default)]
+pub struct FocusRow<T: TUI> {
+    /// A focus list of the contained widgets
+    pub items: FocusList<T>,
+    /// A scroll offset
+    pub offset: usize
 }
 
 impl<T: TUI> FocusRow<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(Focus::horizontal(items)) }
-    pub fn get (&self) -> &T { &self.0.get() }
-    pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
-    pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
-    pub fn len (&self) -> usize { self.0.len() }
-    pub fn index (&self) -> usize { self.0.index }
+    pub fn new (items: Vec<T>) -> Self { Self { items: FocusList::new(items), offset: 0 } }
+    pub fn get (&self) -> &T { &self.items.get() }
+    pub fn get_mut (&mut self) -> &mut T { self.items.get_mut() }
+    pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.items.replace(items); self }
+    pub fn len (&self) -> usize { self.items.len() }
+    pub fn index (&self) -> usize { self.items.index }
 }
 
 impl<T: TUI> TUI for FocusRow<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(row(|add|{ for item in self.0.items.iter() { add(&*item); } }))
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        Ok(row(|add|{ for item in self.items.items.iter() { add(&*item); } }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.0.handle(event)
+        Ok(self.items.handle(event)? || match_key!((event) {
+            KeyCode::Left  => { self.items.prev() },
+            KeyCode::Right => { self.items.next() }
+        }))
     }
 }
 
 /// A stack of focusable items, rendering one at a time
 #[derive(Debug, Default)]
-pub struct FocusStack<T: TUI>(pub Focus<T>);
+pub struct FocusStack<T: TUI>(pub FocusList<T>);
 
 impl<T: TUI> FocusStack<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(Focus::horizontal(items)) }
+    pub fn new (items: Vec<T>) -> Self { Self(FocusList::new(items)) }
     pub fn get (&self) -> &T { &self.0.get() }
     pub fn get_mut (&mut self) -> &mut T { self.0.get_mut() }
     pub fn replace (&mut self, items: Vec<T>) -> &mut Self { self.0.replace(items); self }
@@ -146,18 +149,23 @@ impl<T: TUI> TabbedVertical<T> {
         for (tab, page) in pairs { tabs.push(tab); pages.push(page); }
         let mut tabs  = FocusColumn::new(tabs);
         let mut pages = FocusStack::new(pages);
-        if tabs.len() > 0 { tabs.0.items[0].focus(true); pages.0.items[0].focus(true); }
+        if tabs.len() > 0 { tabs.items.items[0].focus(true); pages.0.items[0].focus(true); }
         Self { tabs, pages, open: false, entered: false }
     }
     /// Show and focus the active page
     pub fn enter (&mut self) -> bool {
         self.open = true;
         self.entered = true;
-        self.pages.0.index = self.tabs.0.index;
+        self.tabs.get_mut().pressed = true;
+        self.pages.0.index = self.tabs.items.index;
         true
     }
     /// Move the focus to the tabs
-    pub fn exit (&mut self) -> bool { self.entered = false; true }
+    pub fn exit (&mut self) -> bool {
+        self.entered = false;
+        self.tabs.get_mut().pressed = false;
+        true
+    }
     /// Show the active page
     pub fn open (&mut self) -> bool { self.open = true; true }
     /// Hide the pages
@@ -173,8 +181,8 @@ impl<T: TUI> TabbedVertical<T> {
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(row(|add|{ add(&self.tabs); if self.open { add(SPACE); add(&self.pages); } }))
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        Ok(row(|add|{ add(&self.tabs); if self.open { add(&self.pages); } }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
@@ -183,15 +191,11 @@ impl<T: TUI> TUI for TabbedVertical<T> {
             } else {
                 false
             }
-        } else if let Some((prev, next)) = self.tabs.0.keys {
-            match_key!((event) {
-                next => { self.tabs.0.next() },
-                prev => { self.tabs.0.prev() },
+        } else {
+            self.tabs.handle(event)? || match_key!((event) {
                 KeyCode::Enter => { self.enter() },
                 KeyCode::Esc   => { self.close() }
             })
-        } else {
-            false
         })
     }
 }

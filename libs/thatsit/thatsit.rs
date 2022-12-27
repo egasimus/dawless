@@ -8,6 +8,7 @@
 opt_mod::module_flat!(units);
 opt_mod::module_flat!(themes);
 opt_mod::module_flat!(layout);
+opt_mod::module_flat!(scroll);
 opt_mod::module_flat!(focus);
 opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(macros);

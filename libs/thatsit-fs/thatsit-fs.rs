@@ -1,12 +1,6 @@
 use thatsit::*;
-use std::{
-    env::current_dir,
-    fs::{File, metadata, read_dir},
-    io::{Read},
-    path::{Path}
-};
+use std::{env::current_dir, fs::{metadata, read_dir}};
 use crossterm::{
-    QueueableCommand,
     style::{SetAttribute, Attribute, SetBackgroundColor, SetForegroundColor, Print, Color},
     cursor::MoveTo,
     event::Event
@@ -30,7 +24,7 @@ impl FileEntry {
 
 impl TUI for FileEntry {
     impl_focus!(focused);
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.path.len() as u16, 1).into())
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
@@ -49,8 +43,8 @@ impl TUI for FileEntry {
 pub struct FileList(pub FocusColumn<FileEntry>);
 
 impl FileList {
-    pub fn select (&mut self, index: usize) -> &mut Self { self.0.0.focus(index); self }
-    pub fn index (&self) -> usize { self.0.0.index }
+    pub fn select (&mut self, index: usize) -> &mut Self { self.0.items.focus(index); self }
+    pub fn index (&self) -> usize { self.0.index() }
     pub fn replace (&mut self, items: Vec<FileEntry>) -> &mut Self {
         self.0.replace(items);
         self
@@ -62,14 +56,14 @@ impl FileList {
         self
     }
     pub fn selected (&self) -> &FileEntry {
-        self.0.0.items.get(self.index()).unwrap()
+        self.0.items.items.get(self.index()).unwrap()
     }
 }
 
 impl TUI for FileList {
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        let mut layout = col(|add|{ for item in self.0.0.items.iter() { add(item) } });
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        let mut layout = col(|add|{ for item in self.0.items.items.iter() { add(item) } });
         layout.min_size = layout.min_size + Size(4, 0);
         Ok(layout)
     }

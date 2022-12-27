@@ -232,10 +232,59 @@ pub fn render_col <'a> (
     items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
 ) -> Result<()> {
     let mut y = area.0.y();
+    let max_y = area.0.y() + area.1.height();
     for item in items.iter() {
         let size = item.min_size();
-        let area = Area(Point(area.0.x(), y), size);
-        item.render(write, area)?;
+        let next_y = y + size.height();
+        if next_y > max_y {
+            let msg = format!("need {} more rows", next_y - max_y);
+            return Err(Error::new(ErrorKind::Other, msg))
+        }
+        item.render(write, Area(Point(area.0.x(), y), size))?;
+        y = y + size.height();
+    }
+    Ok(())
+}
+
+/// Collect widgets after `offset` in a column thunk.
+pub fn col_scroll <'a> (offset: usize, items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
+    let mut min_size = Size::MIN;
+    let visible = Define::collect(items).into_iter().skip(offset).map(|item|{
+        min_size = min_size.expand_column(item.min_size());
+        item
+    }).collect();
+    Thunk { items: visible, min_size, render_fn: render_col_scroll }
+}
+
+/// Render a scrollable column thunk.
+pub fn render_col_scroll <'a> (
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    render_col(items, write, area); // ignore "need more rows" error
+    Ok(())
+}
+
+/// Collect widgets after `offset` in a column thunk.
+pub fn col_stretch <'a> (items: impl FnMut(&mut Define<'a>)) -> Thunk<'a> {
+    let mut thunk = col(items);
+    thunk.render_fn = render_col_stretch;
+    thunk
+}
+
+/// Render a column thunk.
+pub fn render_col_stretch <'a> (
+    items: &Vec<LayoutItem<'a>>, write: &mut dyn Write, area: Area
+) -> Result<()> {
+    let mut y = area.0.y();
+    let max_y = area.0.y() + area.1.height();
+    for item in items.iter() {
+        let size = Size(area.width(), item.min_size().height());
+        let next_y = y + size.height();
+        if next_y > max_y {
+            let msg = format!("need {} more rows", next_y - max_y);
+            return Err(Error::new(ErrorKind::Other, msg))
+        }
+        item.render(write, Area(Point(area.0.x(), y), size))?;
         y = y + size.height();
     }
     Ok(())
