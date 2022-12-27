@@ -19,8 +19,8 @@ pub struct Electribe2TUI(TabbedVertical<Box<dyn TUI>>);
 impl Electribe2TUI {
     pub fn new () -> Self {
         let mut selector = TabbedVertical::<Box<dyn TUI>>::default();
-        selector.add("Load pattern bank...", Box::new(Electribe2PatternsTUI::new()));
-        selector.add("Load sample bank...",  Box::new(Electribe2SamplesTUI::new()));
+        selector.add("Edit patterns", Box::new(Electribe2PatternsTUI::new()));
+        selector.add("Edit samples",  Box::new(Electribe2SamplesTUI::new()));
         selector.tabs.items.items[0].focus(true);
         Self(selector)
     }
@@ -48,7 +48,7 @@ pub struct Electribe2PatternsTUI {
 }
 
 impl Electribe2PatternsTUI {
-    const SELECT_PATTERN_BANK: &'static str = " Select pattern bank:";
+    const SELECT_PATTERN_BANK: &'static str = " Select pattern bank: ";
     pub fn new () -> Self {
         let mut file_list = FileList::default();
         file_list.update();
@@ -94,7 +94,19 @@ impl TUI for Electribe2PatternsTUI {
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some(bank) = &self.bank {
-            if self.patterns.handle(event)? {
+            if *event == key!(Ctrl-Up) {
+                let index = self.patterns.index();
+                if index > 0 {
+                    self.patterns.tabs.items.items.swap(index, index-1);
+                    self.patterns.pages.0.items.swap(index, index-1);
+                }
+            } else if *event == key!(Ctrl-Down) {
+                let index = self.patterns.index();
+                if index < self.patterns.len() - 1 {
+                    self.patterns.tabs.items.items.swap(index, index+1);
+                    self.patterns.pages.0.items.swap(index, index+1);
+                }
+            } if self.patterns.handle(event)? {
                 let len     = self.patterns.len();
                 let index   = self.patterns.index();
                 self.offset = handle_scroll(len, index, 36, self.offset);

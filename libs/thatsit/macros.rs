@@ -7,6 +7,14 @@
             kind:      KeyEventKind::Press,
             state:     KeyEventState::NONE
         })
+    };
+    (Ctrl-$code:ident) => {
+        Event::Key(KeyEvent {
+            code:      KeyCode::$code,
+            modifiers: KeyModifiers::CONTROL,
+            kind:      KeyEventKind::Press,
+            state:     KeyEventState::NONE
+        })
     }
 }
 
