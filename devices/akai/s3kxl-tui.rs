@@ -1,4 +1,5 @@
 use thatsit::*;
+use thatsit_focus::*;
 
 pub struct S3000XLTUI {
     menu: FocusColumn<Box<dyn TUI>>

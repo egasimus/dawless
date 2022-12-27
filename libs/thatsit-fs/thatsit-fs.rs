@@ -1,4 +1,5 @@
 use thatsit::*;
+use thatsit_focus::*;
 use std::{env::current_dir, fs::{metadata, read_dir}};
 use crossterm::{
     style::{SetAttribute, Attribute, SetBackgroundColor, SetForegroundColor, Print, Color},
@@ -23,8 +24,6 @@ impl FileEntry {
 }
 
 impl TUI for FileEntry {
-    fn focused (&self) -> bool { self.focused }
-    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.path.len() as u16, 1).into())
     }
@@ -44,12 +43,6 @@ impl TUI for FileEntry {
 pub struct FileList(pub FocusColumn<FileEntry>);
 
 impl FileList {
-    pub fn select (&mut self, index: usize) -> &mut Self { self.0.items.focus(index); self }
-    pub fn index (&self) -> usize { self.0.index() }
-    pub fn replace (&mut self, items: Vec<FileEntry>) -> &mut Self {
-        self.0.replace(items);
-        self
-    }
     pub fn update (&mut self) -> &mut Self {
         let (entries, _) = list_current_directory();
         self.replace(entries);
@@ -57,14 +50,21 @@ impl FileList {
         self
     }
     pub fn selected (&self) -> &FileEntry {
-        self.0.items.items.get(self.index()).unwrap()
+        self.get().unwrap()
     }
+}
+
+impl FocusList<FileEntry> for FileList {
+    fn items (&self) -> &Vec<FileEntry> { &self.0.items() }
+    fn items_mut (&mut self) -> &mut Vec<FileEntry> { self.0.items_mut() }
+    fn state (&self) -> &Focus<usize> { &self.0.state() }
+    fn state_mut (&mut self) -> &mut Focus<usize> { self.0.state_mut() }
 }
 
 impl TUI for FileList {
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
     fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        let mut layout = col(|add|{ for item in self.0.items.items.iter() { add(item) } });
+        let mut layout = col(|add|{ for item in self.0.items().iter() { add(item) } });
         layout.min_size = layout.min_size + Size(4, 0);
         Ok(layout)
     }

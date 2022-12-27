@@ -2,7 +2,9 @@
 members = [
   # UI framework
   "libs/thatsit",
+  "libs/thatsit-focus",
   "libs/thatsit-fs",
+  "libs/thatsit-tabs",
 
   # Data formats
   "libs/opt-mod",

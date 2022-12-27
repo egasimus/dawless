@@ -8,9 +8,9 @@ description = "Support for iConnectivity devices."
 path = "iconnectivity.rs"
 
 [dependencies]
-thatsit = { optional = true, path = "../../libs/thatsit" }
-crossterm = { optional = true, version = "0.25" }
+thatsit       = { optional = true, path = "../../libs/thatsit" }
+thatsit-focus = { optional = true, path = "../../libs/thatsit-focus" }
 
 [features]
-tui = [ "thatsit", "crossterm" ]
+tui = [ "thatsit", "thatsit-focus" ]
 cli = []

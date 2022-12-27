@@ -313,14 +313,15 @@ dependencies = [
  "opt-mod",
  "tabwriter",
  "thatsit",
+ "thatsit-focus",
 ]
 
 [[package]]
 name = "dawless-iconnectivity"
 version = "0.1.0"
 dependencies = [
- "crossterm",
  "thatsit",
+ "thatsit-focus",
 ]
 
 [[package]]
@@ -329,13 +330,14 @@ version = "0.1.0"
 dependencies = [
  "brailledump",
  "clap",
- "crossterm",
  "laterna",
  "lazy_static",
  "opt-mod",
  "tabwriter",
  "thatsit",
+ "thatsit-focus",
  "thatsit-fs",
+ "thatsit-tabs",
 ]
 
 [[package]]
@@ -865,12 +867,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "thatsit-focus"
+version = "0.1.0"
+dependencies = [
+ "thatsit",
+]
+
+[[package]]
 name = "thatsit-fs"
 version = "0.1.0"
 dependencies = [
  "crossterm",
  "pathdiff",
  "thatsit",
+ "thatsit-focus",
+]
+
+[[package]]
+name = "thatsit-tabs"
+version = "0.1.0"
+dependencies = [
+ "thatsit",
+ "thatsit-focus",
 ]
 
 [[package]]

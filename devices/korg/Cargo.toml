@@ -10,14 +10,16 @@ path = "_korg.rs"
 [dependencies]
 opt-mod = { path = "../../libs/opt-mod" }
 brailledump = { optional = true, path = "../../libs/brailledump" }
-laterna = { optional = true, path = "../../libs/laterna" }
-thatsit = { optional = true, path = "../../libs/thatsit" }
-thatsit-fs = { optional = true, path = "../../libs/thatsit-fs" }
-crossterm = { optional = true, version = "0.25" }
 clap = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter = { optional = true, version = "1.2.1" }
 lazy_static = { optional = true, version = "1.4" }
 
+laterna       = { optional = true, path = "../../libs/laterna" }
+thatsit       = { optional = true, path = "../../libs/thatsit" }
+thatsit-fs    = { optional = true, path = "../../libs/thatsit-fs" }
+thatsit-focus = { optional = true, path = "../../libs/thatsit-focus" }
+thatsit-tabs  = { optional = true, path = "../../libs/thatsit-tabs" }
+
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "lazy_static", "crossterm", "laterna", "thatsit", "thatsit-fs" ]
+tui = [ "lazy_static", "laterna", "thatsit", "thatsit-fs", "thatsit-focus", "thatsit-tabs" ]

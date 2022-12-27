@@ -13,6 +13,8 @@ path = "examples/fs.rs"
 [dependencies]
 crossterm = "0.25"
 pathdiff  = "0.2"
-thatsit   = { path = "../thatsit" }
+
+thatsit       = { path = "../thatsit" }
+thatsit-focus = { path = "../thatsit-focus" }
 
 [features]

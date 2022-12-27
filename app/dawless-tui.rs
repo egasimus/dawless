@@ -6,12 +6,13 @@ use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}}};
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
-    run(&EXITED, &mut std::io::stdout(), App::new()
+    let app = App::new()
         .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
         .page("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
         .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
         .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
-        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new())))
+        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
+    run(&EXITED, &mut std::io::stdout(), app)
 }
 
 /// The main app object, containing a menu of supported devices.

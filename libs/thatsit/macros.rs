@@ -1,19 +1,19 @@
 /// Generate an `Event::Key(KeyEvent { ... })` variant
 #[macro_export] macro_rules! key {
     ($code:ident) => {
-        Event::Key(KeyEvent {
-            code:      KeyCode::$code,
-            modifiers: KeyModifiers::NONE,
-            kind:      KeyEventKind::Press,
-            state:     KeyEventState::NONE
+        crossterm::event::Event::Key(crossterm::event::KeyEvent {
+            code:      crossterm::event::KeyCode::$code,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            kind:      crossterm::event::KeyEventKind::Press,
+            state:     crossterm::event::KeyEventState::NONE
         })
     };
     (Ctrl-$code:ident) => {
-        Event::Key(KeyEvent {
-            code:      KeyCode::$code,
-            modifiers: KeyModifiers::CONTROL,
-            kind:      KeyEventKind::Press,
-            state:     KeyEventState::NONE
+        crossterm::event::Event::Key(KeyEvent {
+            code:      crossterm::event::KeyCode::$code,
+            modifiers: crossterm::event::KeyModifiers::CONTROL,
+            kind:      crossterm::event::KeyEventKind::Press,
+            state:     crossterm::event::KeyEventState::NONE
         })
     }
 }

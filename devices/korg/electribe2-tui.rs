@@ -11,6 +11,8 @@ use thatsit::{*, crossterm::{
     },
 }};
 use thatsit_fs::*;
+use thatsit_focus::*;
+use thatsit_tabs::*;
 use laterna;
 
 #[derive(Debug, Default)]

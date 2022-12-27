@@ -1,4 +1,5 @@
 use thatsit::*;
+use thatsit_focus::*;
 
 #[cfg(feature = "cli")]
 #[derive(clap::Subcommand, Clone)]

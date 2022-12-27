@@ -1,6 +1,4 @@
-#![feature(unboxed_closures)]
-#![feature(fn_traits)]
-#![feature(type_alias_impl_trait)]
+#![feature(unboxed_closures, fn_traits, type_alias_impl_trait)]
 
 //! `thatsit` is a toy TUI framework based on `crossterm`, containing a basic layout engine.
 //! Its main design goal is **brevity**, of both API and implementation.
@@ -9,7 +7,6 @@ opt_mod::module_flat!(units);
 opt_mod::module_flat!(themes);
 opt_mod::module_flat!(layout);
 opt_mod::module_flat!(scroll);
-opt_mod::module_flat!(focus);
 opt_mod::module_flat!(widgets);
 opt_mod::module_flat!(macros);
 
@@ -136,10 +133,6 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 pub trait TUI {
     /// Handle input events.
     fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
-    /// Handle focus changes.
-    fn focus (&mut self, _focus: bool) -> bool { unimplemented!() }
-    /// Is this widget focused?
-    fn focused (&self) -> bool { unimplemented!() }
     /// Describe this widget out of renderable elements
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         Ok(Thunk { items: vec![], min_size: Size::MIN, render_fn: render_nil })
@@ -152,12 +145,6 @@ pub trait TUI {
 
 /// Box widgets to transfer ownership where you don't want to specify the type.
 impl TUI for Box<dyn TUI> {
-    fn focus (&mut self, focus: bool) -> bool {
-        (*self).deref_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        (*self).deref().focused()
-    }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         (*self).deref().layout(max) 
     }
@@ -172,12 +159,6 @@ impl TUI for Box<dyn TUI> {
 /// Optional widgets can be hidden by setting them to `None`
 /// (losing their state)
 impl<T: TUI> TUI for Option<T> {
-    fn focus (&mut self, focus: bool) -> bool {
-        match self { Some(x) => x.focus(focus), None => false }
-    }
-    fn focused (&self) -> bool {
-        match self { Some(x) => x.focused(), None => false }
-    }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         match self { Some(x) => x.handle(event), None => Ok(false) }
     }
@@ -191,12 +172,6 @@ impl<T: TUI> TUI for Option<T> {
 
 /// `RefCell<T> where T: TUI` transparently wraps widgets
 impl<T: TUI> TUI for RefCell<T> {
-    fn focus (&mut self, focus: bool) -> bool {
-        self.borrow_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.borrow().focused()
-    }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         self.borrow_mut().handle(event)
     }
@@ -212,12 +187,6 @@ impl<T: TUI> TUI for RefCell<T> {
 impl<T: TUI> TUI for Rc<RefCell<T>> {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         self.borrow_mut().handle(event)
-    }
-    fn focus (&mut self, focus: bool) -> bool {
-        self.borrow_mut().focus(focus)
-    }
-    fn focused (&self) -> bool {
-        self.borrow().focused()
     }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)

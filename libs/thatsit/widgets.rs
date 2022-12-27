@@ -108,8 +108,6 @@ impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
 }
 
 impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
-    fn focus (&mut self, focus: bool) -> bool { self.current_mut().focus(focus) }
-    fn focused (&self) -> bool { self.current().focused() }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.current().layout(max) }
     fn render (&self, term: &mut dyn Write, rect: Area) -> Result<()> {
         self.current().render(term, rect)
@@ -129,8 +127,6 @@ impl Collapsible {
 }
 
 impl TUI for Collapsible {
-    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
-    fn focused (&self) -> bool { self.0.focused() }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let layout = self.0.layout(max)?;
         if self.0.state { layout.min_size.stretch(self.0.closed.layout(max)?.min_size); }
@@ -171,8 +167,6 @@ impl Button {
 }
 
 impl TUI for Button {
-    fn focused (&self) -> bool { self.focused }
-    fn focus (&mut self, focus: bool) -> bool { self.focused = focus; true }
     fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
         Ok(Size(self.text.len() as u16 + 6, 3).into())
     }
