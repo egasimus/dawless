@@ -59,6 +59,34 @@ impl Style for String {}
 
 impl Style for &str {}
 
+/// A line of text with optional foreground and background colors
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Text<'a>(
+    /// The text
+    &'a str,
+    /// The foreground
+    Option<Color>,
+    /// The background
+    Option<Color>
+);
+
+impl<'a> Text<'a> {
+    pub fn new (text: &'a str) -> Self { Self(text, None, None) }
+    pub fn set (&mut self, text: &'a str) -> Self { self.0 = text; *self }
+    pub fn fg (&mut self, color: Option<Color>) -> Self { self.1 = color; *self }
+    pub fn bg (&mut self, color: Option<Color>) -> Self { self.2 = color; *self }
+}
+
+impl<'a> TUI for Text<'a> {
+    fn layout <'l> (&'l self, _: Size) -> Result<Thunk<'l>> {
+        Ok(Size(self.0.len() as u16, 1).into())
+    }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+        term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Foreground<T: TUI>(Color, T);
 
@@ -94,25 +122,6 @@ impl TUI for Filled {
         let background  = " ".repeat(w as usize);
         term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
         for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
-        Ok(())
-    }
-}
-
-/// A line of text
-#[derive(Debug, Default)]
-pub struct Text(pub String);
-
-impl Text {
-    pub fn set (&mut self, text: String) -> &mut Self { self.0 = text; self }
-    pub fn fg (self, color: Color) -> Foreground<Text> { Foreground(color, self) }
-}
-
-impl TUI for Text {
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        Ok(Size(self.0.len() as u16, 1).into())
-    }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
-        term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
         Ok(())
     }
 }
@@ -188,7 +197,6 @@ impl TUI for Collapsible {
 
 #[derive(Default)]
 pub struct Button {
-    pub theme:   Theme,
     pub focused: bool,
     pub text:    String,
     pub pressed: bool,
@@ -224,7 +232,9 @@ impl TUI for Button {
         }))
     }
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Theme { fg, hi, .. } = self.theme;
+        let bg = Color::AnsiValue(232);
+        let fg = Color::White;
+        let hi = Color::Yellow;
         if self.pressed {
             Inset(0).render(term, area)?;
         } else {

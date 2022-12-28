@@ -1,13 +1,5 @@
 use std::io::Result;
-use thatsit::{
-    *,
-    crossterm::{
-        self,
-        cursor::MoveTo,
-        event::Event,
-        style::{Print, Color, SetBackgroundColor, SetForegroundColor}
-    }
-};
+use thatsit::{*, crossterm::{self, event::Event, style::Color}};
 use thatsit_focus::*;
 
 #[derive(Debug)]
@@ -76,10 +68,9 @@ impl<T: TUI> TUI for TabbedVertical<T> {
         Ok(row(|add|{
             add(col(|add|{
                 for (label, _) in self.pages.iter() {
-                    let label = (*label)
-                        .fg(self.theme.foreground(true, true).unwrap())
-                        .bg(self.theme.background(true, true).unwrap());
-                    add(one(label));
+                    add(Text::new(label)
+                        .fg(self.theme.foreground(true, true))
+                        .bg(self.theme.background(true, true)));
                 }
             }));
             if self.open && let Some((_,page)) = self.pages.get() { add(page); }
