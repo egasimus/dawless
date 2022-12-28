@@ -10,19 +10,32 @@ use thatsit::{
 };
 use thatsit_focus::*;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct TabbedVertical<T: TUI> {
     pub pages:   FocusState<(String, T)>,
     pub open:    bool,
-    pub entered: bool
+    pub entered: bool,
+    pub theme:   &'static dyn TabsTheme
+}
+
+impl<T: TUI> Default for TabbedVertical<T> {
+    fn default () -> Self {
+        Self {
+            pages:   FocusState::new(vec![]),
+            open:    false,
+            entered: false,
+            theme:   &DefaultTabsTheme
+        }
+    }
 }
 
 impl<T: TUI> TabbedVertical<T> {
     /// Create a new selector with vertical tabs from a list of `(Button, TUI)` pairs.
     pub fn new (pages: Vec<(String, T)>) -> Self {
-        let mut pages = FocusState::new(pages);
-        pages.select_next();
-        Self { pages, open: false, entered: false }
+        let mut tabs = Self::default();
+        tabs.pages.replace(pages);
+        tabs.pages.select_next();
+        tabs
     }
     /// Add a tab/page pair.
     pub fn add (&mut self, label: String, page: T) {
@@ -59,9 +72,16 @@ impl<T: TUI> TabbedVertical<T> {
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         Ok(row(|add|{
-            add(col(|add|{ for (label, _) in self.pages.iter() { add(label); } }));
+            add(col(|add|{
+                for (label, _) in self.pages.iter() {
+                    let label = (*label)
+                        .fg(self.theme.foreground(true, true).unwrap())
+                        .bg(self.theme.background(true, true).unwrap());
+                    add(one(label));
+                }
+            }));
             if self.open && let Some((_,page)) = self.pages.get() { add(page); }
         }))
     }
@@ -84,15 +104,33 @@ impl<T: TUI> TUI for TabbedVertical<T> {
             })
         })
     }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let layout = self.layout(area.1)?;
-        layout.render(term, area)?;
-        term.queue(SetBackgroundColor(Color::AnsiValue(123)))?
-            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
-        for (label, _) in self.pages.iter() {
-            term.queue(MoveTo(area.x(), area.y()))?
-                .queue(Print("FOO"))?;
-        }
-        Ok(())
+}
+
+pub struct DefaultTabsTheme;
+
+impl TabsTheme for DefaultTabsTheme {}
+
+pub trait TabsTheme {
+    fn foreground (&self, focused: bool, selected: bool) -> Option<Color> {
+        Some(match (focused, selected) {
+            (true,  true)  => Color::White,
+            (true,  false) => Color::White,
+            (false, true)  => Color::White,
+            (false, false) => Color::White,
+        })
+    }
+    fn background (&self, focused: bool, selected: bool) -> Option<Color> {
+        Some(match (focused, selected) {
+            (true,  true)  => Color::Black,
+            (true,  false) => Color::Black,
+            (false, true)  => Color::Black,
+            (false, false) => Color::Black,
+        })
+    }
+}
+
+impl std::fmt::Debug for dyn TabsTheme {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dyn[TabsTheme]")
     }
 }

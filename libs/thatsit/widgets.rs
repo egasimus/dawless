@@ -40,6 +40,64 @@ impl TUI for String {
     }
 }
 
+impl TUI for &str {
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        Ok(Size(self.len() as u16, 1).into())
+    }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+        term.queue(MoveTo(x, y))?.queue(Print(&self))?;
+        Ok(())
+    }
+}
+
+pub trait Style: TUI + Sized {
+    fn fg (self, color: Color) -> Foreground<Self> { Foreground(color, self) }
+    fn bg (self, color: Color) -> Background<Self> { Background(color, self) }
+}
+
+impl Style for String {}
+
+impl Style for &str {}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Foreground<T: TUI>(Color, T);
+
+impl<T: TUI> TUI for Foreground<T> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { Ok(self.1.layout(max)?) }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        term.queue(SetForegroundColor(self.0))?;
+        self.1.render(term, area)
+    }
+}
+
+impl<T: TUI> Style for Foreground<T> {}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Background<T: TUI>(Color, T);
+
+impl<T: TUI> TUI for Background<T> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { Ok(self.1.layout(max)?) }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        term.queue(SetBackgroundColor(self.0))?;
+        self.1.render(term, area)
+    }
+}
+
+impl<T: TUI> Style for Background<T> {}
+
+/// A background rectangle of a fixed color
+#[derive(Debug)]
+pub struct Filled(pub Color);
+
+impl TUI for Filled {
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
+        let background  = " ".repeat(w as usize);
+        term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
+        for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
+        Ok(())
+    }
+}
+
 /// A line of text
 #[derive(Debug, Default)]
 pub struct Text(pub String);
@@ -55,30 +113,6 @@ impl TUI for Text {
     }
     fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
         term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Foreground<T: TUI>(Color, T);
-
-impl<T: TUI> TUI for Foreground<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { Ok(self.1.layout(max)?) }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        term.queue(SetForegroundColor(self.0))?;
-        self.1.render(term, area)
-    }
-}
-
-/// A background rectangle of a fixed color
-#[derive(Debug)]
-pub struct Background(pub Color);
-
-impl TUI for Background {
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), Size(w, h)): Area) -> Result<()> {
-        let background  = " ".repeat(w as usize);
-        term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
-        for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
         Ok(())
     }
 }
@@ -232,7 +266,7 @@ impl<'a> TUI for Inset {
         let Area(Point(x, y), Size(w, h)) = area;
         if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
+        Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
         let top_edge    = "▇".repeat((w - 1) as usize);
         let bottom_edge = "▁".repeat((w - 1) as usize);
         let left_edge   = "▊";
@@ -278,7 +312,7 @@ impl<'a> TUI for Outset {
         let Area(Point(x, y), Size(w, h)) = area;
         if w == 0 || h == 0 { return Ok(()) }
         let bg = Color::AnsiValue(235);
-        Background(bg).render(term, Area(Point(x, y), Size(w, h)))?;
+        Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
         let top_edge    = "▇".repeat((w - 1) as usize);
         let bottom_edge = "▁".repeat((w - 1) as usize);
         let right_edge  = "▎";
