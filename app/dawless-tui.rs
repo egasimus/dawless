@@ -1,18 +1,18 @@
 use std::io::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
 use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}}};
+use thatsit_tabs::*;
 
 /// Exit flag. Setting this to true terminates the main loop.
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
-    let app = App::new()
+    run(&EXITED, &mut std::io::stdout(), App::new()
         .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
         .page("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
         .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
         .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
-        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new()));
-    run(&EXITED, &mut std::io::stdout(), app)
+        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new())))
 }
 
 /// The main app object, containing a menu of supported devices.
@@ -30,7 +30,7 @@ impl App {
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app
     fn page (mut self, label: &str, device: Box<dyn TUI>) -> Self {
-        self.devices.add(label, device);
+        self.devices.add(label.into(), device);
         self
     }
 }

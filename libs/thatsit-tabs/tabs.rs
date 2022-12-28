@@ -1,20 +1,28 @@
 use std::io::Result;
-use thatsit::{*, crossterm::{self, *, event::Event}};
+use thatsit::{
+    *,
+    crossterm::{
+        self,
+        cursor::MoveTo,
+        event::Event,
+        style::{Print, Color, SetBackgroundColor, SetForegroundColor}
+    }
+};
 use thatsit_focus::*;
 
 #[derive(Default, Debug)]
 pub struct TabbedVertical<T: TUI> {
     pub pages:   FocusState<(String, T)>,
-    pub open:    Option<usize>,
+    pub open:    bool,
     pub entered: bool
 }
 
 impl<T: TUI> TabbedVertical<T> {
     /// Create a new selector with vertical tabs from a list of `(Button, TUI)` pairs.
     pub fn new (pages: Vec<(String, T)>) -> Self {
-        let pages = FocusState::new(pages);
+        let mut pages = FocusState::new(pages);
         pages.select_next();
-        Self { pages, open: None, entered: false }
+        Self { pages, open: false, entered: false }
     }
     /// Add a tab/page pair.
     pub fn add (&mut self, label: String, page: T) {
@@ -22,33 +30,40 @@ impl<T: TUI> TabbedVertical<T> {
     }
     /// Show and focus the active page
     pub fn enter (&mut self) -> bool {
-        self.open = true;
+        self.open();
         self.entered = true;
-        self.tabs.get_mut().map(|button|button.pressed = true);
-        self.pages.0.index = self.tabs.items.index;
+        //self.tabs.get_mut().map(|button|button.pressed = true);
+        //self.pages.0.index = self.tabs.items.index;
         true
     }
     /// Move the focus to the tabs
     pub fn exit (&mut self) -> bool {
         self.entered = false;
-        self.tabs.get_mut().pressed = false;
+        //self.tabs.get_mut().pressed = false;
         true
     }
     /// Show the active page
-    pub fn open (&mut self) -> bool { self.open = true; true }
+    pub fn open (&mut self) -> bool {
+        self.open = true;
+        true
+    }
     /// Hide the pages
-    pub fn close (&mut self) -> bool { self.open = false; true }
+    pub fn close (&mut self) -> bool {
+        self.open = false;
+        true
+    }
     /// Number of tabs
     pub fn len (&self) -> usize {
-        let len = self.tabs.len();
-        if len != self.pages.len() { panic!("tabs and pages went out of sync") }
-        len
+        self.pages.len()
     }
 }
 
 impl<T: TUI> TUI for TabbedVertical<T> {
     fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        Ok(row(|add|{ add(&self.tabs); if self.open { add(&self.pages); } }))
+        Ok(row(|add|{
+            add(col(|add|{ for (label, _) in self.pages.iter() { add(label); } }));
+            if self.open && let Some((_,page)) = self.pages.get() { add(page); }
+        }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
@@ -61,10 +76,23 @@ impl<T: TUI> TUI for TabbedVertical<T> {
                 false
             }
         } else {
-            self.tabs.handle(event)? || match_key!((event) {
+            match_key!((event) {
+                KeyCode::Up    => { self.pages.select_prev() },
+                KeyCode::Down  => { self.pages.select_next() },
                 KeyCode::Enter => { self.enter() },
                 KeyCode::Esc   => { self.close() }
             })
         })
+    }
+    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        let layout = self.layout(area.1)?;
+        layout.render(term, area)?;
+        term.queue(SetBackgroundColor(Color::AnsiValue(123)))?
+            .queue(SetForegroundColor(Color::AnsiValue(234)))?;
+        for (label, _) in self.pages.iter() {
+            term.queue(MoveTo(area.x(), area.y()))?
+                .queue(Print("FOO"))?;
+        }
+        Ok(())
     }
 }

@@ -21,16 +21,14 @@ pub struct Electribe2TUI(TabbedVertical<Box<dyn TUI>>);
 impl Electribe2TUI {
     pub fn new () -> Self {
         let mut selector = TabbedVertical::<Box<dyn TUI>>::default();
-        selector.add("Edit patterns", Box::new(Electribe2PatternsTUI::new()));
-        selector.add("Edit samples",  Box::new(Electribe2SamplesTUI::new()));
-        selector.tabs.items.items[0].focus(true);
+        selector.add("Edit patterns".into(), Box::new(Electribe2PatternsTUI::new()));
+        selector.add("Edit samples".into(),  Box::new(Electribe2SamplesTUI::new()));
+        selector.pages.select_next();
         Self(selector)
     }
 }
 
 impl TUI for Electribe2TUI {
-    fn focused (&self) -> bool { self.0.focused() }
-    fn focus (&mut self, focus: bool) -> bool { self.0.focus(focus) }
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.0.layout(max) }
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
 }
@@ -67,8 +65,9 @@ impl Electribe2PatternsTUI {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        self.patterns.tabs.replace(self.bank.as_ref().unwrap().patterns.iter().enumerate()
-            .map(|(index, pattern)|Button::new(format!(
+        self.patterns.pages.replace(
+            self.bank.as_ref().unwrap().patterns.iter().enumerate()
+            .map(|(index,pattern)|(format!(
                 "{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
                 index + self.offset + 1,
                 pattern.name.trim(),
@@ -77,10 +76,7 @@ impl Electribe2PatternsTUI {
                 pattern.beats,
                 pattern.key,
                 pattern.scale,
-            ), None))
-            .collect::<Vec<_>>());
-        self.patterns.pages.replace(self.bank.as_ref().unwrap().patterns.iter()
-            .map(|pattern|Electribe2PatternTUI::new(pattern))
+            ), Electribe2PatternTUI::new(pattern)))
             .collect::<Vec<_>>());
     }
 }
@@ -97,21 +93,25 @@ impl TUI for Electribe2PatternsTUI {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if let Some(bank) = &self.bank {
             if *event == key!(Ctrl-Up) {
-                let index = self.patterns.index();
-                if index > 0 {
-                    self.patterns.tabs.items.items.swap(index, index-1);
-                    self.patterns.pages.0.items.swap(index, index-1);
+                if let Some(index) = self.patterns.pages.selected() {
+                    if index > 0 {
+                        //self.patterns.tabs.items.items.swap(index, index-1);
+                        self.patterns.pages.items_mut().swap(index, index-1);
+                    }
                 }
+                true
             } else if *event == key!(Ctrl-Down) {
-                let index = self.patterns.index();
-                if index < self.patterns.len() - 1 {
-                    self.patterns.tabs.items.items.swap(index, index+1);
-                    self.patterns.pages.0.items.swap(index, index+1);
+                if let Some(index) = self.patterns.pages.selected() {
+                    if index < self.patterns.len() - 1 {
+                        //self.patterns.tabs.items.items.swap(index, index+1);
+                        self.patterns.pages.items_mut().swap(index, index+1);
+                    }
                 }
-            } if self.patterns.handle(event)? {
-                let len     = self.patterns.len();
-                let index   = self.patterns.index();
-                self.offset = handle_scroll(len, index, 36, self.offset);
+                true
+            } else if self.patterns.handle(event)? {
+                //let len     = self.patterns.len();
+                //let index   = self.patterns.index();
+                //self.offset = handle_scroll(len, index, 36, self.offset);
                 true
             } else {
                 false
@@ -136,7 +136,7 @@ pub struct Electribe2PatternList(FocusColumn<Electribe2PatternTUI>);
 
 impl Electribe2PatternList {
     pub fn len (&self) -> usize { self.0.len() }
-    pub fn index (&self) -> usize { self.0.index() }
+    //pub fn index (&self) -> usize { self.0.index() }
 }
 
 impl TUI for Electribe2PatternList {

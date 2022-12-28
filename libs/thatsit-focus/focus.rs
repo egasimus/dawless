@@ -1,6 +1,6 @@
 #![feature(unboxed_closures, fn_traits)]
 
-use std::io::Result;
+use std::{io::Result, slice::Iter, slice::IterMut};
 use thatsit::{*, crossterm::event::Event};
 
 /// The focus state of an item
@@ -22,6 +22,15 @@ pub trait FocusList<T> {
     /// Get a mutable reference to the focus state
     fn state_mut (&mut self) -> &mut Focus<usize>;
 
+    /// Iterate over immutable references to the contained items
+    fn iter (&self) -> Iter<T> {
+        self.items().iter()
+    }
+    /// Iterate over immutable references to the contained items
+    fn iter_mut (&mut self) -> IterMut<T> {
+        self.items_mut().iter_mut()
+    }
+    /// Iterate over mutable references to the contained items
     /// Replace the list of items, resetting the item focus
     fn replace (&mut self, items: Vec<T>) {
         *self.items_mut() = items;
@@ -54,6 +63,10 @@ pub trait FocusList<T> {
     fn unfocus (&mut self) -> bool {
         self.state_mut().0 = false;
         true
+    }
+    /// Get the index of the currently selected item
+    fn selected (&self) -> Option<usize> {
+        self.state().1
     }
     /// Set the selected item
     fn select (&mut self, index: usize) -> bool {

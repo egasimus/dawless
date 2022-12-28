@@ -2,7 +2,7 @@ use crate::*;
 
 /// The empty widget
 #[derive(Debug, Default, Copy, Clone)]
-pub struct Spacer(Size);
+pub struct Spacer(pub Size);
 
 /// A global instance of the 0x0 empty widget
 pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
@@ -26,6 +26,16 @@ impl TUI for DebugBox {
         for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
         let text = format!("{w}x{h}+{x}+{y}");
         term.queue(MoveTo(x, y))?.queue(Print(&text))?;
+        Ok(())
+    }
+}
+
+impl TUI for String {
+    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
+        Ok(Size(self.len() as u16, 1).into())
+    }
+    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
+        term.queue(MoveTo(x, y))?.queue(Print(&self))?;
         Ok(())
     }
 }

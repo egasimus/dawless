@@ -16,8 +16,15 @@ dawless-iconnectivity = { path = "../devices/iconnectivity", features = ["tui"] 
 clap = { optional = true, version = "4.0.18", features = ["derive"] }
 
 thatsit = { optional = true, path = "../libs/thatsit" }
+thatsit-tabs = { optional = true, path = "../libs/thatsit-tabs" }
 
 [features]
 default = ["cli", "tui"]
-cli = [ "clap", "dawless-akai/cli", "dawless-korg/cli", "dawless-iconnectivity/cli" ]
-tui = [ "thatsit", "dawless-akai/tui", "dawless-korg/tui", "dawless-iconnectivity/tui" ]
+cli = [
+  "clap",
+  "dawless-akai/cli", "dawless-korg/cli", "dawless-iconnectivity/cli"
+]
+tui = [
+  "thatsit", "thatsit-tabs",
+  "dawless-akai/tui", "dawless-korg/tui", "dawless-iconnectivity/tui"
+]

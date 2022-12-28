@@ -300,6 +300,7 @@ dependencies = [
  "dawless-korg",
  "opt-mod",
  "thatsit",
+ "thatsit-tabs",
 ]
 
 [[package]]
