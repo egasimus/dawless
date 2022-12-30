@@ -21,11 +21,11 @@ struct App {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
     /// A tabbed collection of supported devices.
-    devices: TabbedVertical<Box<dyn TUI>>,
+    devices: TabsLeft<Box<dyn TUI>>,
 }
 
 impl App {
-    fn new () -> Self { Self { exited: &EXITED, devices: TabbedVertical::default() } }
+    fn new () -> Self { Self { exited: &EXITED, devices: TabsLeft::default() } }
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app

@@ -16,11 +16,11 @@ use thatsit_tabs::*;
 use laterna;
 
 #[derive(Debug, Default)]
-pub struct Electribe2TUI(TabbedVertical<Box<dyn TUI>>);
+pub struct Electribe2TUI(TabsLeft<Box<dyn TUI>>);
 
 impl Electribe2TUI {
     pub fn new () -> Self {
-        let mut selector = TabbedVertical::<Box<dyn TUI>>::default();
+        let mut selector = TabsLeft::<Box<dyn TUI>>::default();
         selector.add("Edit patterns".into(), Box::new(Electribe2PatternsTUI::new()));
         selector.add("Edit samples".into(),  Box::new(Electribe2SamplesTUI::new()));
         selector.pages.select_next();
@@ -42,7 +42,7 @@ pub struct Electribe2PatternsTUI {
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
     /// Selector for editing an individual pattern
-    pub patterns:  TabbedVertical<Electribe2PatternTUI>,
+    pub patterns:  TabsLeft<Electribe2PatternTUI>,
     /// FIXME: Scroll offset. Need to implement generic scrollable
     pub offset:    usize,
 }
@@ -55,7 +55,7 @@ impl Electribe2PatternsTUI {
         Self {
             label: Text(Self::SELECT_PATTERN_BANK.into()).fg(Color::White),
             bank: None,
-            patterns: TabbedVertical::default(),
+            patterns: TabsLeft::default(),
             offset: 0,
             file_list,
         }

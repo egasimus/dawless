@@ -3,14 +3,14 @@ use thatsit::{*, crossterm::{self, event::Event, style::Color}};
 use thatsit_focus::*;
 
 #[derive(Debug)]
-pub struct TabbedVertical<T: TUI> {
+pub struct TabsLeft<T: TUI> {
     pub pages:   FocusState<(String, T)>,
     pub open:    bool,
     pub entered: bool,
     pub theme:   &'static dyn TabsTheme
 }
 
-impl<T: TUI> Default for TabbedVertical<T> {
+impl<T: TUI> Default for TabsLeft<T> {
     fn default () -> Self {
         Self {
             pages:   FocusState::new(vec![]),
@@ -21,7 +21,7 @@ impl<T: TUI> Default for TabbedVertical<T> {
     }
 }
 
-impl<T: TUI> TabbedVertical<T> {
+impl<T: TUI> TabsLeft<T> {
     /// Create a new selector with vertical tabs from a list of `(Button, TUI)` pairs.
     pub fn new (pages: Vec<(String, T)>) -> Self {
         let mut tabs = Self::default();
@@ -63,17 +63,21 @@ impl<T: TUI> TabbedVertical<T> {
     }
 }
 
-impl<T: TUI> TUI for TabbedVertical<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(row(|add|{
-            add(col(|add|{
-                for (label, _) in self.pages.iter() {
-                    add(Text::new(label)
-                        .fg(self.theme.foreground(true, true))
-                        .bg(self.theme.background(true, true)));
+impl<T: TUI> TUI for TabsLeft<T> {
+    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
+        Ok(Layout(&|term|{
+            Columns(|column|{
+                column(Rows(|row|{
+                    for (label, _) in self.pages.iter() {
+                        row(Text::new(label)
+                            .fg(self.theme.foreground(true, true))
+                            .bg(self.theme.background(true, true)));
+                    }
+                }));
+                if self.open && let Some((_,page)) = self.pages.get() {
+                    column(page);
                 }
-            }));
-            if self.open && let Some((_,page)) = self.pages.get() { add(page); }
+            })
         }))
     }
     fn handle (&mut self, event: &Event) -> Result<bool> {
