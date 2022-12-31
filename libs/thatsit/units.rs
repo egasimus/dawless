@@ -77,11 +77,11 @@ impl Size {
         Ok(())
     }
 
-    pub fn limit <'a> (self, max: Self, render: impl Fn(&mut dyn Write, Area)->Result<()>)
-        -> Result<Layout<'a>>
+    pub fn limit <'l, T: TUI> (self, max: Self, render: T)
+        -> Result<T>
     {
         if self.0 <= max.0 && self.1 <= max.1 {
-            Ok(Layout(&render))
+            Ok(render)
         } else {
             Err(Error::new(ErrorKind::Other, "not enough space"))
         }

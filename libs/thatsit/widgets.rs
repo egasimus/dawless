@@ -11,8 +11,8 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
 impl TUI for Spacer {
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        self.0.limit(max, |term, area|{Ok(())})
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        self.0.limit(max, Box::new(|term, area|{Ok(())}))
     }
 }
 
@@ -26,8 +26,8 @@ impl Default for DebugBox {
 }
 
 impl TUI for DebugBox {
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        Size(16, 3).limit(max, |term, area|{
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Size(16, 3).limit(max, Box::new(|term, area|{
             let Area(Point(x, y), Size(w, h)) = area;
             let background = " ".repeat(w as usize);
             term.queue(SetBackgroundColor(self.bg))?
@@ -36,27 +36,27 @@ impl TUI for DebugBox {
             let text = format!("{w}x{h}+{x}+{y}");
             term.queue(MoveTo(x, y))?.queue(Print(&text))?;
             Ok(())
-        })
+        }))
     }
 }
 
 impl TUI for String {
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        Size(self.len() as u16, 1).limit(max, |term, area| {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Size(self.len() as u16, 1).limit(max, Box::new(move |term, area| {
             let Area(Point(x, y), Size(w, h)) = area;
             term.queue(MoveTo(x, y))?.queue(Print(&self))?;
             Ok(())
-        })
+        }))
     }
 }
 
 impl TUI for &str {
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        Size(self.len() as u16, 1).limit(max, |term, area| {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Size(self.len() as u16, 1).limit(max, Box::new(move |term, area| {
             let Area(Point(x, y), Size(w, h)) = area;
             term.queue(MoveTo(x, y))?.queue(Print(&self))?;
             Ok(())
-        })
+        }))
     }
 }
 
@@ -79,12 +79,12 @@ impl<'a> Text<'a> {
 }
 
 impl<'a> TUI for Text<'a> {
-    fn layout <'l> (&'l self, max: Size) -> Result<Layout<'l>> {
-        Size(self.0.len() as u16, 1).limit(max, |term, area| {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Size(self.0.len() as u16, 1).limit(max, Box::new(|term, area| {
             let Area(Point(x, y), Size(w, h)) = area;
             term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
             Ok(())
-        })
+        }))
     }
 }
 
@@ -93,8 +93,8 @@ impl<'a> TUI for Text<'a> {
 pub struct Filled(pub Color);
 
 impl TUI for Filled {
-    fn layout <'l> (&'l self, max: Size) -> Result<Layout<'l>> {
-        Ok(Layout(&|term, area| {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(|term, area| {
             let Area(Point(x, y), Size(w, h)) = area;
             let background  = " ".repeat(w as usize);
             term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
@@ -142,7 +142,7 @@ impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         self.current_mut().handle(event)
     }
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
         self.current().layout(max)
     }
 }
@@ -157,7 +157,7 @@ pub struct Button {
 
 impl Debug for Button {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Button[{}; {:?}]", self.text, self.layout(Size::MAX))
+        write!(f, "Button[{}; {:?}]", self.text, "")//, self.layout(Size::MAX))
     }
 }
 
@@ -171,6 +171,7 @@ impl Button {
 }
 
 impl TUI for Button {
+    /// When Enter is pressed, a button's action is triggered.
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if_key!(event => Enter => {
             if let Some(action) = &mut self.action {
@@ -180,26 +181,83 @@ impl TUI for Button {
             }
         }))
     }
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        Size(self.text.len() as u16 + 6, 3).limit(max, |term, area| {
-            Layers(&|layer: Collect<'a>|{
-                if self.pressed {
-                    layer(Inset(0));
+    /// A button consists of a border, background (TODO) and label.
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Size(self.text.len() as u16 + 6, 3).limit(max, Box::new(move |term, area| {
+            Layers([
+                // Border
+                ThunkItem::Ref(if self.pressed {
+                    &Inset(0) as &dyn TUI
                 } else {
-                    layer(Outset(0));
-                }
-                layer(&|term, area|{
+                    &Outset(0) as &dyn TUI
+                }),
+                // Label
+                ThunkItem::Fn(Box::new(move |term: &mut dyn Write, area|{
                     let bg = Color::AnsiValue(232);
                     let fg = Color::White;
                     let hi = Color::Yellow;
+                    let Area(Point(x, y), Size(w, h)) = area;
                     term.queue(ResetColor)?
                         //.queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
                         .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
                         .queue(MoveTo(x+3, y+1))?.queue(Print(&self.text))?;
                     Ok(())
-                });
-            }).layout(max)?.render(term, area)
-        })
+                }))
+            ]).layout(max)?(term, area)
+        }))
+    }
+}
+
+struct Columns<'a, const N: usize>([ThunkItem<'a>; N]);
+
+impl<'a, const N: usize> TUI for Columns<'a, N> {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(move |term, area|{
+            let area = Area(Point(0, 0), max);
+            let mut y = area.0.y();
+            let max_y = area.0.y() + area.1.height();
+            for item in self.0.iter() {
+                let size = Size::MIN;//item.min_size();
+                let next_y = y + size.height();
+                if next_y > max_y {
+                    let msg = format!("need {} more rows", next_y - max_y);
+                    return Err(Error::new(ErrorKind::Other, msg))
+                }
+                item.render(term, Area(Point(area.0.x(), y), size))?;
+                y = y + size.height();
+            }
+            Ok(())
+        }))
+    }
+}
+
+struct Rows<'a, const N: usize>([ThunkItem<'a>; N]);
+
+impl<'a, const N: usize> TUI for Rows<'a, N> {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(|term, area|{
+            let mut x = area.0.x();
+            for item in self.0.iter() {
+                let size = Size::MIN;//item.min_size();
+                let area = Area(Point(x, area.0.y()), size);
+                item.render(term, area)?;
+                x = x + size.width();
+            }
+            Ok(())
+        }))
+    }
+}
+
+struct Layers<'a, const N: usize>([ThunkItem<'a>; N]);
+
+impl<'a, const N: usize> TUI for Layers<'a, N> {
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(|term, area|{
+            for item in self.0.iter() {
+                item.render(term, area)?;
+            }
+            Ok(())
+        }))
     }
 }
 
@@ -210,24 +268,24 @@ pub struct Inset(
     pub Unit
 );
 
-pub trait Border {
-    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a>;
-}
+//pub trait Border {
+    //fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a>;
+//}
 
-impl Border for Inset {
-    fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding   = Size(self.0, self.0);
-        let min_size  = thunk.min_size + padding + padding;
-        if self.0 > 0 { thunk = pad(padding, thunk.into()) }
-        let items = vec![self.into(), thunk.into()];
-        let render_fn = render_stack;
-        Thunk { min_size, items, render_fn }
-    }
-}
+//impl Border for Inset {
+    //fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
+        //let padding   = Size(self.0, self.0);
+        //let min_size  = thunk.min_size + padding + padding;
+        //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
+        //let items = vec![self.into(), thunk.into()];
+        //let render_fn = render_stack;
+        //Thunk { min_size, items, render_fn }
+    //}
+//}
 
 impl<'a> TUI for Inset {
-    fn layout <'l> (&'l self, max: Size) -> Result<Layout<'l>> {
-        Ok(Layout(&|term, area|{
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(|term, area|{
             let Area(Point(x, y), Size(w, h)) = area;
             if w == 0 || h == 0 { return Ok(()) }
             let bg = Color::AnsiValue(235);
@@ -262,20 +320,20 @@ pub struct Outset(
     pub Unit
 );
 
-impl Border for Outset {
-    fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
-        let padding = Size(self.0, self.0);
-        let min_size = thunk.min_size + padding + padding;
-        if self.0 > 0 { thunk = pad(padding, thunk.into()) }
-        let items = vec![self.into(), thunk.into()];
-        let render_fn = render_stack;
-        Thunk { min_size, items, render_fn }
-    }
-}
+//impl Border for Outset {
+    //fn around <'a> (&'a self, mut thunk: Thunk<'a>) -> Thunk<'a> {
+        //let padding = Size(self.0, self.0);
+        //let min_size = thunk.min_size + padding + padding;
+        //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
+        //let items = vec![self.into(), thunk.into()];
+        //let render_fn = render_stack;
+        //Thunk { min_size, items, render_fn }
+    //}
+//}
 
 impl<'a> TUI for Outset {
-    fn layout <'l> (&'l self, max: Size) -> Result<Layout<'l>> {
-        Ok(Layout(&|term, area|{
+    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
+        Ok(Box::new(|term, area|{
             let Area(Point(x, y), Size(w, h)) = area;
             if w == 0 || h == 0 { return Ok(()) }
             let bg = Color::AnsiValue(235);
@@ -306,14 +364,14 @@ impl<'a> TUI for Outset {
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Centered;
 
-impl Border for Centered {
-    fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
-        let min_size  = thunk.min_size;
-        let items     = vec![thunk.into()];
-        let render_fn = render_centered;
-        Thunk { min_size, items, render_fn }
-    }
-}
+//impl Border for Centered {
+    //fn around <'a> (&'a self, thunk: Thunk<'a>) -> Thunk<'a> {
+        //let min_size  = thunk.min_size;
+        //let items     = vec![thunk.into()];
+        //let render_fn = render_centered;
+        //Thunk { min_size, items, render_fn }
+    //}
+//}
 
 impl<'a> TUI for Centered {}
 
