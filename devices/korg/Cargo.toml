@@ -19,5 +19,6 @@ thatsit = { optional = true, path = "../../libs/thatsit" }
 thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
 
 [features]
+default = [ "cli", "tui" ]
 cli = [ "brailledump", "clap", "tabwriter" ]
 tui = [ "lazy_static", "laterna", "thatsit", "thatsit-widgets" ]

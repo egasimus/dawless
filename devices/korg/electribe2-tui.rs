@@ -1,4 +1,5 @@
 use crate::electribe2::*;
+use crate::*;
 use std::{rc::Rc, cell::RefCell};
 use thatsit::{*, crossterm::{
     QueueableCommand,
@@ -10,9 +11,6 @@ use thatsit::{*, crossterm::{
         Print
     },
 }};
-use thatsit_fs::*;
-use thatsit_focus::*;
-use thatsit_tabs::*;
 use laterna;
 
 #[derive(Debug, Default)]
@@ -29,16 +27,19 @@ impl Electribe2UI {
 }
 
 impl Render for Electribe2UI {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.0.layout(max) }
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
+    impl_render!(self, out, area => self.0.render(out, area));
+}
+
+impl Handle for Electribe2UI {
+    impl_handle!(self, event => self.0.handle(event));
 }
 
 /// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
-pub struct Electribe2PatternsUI {
+pub struct Electribe2PatternsUI<'a> {
     pub label:     Foreground<Text>,
     /// File explorer for selecting a pattern bank
-    pub file_list: FileList,
+    pub file_list: FileList<'a>,
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
     /// Selector for editing an individual pattern
@@ -47,7 +48,7 @@ pub struct Electribe2PatternsUI {
     pub offset:    usize,
 }
 
-impl Electribe2PatternsUI {
+impl<'a> Electribe2PatternsUI<'a> {
     const SELECT_PATTERN_BANK: &'static str = " Select pattern bank: ";
     pub fn new () -> Self {
         let mut file_list = FileList::default();
@@ -81,16 +82,19 @@ impl Electribe2PatternsUI {
     }
 }
 
-impl Render for Electribe2PatternsUI {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+impl<'a> Render for Electribe2PatternsUI<'a> {
+    impl_render!(self, out, area => {
         let Self { offset, bank, .. } = self;
         Ok(Inset(0).around(if let Some(bank) = &bank {
             (&self.patterns).into()
         } else {
             pad(Size(1, 1), col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); }))
         }))
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
+    });
+}
+
+impl<'a> Handle for Electribe2PatternsUI<'a> {
+    impl_handle!(self, event => {
         Ok(if let Some(bank) = &self.bank {
             if *event == key!(Ctrl-Up) {
                 if let Some(index) = self.patterns.pages.selected() {
@@ -128,21 +132,19 @@ impl Render for Electribe2PatternsUI {
                 true
             })
         })
-    }
+    });
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternList(FocusColumn<Electribe2PatternUI>);
+pub struct Electribe2PatternList<'a>(FocusStack<'a>);
 
-impl Electribe2PatternList {
+impl<'a> Electribe2PatternList<'a> {
     pub fn len (&self) -> usize { self.0.len() }
     //pub fn index (&self) -> usize { self.0.index() }
 }
 
-impl Render for Electribe2PatternList {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        self.0.layout(max)
-    }
+impl<'a> Render for Electribe2PatternList<'a> {
+    impl_render!(self, out, area => self.0.render(out, area));
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
         //return Layout::Item(
@@ -189,33 +191,33 @@ impl Render for Electribe2PatternList {
 #[derive(Debug, Default)]
 pub struct Electribe2PatternUI {
     pattern: Electribe2Pattern,
-    name:    Text,
-    level:   Text,
-    bpm:     Text,
-    length:  Text,
-    beats:   Text,
+    name:    String,
+    level:   String,
+    bpm:     String,
+    length:  String,
+    beats:   String,
 }
 
 impl Electribe2PatternUI {
     fn new (pattern: &Electribe2Pattern) -> Self {
         Self {
             pattern: pattern.clone(),
-            name:    Text(format!("Pattern name: {}", pattern.name)),
-            level:   Text(format!("  Level: {}",      pattern.level)),
-            bpm:     Text(format!("BPM: {}",          pattern.bpm)),
-            length:  Text(format!("  Length: {}",     pattern.length)),
-            beats:   Text(format!("  Beats: {}",      pattern.beats)),
+            name:    format!("Pattern name: {}", pattern.name),
+            level:   format!("  Level: {}",      pattern.level),
+            bpm:     format!("BPM: {}",          pattern.bpm),
+            length:  format!("  Length: {}",     pattern.length),
+            beats:   format!("  Beats: {}",      pattern.beats),
         }
     }
 }
 
 impl Render for Electribe2PatternUI {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+    impl_render!(self, out, area => {
         Ok(Inset(2).around(col(|add|{
             add(row(|add|{add(SPACE);add(&self.name);add(&self.level);}));
             add(row(|add|{add(SPACE);add(&self.bpm);add(&self.length);add(&self.beats)}));
         })))
-    }
+    });
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return Ok(())
         //return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
@@ -270,26 +272,26 @@ impl Render for Electribe2PatternUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2SamplesUI {
+pub struct Electribe2SamplesUI<'a> {
     pub focused: bool,
-    pub file_list: FileList,
+    pub file_list: FileList<'a>,
     pub bank: Option<Electribe2SampleBank>,
     pub sample_list: Spacer,//List<String>,
     pub sample: Spacer
 }
 
-impl Render for Electribe2SamplesUI {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
+impl<'a> Render for Electribe2SamplesUI<'a> {
+    impl_render!(self, out, area => {
         let Self { focused, .. } = *self;
         Ok(Inset(1).around(if self.bank.is_some() {
             col(|add| { add(&self.sample_list); add(&self.sample); })
         } else {
             col(|add| { add(&self.file_list); })
         }))
-    }
+    });
 }
 
-impl Electribe2SamplesUI {
+impl<'a> Electribe2SamplesUI<'a> {
     pub fn new () -> Self { let mut new = Self::default(); new.update(); return new }
     fn update (&mut self) {
         let (entries, _) = list_current_directory();

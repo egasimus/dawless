@@ -1,6 +1,8 @@
 opt_mod::optional_module_flat!("cli": cli @ "_korg-cli.rs");
 opt_mod::module!(electribe2);
 opt_mod::module!(triton);
+pub(crate) use thatsit::*;
+pub(crate) use thatsit_widgets::*;
 
 pub(crate) fn read (filename: &std::path::Path) -> Vec<u8> {
     use std::io::Read;

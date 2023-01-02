@@ -1,20 +1,25 @@
 use crate::*;
 
-pub trait Handle {
-    fn handle (&mut self, _event: &Event) -> Result<bool> {
-        Ok(false)
+/// Shorthand for implementing the `handle` method of a `Handle` trait.
+#[macro_export] macro_rules! impl_handle {
+    ($self:ident, $event:ident => $body:expr) => {
+        fn handle (&mut $self, $event: &Event) -> Result<bool> {
+            $body
+        }
     }
+}
+
+pub trait Handle {
+    impl_handle!(self, _event => Ok(false));
 }
 
 pub struct Link<T: Fn(&Self)->Result<bool>, U: Render>(T, U);
 
 impl<T: Fn(&Self)->Result<bool>, U: Render> Handle for Link<T, U> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match_key!((event) {
-            KeyCode::Enter     => { self.0(self)? },
-            KeyCode::Char(' ') => { self.0(self)? }
-        }))
-    }
+    impl_handle!(self, event => Ok(match_key!((event) {
+        KeyCode::Enter     => { self.0(self)? },
+        KeyCode::Char(' ') => { self.0(self)? }
+    })));
 }
 
 /// Generate an `Event::Key(KeyEvent { ... })` variant

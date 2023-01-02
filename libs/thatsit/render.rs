@@ -23,10 +23,15 @@ impl<'a, T: Render + 'a> FnMut<(T, )> for Collect<'a> {
     }
 }
 
-pub trait Render {
-    fn render (&self, _out: &mut dyn Write, _area: Area) -> Result<()> {
-        Ok(())
+/// Shorthand for implementing the `render` method of a `Render` trait.
+#[macro_export] macro_rules! impl_render {
+    ($self:ident, $out:ident, $area:ident => $body:expr) => {
+        fn render (&$self, $out: &mut dyn Write, $area: Area) -> Result<()> { $body }
     }
+}
+
+pub trait Render {
+    impl_render!(self, _out, _area => Ok(()));
     fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
         collect.0.push(Layout::Box(Box::new(self)));
     }

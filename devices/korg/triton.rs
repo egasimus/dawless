@@ -1,5 +1,4 @@
-use thatsit::*;
-use thatsit_focus::*;
+use crate::*;
 
 #[cfg(feature = "cli")]
 #[derive(clap::Subcommand, Clone)]
@@ -19,7 +18,7 @@ pub struct TritonUI<'a> {
 
 impl<'a> TritonUI<'a> {
     pub fn new () -> Self {
-        let mut menu = FocusColumn::default();
+        let mut menu = FocusStack::default();
         //menu.add("Edit program".into(), ())
              //.add("Edit combi".into(),  ())
              //.add("Edit multi".into(),  ())
