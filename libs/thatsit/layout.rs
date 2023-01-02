@@ -37,13 +37,36 @@ impl<W: Widget> Widget for Offset<W> {
     });
 }
 
+pub struct Collect<'a>(pub Vec<Layout<'a>>);
+
+impl<'a> Collect<'a> {
+    pub fn collect (collect: impl Fn(&mut Collect<'a>)) -> Self {
+        let mut items = Self(vec![]);
+        collect(&mut items);
+        items
+    }
+}
+
+impl<'a, W: Widget + 'a> FnOnce<(W, )> for Collect<'a> {
+    type Output = ();
+    extern "rust-call" fn call_once (mut self, args: (W,)) -> Self::Output {
+        self.call_mut(args)
+    }
+}
+
+impl<'a, W: Widget + 'a> FnMut<(W, )> for Collect<'a> {
+    extern "rust-call" fn call_mut (&mut self, args: (W,)) -> Self::Output {
+        args.0.collect(self)
+    }
+}
+
 pub enum Layout<'a> {
     Box(Box<dyn Widget + 'a>),
     Ref(&'a dyn Widget),
     None
 }
 
-impl<'a> std::fmt::Debug for Layout<'a> {
+impl<'a> Debug for Layout<'a> {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Layout({})", match self {
             Self::Box(_) => "Box",
@@ -105,28 +128,4 @@ impl<'a> Widget for Stacked<'a> {
         };
         Ok((0, 0))
     });
-}
-
-
-#[cfg(test)]
-mod test {
-    use crate::*;
-
-    #[test]
-    fn test_row_column () {
-        let mut output = Vec::<u8>::new();
-        let layout = Stacked::z(|layer|{
-            layer(Stacked::x(|row|{
-                row(String::from("R1"));
-                row(String::from("R2"));
-                row(String::from("R3"));
-            }));
-            layer(Stacked::y(|column|{
-                column(String::from("C1"));
-                column(String::from("C2"));
-                column(String::from("C3"));
-            }));
-        });
-        layout.render(&mut output, Area(10, 10, 20, 20));
-    }
 }

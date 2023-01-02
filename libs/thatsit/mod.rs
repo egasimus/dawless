@@ -17,46 +17,35 @@ pub(crate) use crossterm::{
 };
 
 use std::{
+    fmt::Debug,
     sync::{mpsc::{channel, Sender}, atomic::{AtomicBool, Ordering}},
     cell::RefCell,
 };
 
-/// Shorthand for implementing the `render` method of a widget.
-#[macro_export] macro_rules! impl_render {
-    ($self:ident, $out:ident, $area:ident => $body:expr) => {
-        fn render (&$self, $out: &mut dyn Write, $area: Area) -> Result<(Unit, Unit)> { $body }
-    }
-}
-
-/// Shorthand for implementing the `handle` method of a widget.
-#[macro_export] macro_rules! impl_handle {
-    ($self:ident, $event:ident => $body:expr) => {
-        fn handle (&mut $self, $event: &Event) -> Result<bool> {
-            $body
-        }
-    }
-}
-
-/// An interface component. Can render itself and handle input.
-pub trait Widget {
-    impl_render!(self, _out, _area => Ok((0, 0)));
-    impl_handle!(self, _event => Ok(false));
-    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
-        collect.0.push(Layout::Box(Box::new(self)));
-    }
-}
-
-/// Widgets work the same when referenced.
-impl<W: Widget> Widget for &W {
-    impl_render!(self, out, area => (*self).render(out, area));
-    impl_handle!(self, _event => unreachable!());
-    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
-        collect.0.push(Layout::Ref(self));
-    }
-}
-
-opt_mod::module_flat!(render);
+opt_mod::module_flat!(widget);
 opt_mod::module_flat!(layout);
-opt_mod::module_flat!(handle);
 opt_mod::module_flat!(focus);
 opt_mod::module_flat!(utils);
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+
+    #[test]
+    fn test_row_column () {
+        let mut output = Vec::<u8>::new();
+        let layout = Stacked::z(|layer|{
+            layer(Stacked::x(|row|{
+                row(String::from("R1"));
+                row(String::from("R2"));
+                row(String::from("R3"));
+            }));
+            layer(Stacked::y(|column|{
+                column(String::from("C1"));
+                column(String::from("C2"));
+                column(String::from("C3"));
+            }));
+        });
+        layout.render(&mut output, Area(10, 10, 20, 20));
+    }
+}

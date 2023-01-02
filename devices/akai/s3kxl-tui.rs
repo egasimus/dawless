@@ -1,5 +1,5 @@
 use thatsit::*;
-use thatsit_focus::*;
+use thatsit_widgets::*;
 
 pub struct S3000XLTUI<'a> {
     menu: FocusStack<'a>
@@ -13,8 +13,6 @@ impl<'a> S3000XLTUI<'a> {
     }
 }
 
-impl<'a> Render for S3000XLTUI<'a> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.menu.render(term, area)
-    }
+impl<'a> Widget for S3000XLTUI<'a> {
+    impl_render!(self, out, area => self.menu.render(out, area));
 }

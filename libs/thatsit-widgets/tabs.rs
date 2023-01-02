@@ -104,10 +104,7 @@ impl<T: Widget> Widget for TabsLeft<T> {
             }
         }).render(out, area)
     });
-}
-
-impl<T: Widget> Handle for TabsLeft<T> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
+    impl_handle!(self, event => {
         Ok(if self.entered {
             match self.pages.get_mut() {
                 Some((_, page)) => page.handle(event),
@@ -125,5 +122,5 @@ impl<T: Widget> Handle for TabsLeft<T> {
                 KeyCode::Esc   => { self.close() }
             })
         })
-    }
+    });
 }

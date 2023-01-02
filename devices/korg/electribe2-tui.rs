@@ -18,7 +18,7 @@ pub struct Electribe2UI(TabsLeft<Box<dyn Widget>>);
 
 impl Electribe2UI {
     pub fn new () -> Self {
-        let mut selector = TabsLeft::<Box<dyn Render>>::default();
+        let mut selector = TabsLeft::<Box<dyn Widget>>::default();
         selector.add("Edit patterns".into(), Box::new(Electribe2PatternsUI::new()));
         selector.add("Edit samples".into(),  Box::new(Electribe2SamplesUI::new()));
         selector.pages.select_next();
@@ -26,11 +26,8 @@ impl Electribe2UI {
     }
 }
 
-impl Render for Electribe2UI {
+impl Widget for Electribe2UI {
     impl_render!(self, out, area => self.0.render(out, area));
-}
-
-impl Handle for Electribe2UI {
     impl_handle!(self, event => self.0.handle(event));
 }
 
@@ -82,7 +79,7 @@ impl<'a> Electribe2PatternsUI<'a> {
     }
 }
 
-impl<'a> Render for Electribe2PatternsUI<'a> {
+impl<'a> Widget for Electribe2PatternsUI<'a> {
     impl_render!(self, out, area => {
         let Self { offset, bank, .. } = self;
         if let Some(bank) = &bank {
@@ -95,9 +92,6 @@ impl<'a> Render for Electribe2PatternsUI<'a> {
             })).render(out, area)
         }
     });
-}
-
-impl<'a> Handle for Electribe2PatternsUI<'a> {
     impl_handle!(self, event => {
         Ok(if let Some(bank) = &self.bank {
             if *event == key!(Ctrl-Up) {
@@ -147,7 +141,7 @@ impl<'a> Electribe2PatternList<'a> {
     //pub fn index (&self) -> usize { self.0.index() }
 }
 
-impl<'a> Render for Electribe2PatternList<'a> {
+impl<'a> Widget for Electribe2PatternList<'a> {
     impl_render!(self, out, area => self.0.render(out, area));
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
@@ -215,7 +209,7 @@ impl Electribe2PatternUI {
     }
 }
 
-impl Render for Electribe2PatternUI {
+impl Widget for Electribe2PatternUI {
     impl_render!(self, out, area => {
         Border(InsetTall, Stacked::x(|column|{
             column(Stacked::y(|row|{row(());row(&self.name);row(&self.level);}));
@@ -284,7 +278,7 @@ pub struct Electribe2SamplesUI<'a> {
     pub sample: ()
 }
 
-impl<'a> Render for Electribe2SamplesUI<'a> {
+impl<'a> Widget for Electribe2SamplesUI<'a> {
     impl_render!(self, out, area => {
         let Self { focused, .. } = *self;
         Border(InsetTall, Stacked::y(|row|{

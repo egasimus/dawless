@@ -1,5 +1,5 @@
 use thatsit::*;
-use thatsit_focus::*;
+use thatsit_widgets::*;
 
 pub struct MioXLUI<'a> {
     menu: FocusStack<'a>
@@ -14,8 +14,6 @@ impl<'a> MioXLUI<'a> {
     }
 }
 
-impl<'a> Render for MioXLUI<'a> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.menu.render(term, area)
-    }
+impl<'a> Widget for MioXLUI<'a> {
+    impl_render!(self, term, area => self.menu.render(term, area));
 }

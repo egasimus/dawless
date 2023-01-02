@@ -28,8 +28,6 @@ impl<'a> TritonUI<'a> {
     }
 }
 
-impl<'a> Render for TritonUI<'a> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.menu.render(term, area)
-    }
+impl<'a> Widget for TritonUI<'a> {
+    impl_render!(self, out, area => self.menu.render(out, area));
 }

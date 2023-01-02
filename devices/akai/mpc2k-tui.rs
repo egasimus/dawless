@@ -1,5 +1,5 @@
 use thatsit::*;
-use thatsit_focus::*;
+use thatsit_widgets::*;
 
 pub struct MPC2000TUI<'a> {
     menu: FocusStack<'a>
@@ -13,8 +13,6 @@ impl<'a> MPC2000TUI<'a> {
     }
 }
 
-impl<'a> Render for MPC2000TUI<'a> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.menu.render(term, area)
-    }
+impl<'a> Widget for MPC2000TUI<'a> {
+    impl_render!(self, out, area => self.menu.render(out, area));
 }
