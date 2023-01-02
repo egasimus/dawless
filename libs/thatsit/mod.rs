@@ -7,9 +7,13 @@ pub use crossterm::{
     style::Stylize,
     event::{KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}
 };
+
 pub(crate) use crossterm::{
     ExecutableCommand,
-    style::{Print, Color, ResetColor, SetForegroundColor, /*SetBackgroundColor*/},
+    style::{
+        Print, Color, ResetColor, SetForegroundColor, /*SetBackgroundColor,*/
+        StyledContent
+    },
     cursor::{MoveTo, Show, Hide},
     event::{Event},
     terminal::{
@@ -20,8 +24,8 @@ pub(crate) use crossterm::{
     }
 };
 
-use std::{
-    fmt::Debug,
+pub(crate) use std::{
+    fmt::{Debug, Display},
     sync::{mpsc::{channel, Sender}, atomic::{AtomicBool, Ordering}},
     cell::RefCell,
 };

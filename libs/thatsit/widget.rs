@@ -72,7 +72,23 @@ impl Widget for String {
     });
 }
 
-impl<D: std::fmt::Display> Widget for crossterm::style::StyledContent<D> {
+use std::fmt::Display;
+use crossterm::style::{Stylize, StyledContent};
+
+pub type StyleFn<W> = dyn Fn(W) -> StyledContent<W>;
+
+pub struct Styled<'a, W: Widget + Stylize + Display>(pub &'a StyleFn<W>, pub W);
+
+impl<'a, W: Widget + Stylize + Display + Clone> Widget for Styled<'a, W> {
+    impl_render!(self, out, area => {
+        let size = self.1.render(&mut Vec::<u8>::new(), area)?;
+        let styled = self.0(self.1.clone());
+        area.min(size)?.home(out)?.queue(Print(&styled))?;
+        Ok(size)
+    });
+}
+
+impl<D: Display> Widget for StyledContent<D> {
     impl_render!(self, out, area => {
         let size = (1, 1);
         area.min(size)?.home(out)?.queue(Print(&self))?;

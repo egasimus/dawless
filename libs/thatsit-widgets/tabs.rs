@@ -98,7 +98,7 @@ impl<T: Widget> Widget for TabsLeft<T> {
             column(Stacked::y(|row|{
                 for (index, (label, _)) in self.pages.iter().enumerate() {
                     if let Some(selected) = selected && selected == index {
-                        row(label.clone().with(Color::Yellow).bold());
+                        row(Styled(&|s: String|s.with(Color::Yellow).bold(), label.clone()));
                     } else {
                         row(label.clone().with(Color::White));
                     }

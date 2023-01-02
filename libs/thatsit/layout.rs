@@ -125,7 +125,7 @@ impl<'a> Widget for Stacked<'a> {
         let mut y = 0;
         match self.0 {
             Axis::X =>{
-                area.min((self.1.len() as Unit, 1))?;
+                area.min((self.1.len() as Unit, 1))?; // FIXME height
                 for item in self.1.iter() {
                     let (w, h) = Offset(x, 0, item).render(out, area)?;
                     x = x + w;
@@ -133,7 +133,7 @@ impl<'a> Widget for Stacked<'a> {
                 }
             },
             Axis::Y => {
-                area.min((1, self.1.len() as Unit))?;
+                area.min((1, self.1.len() as Unit))?; // FIXME width
                 for item in self.1.iter() {
                     let (w, h) = Offset(0, y, item).render(out, area)?;
                     x = x.max(w);
@@ -141,7 +141,7 @@ impl<'a> Widget for Stacked<'a> {
                 }
             },
             Axis::Z => {
-                area.min((1, 1 as Unit))?;
+                area.min((1, 1 as Unit))?; // FIXME size
                 for item in self.1.iter() {
                     let (w, h) = item.render(out, area)?;
                     x = x.max(w);
