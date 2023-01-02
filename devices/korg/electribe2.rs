@@ -68,7 +68,7 @@ pub struct Electribe2Pattern {
     /// 0x0035 - alt 15/16
     pub alt_15_16: u8,
     /// 0x0800..0x0b30 - one track (816 bytes)
-    pub parts:    Vec<Electribe2Part>
+    pub parts:     Vec<Electribe2Part>
 }
 
 impl Electribe2Pattern {

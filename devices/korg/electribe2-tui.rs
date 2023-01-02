@@ -238,15 +238,35 @@ impl Electribe2PatternListUI {
                     add(Stacked::x(|add|{
                         add(self.layout_field("Pattern name", 13, &page.pattern.name, 24));
                         add(2);
-                        add(self.layout_field("Level",         6, &page.pattern.level, 5));
+                        add(self.layout_field("Level", 6, &page.pattern.level, 8));
                     }));
                     add(1);
                     add(Stacked::x(|add|{
-                        add(self.layout_field("BPM",    4, format!("{:>5.1}", page.pattern.bpm), 9));
+                        add(self.layout_field("BPM", 4, format!("{:>5.1}", page.pattern.bpm), 9));
+                        add(2);
+                        add(self.layout_field("Swing", 6, &page.pattern.swing, 9));
                         add(2);
                         add(self.layout_field("Length", 7, &page.pattern.length, 10));
                         add(2);
-                        add(self.layout_field("Beats",  6, &page.pattern.beats,  10));
+                        add(self.layout_field("Beats", 6, &page.pattern.beats, 10));
+                    }));
+                    add(1);
+                    add(Stacked::x(|add|{
+                        add(self.layout_field("Key",        4, &page.pattern.key, 9));
+                        add(2);
+                        add(self.layout_field("Scale",      6, &page.pattern.scale, 9));
+                        add(2);
+                        add(self.layout_field("Chords",     7, &page.pattern.chord_set, 10));
+                        add(2);
+                        add(self.layout_field("MFX",        6, &page.pattern.mfx_type, 10));
+                    }));
+                    add(1);
+                    add(Stacked::x(|add|{
+                        add(self.layout_field("Gate arp",   9, &page.pattern.gate_arp, 9));
+                        add(2);
+                        add(self.layout_field("Alt 13/14", 10, &page.pattern.scale, 10));
+                        add(2);
+                        add(self.layout_field("Alt 15/16", 10, &page.pattern.chord_set, 10));
                     }))
                 }));
             })))
@@ -272,23 +292,11 @@ impl Electribe2PatternListUI {
 #[derive(Debug, Default)]
 pub struct Electribe2PatternUI {
     pattern: Electribe2Pattern,
-    name:    String,
-    level:   String,
-    bpm:     String,
-    length:  String,
-    beats:   String,
 }
 
 impl Electribe2PatternUI {
     fn new (pattern: &Electribe2Pattern) -> Self {
-        Self {
-            pattern: pattern.clone(),
-            name:    format!("Pattern name: {}", pattern.name),
-            level:   format!("  Level: {}",      pattern.level),
-            bpm:     format!("BPM: {}",          pattern.bpm),
-            length:  format!("  Length: {}",     pattern.length),
-            beats:   format!("  Beats: {}",      pattern.beats),
-        }
+        Self { pattern: pattern.clone(), }
     }
 }
 
