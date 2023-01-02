@@ -5,7 +5,65 @@ use crossterm::{
     cursor::MoveTo,
 };
 
+/// Quick and dirty way to get directories then files
+pub fn list_current_directory () -> (Vec<FileEntry>, usize) {
+    let cwd = current_dir().unwrap();
+    let mut dirs: Vec<String> = vec!["..".into()];
+    let mut files: Vec<String> = vec![];
+    let mut max_len: usize = 32;
+    for file in read_dir(cwd).unwrap() {
+        let file = file.unwrap();
+        let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
+        max_len = usize::max(max_len, name.len());
+        if metadata(file.path()).unwrap().is_dir() {
+            dirs.push(name)
+        } else {
+            files.push(name)
+        }
+    }
+    dirs.sort();
+    files.sort();
+    let mut entries = vec![];
+    for dir  in dirs.iter()  { entries.push(FileEntry::dir(dir))   }
+    for file in files.iter() { entries.push(FileEntry::file(file)) }
+    (entries, max_len)
+}
+
+/// A listing of a directory.
+/// FIXME deduplicate (currently FocusStack always erases the type)
 #[derive(Debug, Default)]
+pub struct FileList<'a>(pub Vec<FileEntry>, pub FocusStack<'a>);
+
+impl<'a> FileList<'a> {
+    pub fn update (&mut self) -> &mut Self {
+        self.0 = list_current_directory().0;
+        let entries = self.0.clone();
+        self.replace(entries.into_iter().map(|entry|Layout::Box(Box::new(entry))).collect());
+        self.select(0);
+        self
+    }
+    pub fn selected (&self) -> Option<&FileEntry> {
+        match Focus::selected(self) {
+            Some(index) => Some(&self.0[index]),
+            None => None
+        }
+    }
+}
+
+impl<'a> Focus<Layout<'a>> for FileList<'a> {
+    fn items     (&self)     -> &Vec<Layout<'a>>       { self.1.items()     }
+    fn items_mut (&mut self) -> &mut Vec<Layout<'a>>   { self.1.items_mut() }
+    fn state     (&self)     -> &FocusState<usize>     { &self.1.state()    }
+    fn state_mut (&mut self) -> &mut FocusState<usize> { self.1.state_mut() }
+}
+
+impl<'a> Widget for FileList<'a> {
+    impl_render!(self, out, area => {
+        Stacked::y(|row|{ for item in self.1.items().iter() { row(item) } }).render(out, area)
+    });
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct FileEntry {
     pub path:    String,
     pub is_dir:  bool,
@@ -35,55 +93,3 @@ impl Widget for FileEntry {
         Ok((label.len() as Unit, 1))
     });
 }
-
-#[derive(Debug, Default)]
-pub struct FileList<'a>(pub FocusStack<'a>);
-
-impl<'a> FileList<'a> {
-    pub fn update (&mut self) -> &mut Self {
-        let (entries, _) = list_current_directory();
-        self.replace(entries.into_iter().map(|entry|Layout::Box(Box::new(entry))).collect());
-        self.select(0);
-        self
-    }
-    pub fn selected (&self) -> &Layout<'a> {
-        self.get().unwrap()
-    }
-}
-
-impl<'a> Focus<Layout<'a>> for FileList<'a> {
-    fn items (&self) -> &Vec<Layout<'a>> { self.0.items() }
-    fn items_mut (&mut self) -> &mut Vec<Layout<'a>> { self.0.items_mut() }
-    fn state (&self) -> &FocusState<usize> { &self.0.state() }
-    fn state_mut (&mut self) -> &mut FocusState<usize> { self.0.state_mut() }
-}
-
-impl<'a> Widget for FileList<'a> {
-    impl_render!(self, out, area => Stacked::y(|row|{
-        for item in self.0.items().iter() { row(item) }
-    }).render(out, area));
-}
-
-pub fn list_current_directory () -> (Vec<FileEntry>, usize) {
-    let cwd = current_dir().unwrap();
-    let mut dirs: Vec<String> = vec!["..".into()];
-    let mut files: Vec<String> = vec![];
-    let mut max_len: usize = 32;
-    for file in read_dir(cwd).unwrap() {
-        let file = file.unwrap();
-        let name: String = file.path().file_name().unwrap().to_str().unwrap().into();
-        max_len = usize::max(max_len, name.len());
-        if metadata(file.path()).unwrap().is_dir() {
-            dirs.push(name)
-        } else {
-            files.push(name)
-        }
-    }
-    dirs.sort();
-    files.sort();
-    let mut entries = vec![];
-    for dir  in dirs.iter()  { entries.push(FileEntry::dir(dir))   }
-    for file in files.iter() { entries.push(FileEntry::file(file)) }
-    (entries, max_len)
-}
-

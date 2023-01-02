@@ -83,7 +83,7 @@ impl<'a> Widget for Electribe2PatternsUI<'a> {
     impl_render!(self, out, area => {
         let Self { offset, bank, .. } = self;
         if let Some(bank) = &bank {
-            Border(InsetTall, self.patterns).render(out, area)
+            Border(InsetTall, &self.patterns).render(out, area)
         } else {
             Border(InsetTall, Stacked::y(|row|{
                 row(&self.label);
@@ -120,14 +120,17 @@ impl<'a> Widget for Electribe2PatternsUI<'a> {
             }
         } else {
             self.file_list.handle(event)? || if_key!(event => Enter => {
-                let FileEntry { path, is_dir, .. } = self.file_list.selected();
-                if *is_dir {
-                    std::env::set_current_dir(path)?;
-                    self.update();
+                if let Some(FileEntry { path, is_dir, .. }) = self.file_list.selected() {
+                    if *is_dir {
+                        std::env::set_current_dir(path)?;
+                        self.update();
+                    } else {
+                        self.import(&std::path::PathBuf::from(path));
+                    }
+                    true
                 } else {
-                    self.import(&std::path::PathBuf::from(path));
+                    false
                 }
-                true
             })
         })
     });
@@ -293,9 +296,11 @@ impl<'a> Widget for Electribe2SamplesUI<'a> {
 }
 
 impl<'a> Electribe2SamplesUI<'a> {
-    pub fn new () -> Self { let mut new = Self::default(); new.update(); return new }
-    fn update (&mut self) {
-        let (entries, _) = list_current_directory();
-        self.file_list.replace(entries);
+    pub fn new () -> Self {
+        Self::default().update()
+    }
+    fn update (mut self) -> Self {
+        self.file_list.update();
+        self
     }
 }
