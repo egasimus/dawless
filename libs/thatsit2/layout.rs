@@ -39,7 +39,18 @@ impl<T: Render> Render for Offset<T> {
 
 pub enum Layout<'a> {
     Box(Box<dyn Render + 'a>),
-    Ref(&'a dyn Render)
+    Ref(&'a dyn Render),
+    None
+}
+
+impl<'a> std::fmt::Debug for Layout<'a> {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Layout({})", match self {
+            Self::Box(_) => "Box",
+            Self::Ref(_) => "Ref",
+            Self::None   => ".x.",
+        })
+    }
 }
 
 impl<'a> Render for Layout<'a> {
@@ -47,14 +58,15 @@ impl<'a> Render for Layout<'a> {
         match self {
             Self::Box(item) => (*item).render(out, area),
             Self::Ref(item) => (*item).render(out, area),
+            Self::None => Ok(())
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum Axis { X, #[default] Y, Z }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Stacked<'a>(pub Axis, pub Vec<Layout<'a>>);
 
 impl<'a> Stacked<'a> {

@@ -1,19 +1,19 @@
 use thatsit::*;
 use thatsit_focus::*;
 
-pub struct S3000XLTUI {
-    menu: FocusColumn<Box<dyn Render>>
+pub struct S3000XLTUI<'a> {
+    menu: FocusStack<'a>
 }
 
-impl S3000XLTUI {
+impl<'a> S3000XLTUI<'a> {
     pub fn new () -> Self {
-        let mut menu = FocusColumn::default();
+        let mut menu = FocusStack::default();
         //menu.add("Edit sample".into(), ());
         Self { menu }
     }
 }
 
-impl Render for S3000XLTUI {
+impl<'a> Render for S3000XLTUI<'a> {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }

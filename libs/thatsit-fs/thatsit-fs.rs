@@ -23,29 +23,25 @@ impl FileEntry {
     }
 }
 
-impl TUI for FileEntry {
-    tui! {
-        layout (self, max) {
-            Ok(Size(self.path.len() as u16, 1).into())
-        }
-        render (self, term, area) {
-            let Area(Point(x, y), _) = area;
-            let fg = Color::White;
-            let hi = Color::Yellow;
-            let label = format!(" {} {}", if self.is_dir { "📁" } else { "  " }, self.path);
-            term.queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
-                .queue(SetBackgroundColor(Color::AnsiValue(235)))?
-                .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-                .queue(MoveTo(x, y))?.queue(Print(label))?;
-            Ok(())
-        }
+impl Render for FileEntry {
+    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(x, y, ..) = area;
+        let fg = Color::White;
+        let hi = Color::Yellow;
+        let label = format!(" {} {}", if self.is_dir { "📁" } else { "  " }, self.path);
+        out
+            .queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
+            .queue(SetBackgroundColor(Color::AnsiValue(235)))?
+            .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
+            .queue(MoveTo(x, y))?.queue(Print(label))?;
+        Ok(())
     }
 }
 
 #[derive(Debug, Default)]
-pub struct FileList(pub FocusColumn<FileEntry>);
+pub struct FileList<'a>(pub FocusStack<'a>);
 
-impl FileList {
+impl<'a> FileList<'a> {
     pub fn update (&mut self) -> &mut Self {
         let (entries, _) = list_current_directory();
         self.replace(entries);
@@ -57,23 +53,18 @@ impl FileList {
     }
 }
 
-impl FocusList<FileEntry> for FileList {
-    fn items (&self) -> &Vec<FileEntry> { &self.0.items() }
+impl<'a> Focus<FileEntry> for FileList<'a> {
+    fn items (&self) -> &Vec<FileEntry> { self.0.items() }
     fn items_mut (&mut self) -> &mut Vec<FileEntry> { self.0.items_mut() }
-    fn state (&self) -> &Focus<usize> { &self.0.state() }
-    fn state_mut (&mut self) -> &mut Focus<usize> { self.0.state_mut() }
+    fn state (&self) -> &FocusState<usize> { &self.0.state() }
+    fn state_mut (&mut self) -> &mut FocusState<usize> { self.0.state_mut() }
 }
 
-impl TUI for FileList {
-    tui! {
-        layout (self, max) {
-            let mut layout = col(|add|{ for item in self.0.items().iter() { add(item) } });
-            layout.min_size = layout.min_size + Size(4, 0);
-            Ok(layout)
-        }
-        handle (self, event) {
-            self.0.handle(event)
-        }
+impl<'a> Render for FileList<'a> {
+    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+        Stacked::y(|row|{
+            for item in self.0.items().iter() { row(item) }
+        }).render(out, area)
     }
 }
 

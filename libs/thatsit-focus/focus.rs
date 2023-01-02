@@ -133,7 +133,7 @@ impl<T> Focus<T> for FocusList<T> {
     fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.state }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct FocusStack<'a>(pub Stacked<'a>, pub FocusState<usize>);
 
 impl<'a> FocusStack<'a> {
@@ -156,6 +156,15 @@ impl<'a> Focus<Layout<'a>> for FocusStack<'a> {
     fn items_mut (&mut self) -> &mut Vec<Layout<'a>> { &mut self.0.1 }
     fn state (&self) -> &FocusState<usize> { &self.1 }
     fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.1 }
+}
+
+impl<'a> Render for FocusStack<'a> {
+    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+        if let Some(item) = self.get() {
+            item.render(out, area)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
