@@ -10,8 +10,8 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 /// A global instance of the 1x1 empty widget
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
-impl TUI for Spacer {
-    tui! { layout (self, max) { self.0.constrain(max, Layout::one(self)) } }
+impl<'a> TUI<'a> for Spacer {
+    tui! { 'a layout (self, max) { self.0.constrain(max, Layout::One(self)) } }
 }
 
 /// A debug widget that displays its size and position on a colored background
@@ -23,46 +23,46 @@ impl Default for DebugBox {
     }
 }
 
-impl TUI for DebugBox {
+impl<'a> TUI<'a> for DebugBox {
     tui! {
+        'a
         layout (self, max) {
-            Size(16, 3).constrain(max, Layout::one(self))
-        }
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            let background = " ".repeat(w as usize);
-            term.queue(SetBackgroundColor(self.bg))?
-                .queue(SetForegroundColor(Color::AnsiValue(234)))?;
-            for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
-            let text = format!("{w}x{h}+{x}+{y}");
-            term.queue(MoveTo(x, y))?.queue(Print(&text))?;
-            Ok(())
+            Size(16, 3).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                let background = " ".repeat(w as usize);
+                term.queue(SetBackgroundColor(self.bg))?
+                    .queue(SetForegroundColor(Color::AnsiValue(234)))?;
+                for row in y..y+h { term.queue(MoveTo(x, row))?.queue(Print(&background))?; }
+                let text = format!("{w}x{h}+{x}+{y}");
+                term.queue(MoveTo(x, y))?.queue(Print(&text))?;
+                Ok(())
+            })))
         }
     }
 }
 
-impl TUI for String {
+impl<'a> TUI<'a> for String {
     tui! {
+        'a
         layout (self, max) {
-            Size(self.len() as u16, 1).constrain(max, Layout::one(self))
-        }
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            term.queue(MoveTo(x, y))?.queue(Print(&self))?;
-            Ok(())
+            Size(self.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                term.queue(MoveTo(x, y))?.queue(Print(&self))?;
+                Ok(())
+            })))
         }
     }
 }
 
-impl TUI for &str {
+impl<'a> TUI<'a> for &str {
     tui! {
+        'a
         layout (self, max) {
-            Size(self.len() as u16, 1).constrain(max, Layout::one(self))
-        }
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            term.queue(MoveTo(x, y))?.queue(Print(&self))?;
-            Ok(())
+            Size(self.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                term.queue(MoveTo(x, y))?.queue(Print(&self))?;
+                Ok(())
+            })))
         }
     }
 }
@@ -85,15 +85,15 @@ impl<'a> Text<'a> {
     pub fn bg (&mut self, color: Option<Color>) -> Self { self.2 = color; *self }
 }
 
-impl<'a> TUI for Text<'a> {
+impl<'a> TUI<'a> for Text<'a> {
     tui! {
+        'a
         layout (self, max) {
-            Size(self.0.len() as u16, 1).constrain(max, Layout::Ref(self))
-        }
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
-            Ok(())
+            Size(self.0.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term,area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
+                Ok(())
+            })))
         }
     }
 }
@@ -102,21 +102,25 @@ impl<'a> TUI for Text<'a> {
 #[derive(Debug)]
 pub struct Filled(pub Color);
 
-impl TUI for Filled {
+impl<'a> TUI<'a> for Filled {
     tui! {
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            let background  = " ".repeat(w as usize);
-            term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
-            for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
-            Ok(())
+        'a
+        layout (self, max) {
+            Ok(Layout::CustomBox(Box::new(move |term,area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                let background  = " ".repeat(w as usize);
+                term.queue(ResetColor)?.queue(SetBackgroundColor(self.0))?;
+                for y in y..y+h { term.queue(MoveTo(x, y))?.queue(Print(&background))?; }
+                Ok(())
+            })))
         }
     }
 }
 
 /// A widget that switches between two states
 #[derive(Default, Debug)]
-pub struct Toggle<T: TUI, U: TUI> {
+pub struct Toggle<'a, T: TUI<'a>, U: TUI<'a>> {
+    pub _phantom: std::marker::PhantomData<&'a T>,
     /// The widget displayed when `state == false`
     pub closed: T,
     /// The widget displayed when `state == true`
@@ -125,8 +129,8 @@ pub struct Toggle<T: TUI, U: TUI> {
     state: bool,
 }
 
-impl<T: TUI, U: TUI> Toggle<T, U> {
-    pub fn new (closed: T, open: U) -> Self { Self { state: false, closed, open } }
+impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
+    pub fn new (closed: T, open: U) -> Self { Self { state: false, closed, open, _phantom: std::marker::PhantomData } }
     pub fn toggle (&mut self) { self.state = !self.state }
     pub fn get (&mut self) -> bool { self.state }
     pub fn set (&mut self, value: bool) { self.state = value }
@@ -134,22 +138,23 @@ impl<T: TUI, U: TUI> Toggle<T, U> {
     pub fn closed_mut (&mut self) -> &mut T { &mut self.closed }
     pub fn open (&mut self) -> &U { &self.open }
     pub fn open_mut (&mut self) -> &mut U { &mut self.open }
-    pub fn current (&self) -> &dyn TUI { if self.state { &self.open } else { &self.closed } }
-    pub fn current_mut (&mut self) -> &mut dyn TUI {
+    pub fn current (&'a self) -> &dyn TUI { if self.state { &self.open } else { &self.closed } }
+    pub fn current_mut (&'a mut self) -> &mut dyn TUI<'a> {
         if self.state { &mut self.open } else { &mut self.closed }
     }
 }
 
-impl<T: TUI, U: TUI> From<Toggle<T, U>> for bool {
-    fn from (it: Toggle<T, U>) -> Self { it.state }
+impl<'a, T: TUI<'a>, U: TUI<'a>> From<Toggle<'a, T, U>> for bool {
+    fn from (it: Toggle<'a, T, U>) -> Self { it.state }
 }
 
-impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
-    fn from (it: &'a Toggle<T, U>) -> Self { it.state }
+impl<'a, T: TUI<'a>, U: TUI<'a>> From<&'a Toggle<'a, T, U>> for bool {
+    fn from (it: &'a Toggle<'a, T, U>) -> Self { it.state }
 }
 
-impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
+impl<'a, T: TUI<'a>, U: TUI<'a>> TUI<'a> for Toggle<'a, T, U> {
     tui! {
+        'a
         layout (self, max) {
             self.current().layout(max)
         }
@@ -182,23 +187,29 @@ impl Button {
     }
 }
 
-impl TUI for Button {
+impl<'a> TUI<'a> for Button {
     tui! {
+        'a
         layout (self, max) {
-            Size(self.text.len() as u16 + 6, 3).constrain(max, Layout::Ref(self))
-        }
-        render (self, term, area) {
-            let border = (if self.pressed { &Inset(0) as &dyn TUI } else { &Outset(0) as &dyn TUI })
-                .render(term, area)?;
-            //let bg = Color::AnsiValue(232);
-            let fg = Color::White;
-            let hi = Color::Yellow;
-            let Area(Point(x, y), _) = area;
-            term.queue(ResetColor)?
-                //.queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
-                .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-                .queue(MoveTo(x+3, y+1))?.queue(Print(&self.text))?;
-            Ok(())
+            let layout = Layout::CustomBox(Box::new(|term, area| {
+                //let border = (if self.pressed {
+                    //&Inset(0) as &dyn TUI
+                //} else {
+                    //&Outset(0) as &dyn TUI
+                //})
+                    //.layout(max)?
+                    //.render(term, area)?;
+                //let bg = Color::AnsiValue(232);
+                let fg = Color::White;
+                let hi = Color::Yellow;
+                let Area(Point(x, y), _) = area;
+                term.queue(ResetColor)?
+                    //.queue(SetBackgroundColor(if self.focused { Color::AnsiValue(240) } else { Color::AnsiValue(238) }))?
+                    .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
+                    .queue(MoveTo(x+3, y+1))?.queue(Print(&self.text))?;
+                Ok(())
+            }));
+            Size(self.text.len() as u16 + 6, 3).constrain(max, layout)
         }
         handle (self, event) {
             Ok(if_key!(event => Enter => {
@@ -213,52 +224,79 @@ impl TUI for Button {
 }
 
 #[derive(Clone, Copy)]
-pub struct Columns<'l, const N: usize>(pub [&'l dyn TUI; N]);
+pub struct Columns<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
 
-impl<'l, const N: usize> TUI for Columns<'l, N> {
-    tui! {
-        render (self, term, area) {
-            let mut y = area.0.y();
-            let max_y = area.0.y() + area.1.height();
-            for item in self.0.iter() {
-                let size = Size::MIN;//item.min_size();
-                let next_y = y + size.height();
-                if next_y > max_y {
-                    let msg = format!("need {} more rows", next_y - max_y);
-                    return Err(Error::new(ErrorKind::Other, msg))
-                }
-                item.render(term, Area(Point(area.0.x(), y), size))?;
-                y = y + size.height();
+impl<'a, const N: usize> Columns<'a, N> {
+    fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
+        let mut y = area.0.y();
+        let max_y = area.0.y() + area.1.height();
+        for item in items.iter() {
+            let size = Size::MIN;//item.min_size();
+            let next_y = y + size.height();
+            if next_y > max_y {
+                let msg = format!("need {} more rows", next_y - max_y);
+                return Err(Error::new(ErrorKind::Other, msg))
             }
-            Ok(())
+            item.render(term, Area(Point(area.0.x(), y), size))?;
+            y = y + size.height();
+        }
+        Ok(())
+    }
+}
+
+impl<'a, const N: usize> TUI<'a> for Columns<'a, N> {
+    tui! {
+        'a
+        layout (self, max) {
+            let items = self.0.iter().map(|item|Layout::One(item)).collect();
+            Ok(Layout::Many(max, &Self::render, items))
         }
     }
 }
 
-pub struct Rows<'l, const N: usize>(pub [&'l dyn TUI; N]);
+pub struct Rows<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
 
-impl<'l, const N: usize> TUI for Rows<'l, N> {
+impl<'a, const N: usize> Rows<'a, N> {
+    fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
+        let mut x = area.0.x();
+        for item in items.iter() {
+            let size = Size::MIN;//item.min_size();
+            let area = Area(Point(x, area.0.y()), size);
+            item.render(term, area)?;
+            x = x + size.width();
+        }
+        Ok(())
+    }
+}
+
+impl<'a, const N: usize> TUI<'a> for Rows<'a, N> {
     tui! {
-        render (self, term, area) {
-            let mut x = area.0.x();
-            for item in self.0.iter() {
-                let size = Size::MIN;//item.min_size();
-                let area = Area(Point(x, area.0.y()), size);
-                item.render(term, area)?;
-                x = x + size.width();
-            }
-            Ok(())
+        'a
+        layout (self, max) {
+            let items = self.0.iter().map(|item|Layout::One(item)).collect();
+            Ok(Layout::Many(max, &Self::render, items))
         }
     }
 }
 
-pub struct Layers<'a, const N: usize>(pub [&'a dyn TUI; N]);
+pub struct Layers<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
 
-impl<'a, const N: usize> TUI for Layers<'a, N> {
+impl<'a, const N: usize> Layers<'a, N> {
+    fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
+        for item in items.iter() { item.render(term, area)?; }
+        Ok(())
+    }
+}
+
+impl<'a, const N: usize> TUI<'a> for Layers<'a, N> {
     tui! {
-        render (self, term, area) {
-            for item in self.0.iter() { item.render(term, area)?; }
-            Ok(())
+        'a
+        layout (self, max) {
+            Ok(Layout::Many(
+                max,
+                &Self::render,
+                self.0.iter().map(|item|Layout::One(item)).collect()
+            ))
         }
     }
 }
@@ -270,34 +308,39 @@ pub struct Inset(
     pub Unit
 );
 
-impl<'a> TUI for Inset {
+impl Inset {
+    fn render <'a> (term: &mut dyn Write, area: Area)->Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        if w == 0 || h == 0 { return Ok(()) }
+        let bg = Color::AnsiValue(235);
+        //Filled(bg).layout(max)?.render(term, Area(Point(x, y), Size(w, h)))?;
+        let top_edge    = "▇".repeat((w - 1) as usize);
+        let bottom_edge = "▁".repeat((w - 1) as usize);
+        let left_edge   = "▊";
+        let right_edge  = "▎";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+        }
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(240)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> TUI<'a> for Inset {
     tui! {
+        'a
         layout (self, max) {
-            Ok(Layout::Fn(&|term, area|{
-                let Area(Point(x, y), Size(w, h)) = area;
-                if w == 0 || h == 0 { return Ok(()) }
-                let bg = Color::AnsiValue(235);
-                Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
-                let top_edge    = "▇".repeat((w - 1) as usize);
-                let bottom_edge = "▁".repeat((w - 1) as usize);
-                let left_edge   = "▊";
-                let right_edge  = "▎";
-                term.queue(ResetColor)?
-                    .queue(SetBackgroundColor(Color::AnsiValue(16)))?
-                    .queue(SetForegroundColor(bg))?
-                    .queue(MoveTo(x, y))?
-                    .queue(Print(&top_edge))?;
-                for y in y..y+h {
-                    term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-                }
-                term.queue(SetBackgroundColor(bg))?
-                    .queue(SetForegroundColor(Color::AnsiValue(240)))?
-                    .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-                for y in y..y+h {
-                    term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
-                }
-                Ok(())
-            }))
+            Ok(Layout::CustomFn(Self::render))
         }
     }
 }
@@ -309,32 +352,39 @@ pub struct Outset(
     pub Unit
 );
 
-impl<'a> TUI for Outset {
+impl Outset {
+    fn render (term: &mut dyn Write, area: Area) -> Result<()> {
+        let Area(Point(x, y), Size(w, h)) = area;
+        if w == 0 || h == 0 { return Ok(()) }
+        let bg = Color::AnsiValue(235);
+        //Filled(bg).layout(max)?.render(term, Area(Point(x, y), Size(w, h)))?;
+        let top_edge    = "▇".repeat((w - 1) as usize);
+        let bottom_edge = "▁".repeat((w - 1) as usize);
+        let right_edge  = "▎";
+        let left_edge   = "▊";
+        term.queue(ResetColor)?
+            .queue(SetBackgroundColor(Color::AnsiValue(240)))?
+            .queue(SetForegroundColor(bg))?
+            .queue(MoveTo(x, y))?
+            .queue(Print(&top_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+        }
+        term.queue(SetBackgroundColor(bg))?
+            .queue(SetForegroundColor(Color::AnsiValue(16)))?
+            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+        for y in y..y+h {
+            term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> TUI<'a> for Outset {
     tui! {
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            if w == 0 || h == 0 { return Ok(()) }
-            let bg = Color::AnsiValue(235);
-            Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
-            let top_edge    = "▇".repeat((w - 1) as usize);
-            let bottom_edge = "▁".repeat((w - 1) as usize);
-            let right_edge  = "▎";
-            let left_edge   = "▊";
-            term.queue(ResetColor)?
-                .queue(SetBackgroundColor(Color::AnsiValue(240)))?
-                .queue(SetForegroundColor(bg))?
-                .queue(MoveTo(x, y))?
-                .queue(Print(&top_edge))?;
-            for y in y..y+h {
-                term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-            }
-            term.queue(SetBackgroundColor(bg))?
-                .queue(SetForegroundColor(Color::AnsiValue(16)))?
-                .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-            for y in y..y+h {
-                term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
-            }
-            Ok(())
+        'a
+        layout (self, max) {
+            Ok(Layout::CustomFn(Outset::render))
         }
     }
 }
@@ -342,51 +392,4 @@ impl<'a> TUI for Outset {
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Centered;
 
-impl<'a> TUI for Centered {}
-
-//pub trait Border {
-    //fn around <'a> (&'a self, thunk: Layout<'a>) -> Layout<'a>;
-//}
-
-//impl Border for Inset {
-    //fn around <'a> (&'a self, mut thunk: Layout<'a>) -> Layout<'a> {
-        //let padding   = Size(self.0, self.0);
-        //let min_size  = thunk.min_size + padding + padding;
-        //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
-        //let items = vec![self.into(), thunk.into()];
-        //let render_fn = render_stack;
-        //Layout { min_size, items, render_fn }
-    //}
-//}
-
-//impl Border for Outset {
-    //fn around <'a> (&'a self, mut thunk: Layout<'a>) -> Layout<'a> {
-        //let padding = Size(self.0, self.0);
-        //let min_size = thunk.min_size + padding + padding;
-        //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
-        //let items = vec![self.into(), thunk.into()];
-        //let render_fn = render_stack;
-        //Layout { min_size, items, render_fn }
-    //}
-//}
-
-//impl Border for Centered {
-    //fn around <'a> (&'a self, thunk: Layout<'a>) -> Layout<'a> {
-        //let min_size  = thunk.min_size;
-        //let items     = vec![thunk.into()];
-        //let render_fn = render_centered;
-        //Layout { min_size, items, render_fn }
-    //}
-//}
-
-//#[cfg(test)]
-//mod test {
-    //use std::str::from_utf8;
-    //use crate::{*, layout::*};
-
-    //#[test]
-    //fn test_frame () {
-        //let frame = Inset;
-        //assert_rendered!(frame == "\u{1b}[0m\u{1b}[38;5;232m\u{1b}[6;6H▄▄▄▄▄▄▄▄▄▄\u{1b}[15;6H▀▀▀▀▀▀▀▀▀▀\u{1b}[0m\u{1b}[48;5;232m\u{1b}[7;6H          \u{1b}[8;6H          \u{1b}[9;6H          \u{1b}[10;6H          \u{1b}[11;6H          \u{1b}[12;6H          \u{1b}[13;6H          \u{1b}[14;6H          \u{1b}[48;5;232m\u{1b}[38;5;15m\u{1b}[6;6H \u{1b}[6;7H\u{1b}[1m\u{1b}[4m\u{1b}[0m\u{1b}[6;7H\u{1b}[48;5;232m\u{1b}[38;5;15m ");
-    //}
-//}
+impl<'a> TUI<'a> for Centered {}
