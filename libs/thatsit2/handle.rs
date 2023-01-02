@@ -6,6 +6,17 @@ pub trait Handle {
     }
 }
 
+pub struct Link<T: Fn(&Self)->Result<bool>, U: Render>(T, U);
+
+impl<T: Fn(&Self)->Result<bool>, U: Render> Handle for Link<T, U> {
+    fn handle (&mut self, event: &Event) -> Result<bool> {
+        Ok(match_key!((event) {
+            KeyCode::Enter     => { self.0(self)? },
+            KeyCode::Char(' ') => { self.0(self)? }
+        }))
+    }
+}
+
 /// Generate an `Event::Key(KeyEvent { ... })` variant
 #[macro_export] macro_rules! key {
     ($code:ident) => {
