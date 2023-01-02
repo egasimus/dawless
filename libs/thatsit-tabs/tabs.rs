@@ -2,18 +2,48 @@ use std::io::Result;
 use thatsit::{*, crossterm::{self, event::Event, style::Color}};
 use thatsit_focus::*;
 
+pub struct DefaultTabsTheme;
+
+impl TabsTheme for DefaultTabsTheme {}
+
+pub trait TabsTheme {
+    fn foreground (&self, focused: bool, selected: bool) -> Option<Color> {
+        Some(match (focused, selected) {
+            (true,  true)  => Color::White,
+            (true,  false) => Color::White,
+            (false, true)  => Color::White,
+            (false, false) => Color::White,
+        })
+    }
+    fn background (&self, focused: bool, selected: bool) -> Option<Color> {
+        Some(match (focused, selected) {
+            (true,  true)  => Color::Black,
+            (true,  false) => Color::Black,
+            (false, true)  => Color::Black,
+            (false, false) => Color::Black,
+        })
+    }
+}
+
+impl std::fmt::Debug for dyn TabsTheme {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dyn[TabsTheme]")
+    }
+}
+
+
 #[derive(Debug)]
-pub struct TabsLeft<T: TUI> {
-    pub pages:   FocusState<(String, T)>,
+pub struct TabsLeft<T: Render> {
+    pub pages:   FocusList<(String, T)>,
     pub open:    bool,
     pub entered: bool,
     pub theme:   &'static dyn TabsTheme
 }
 
-impl<T: TUI> Default for TabsLeft<T> {
+impl<T: Render> Default for TabsLeft<T> {
     fn default () -> Self {
         Self {
-            pages:   FocusState::new(vec![]),
+            pages:   FocusList::new(vec![]),
             open:    false,
             entered: false,
             theme:   &DefaultTabsTheme
@@ -21,8 +51,8 @@ impl<T: TUI> Default for TabsLeft<T> {
     }
 }
 
-impl<T: TUI> TabsLeft<T> {
-    /// Create a new selector with vertical tabs from a list of `(Button, TUI)` pairs.
+impl<T: Render> TabsLeft<T> {
+    /// Create a new selector with vertical tabs from a list of `(Button, Render)` pairs.
     pub fn new (pages: Vec<(String, T)>) -> Self {
         let mut tabs = Self::default();
         tabs.pages.replace(pages);
@@ -63,23 +93,22 @@ impl<T: TUI> TabsLeft<T> {
     }
 }
 
-impl<T: TUI> TUI for TabsLeft<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Layout<'a>> {
-        Ok(Layout(&|term|{
-            Columns(|column|{
-                column(Rows(|row|{
-                    for (label, _) in self.pages.iter() {
-                        row(Text::new(label)
-                            .fg(self.theme.foreground(true, true))
-                            .bg(self.theme.background(true, true)));
-                    }
-                }));
-                if self.open && let Some((_,page)) = self.pages.get() {
-                    column(page);
+impl<T: Render> Render for TabsLeft<T> {
+    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+        Stacked::x(|column|{
+            column(Stacked::y(|row|{
+                for (label, _) in self.pages.iter() {
+                    row(label);
                 }
-            })
-        }))
+            }));
+            if self.open && let Some((_,page)) = self.pages.get() {
+                column(page);
+            }
+        }).render(out, area)
     }
+}
+
+impl<T: Render + Handle> Handle for TabsLeft<T> {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             match self.pages.get_mut() {
@@ -98,34 +127,5 @@ impl<T: TUI> TUI for TabsLeft<T> {
                 KeyCode::Esc   => { self.close() }
             })
         })
-    }
-}
-
-pub struct DefaultTabsTheme;
-
-impl TabsTheme for DefaultTabsTheme {}
-
-pub trait TabsTheme {
-    fn foreground (&self, focused: bool, selected: bool) -> Option<Color> {
-        Some(match (focused, selected) {
-            (true,  true)  => Color::White,
-            (true,  false) => Color::White,
-            (false, true)  => Color::White,
-            (false, false) => Color::White,
-        })
-    }
-    fn background (&self, focused: bool, selected: bool) -> Option<Color> {
-        Some(match (focused, selected) {
-            (true,  true)  => Color::Black,
-            (true,  false) => Color::Black,
-            (false, true)  => Color::Black,
-            (false, false) => Color::Black,
-        })
-    }
-}
-
-impl std::fmt::Debug for dyn TabsTheme {
-    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "dyn[TabsTheme]")
     }
 }

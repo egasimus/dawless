@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-path = "thatsit2.rs"
+path = "mod.rs"
 
 [dependencies]
 crossterm = "0.25"

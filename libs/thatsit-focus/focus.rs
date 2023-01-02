@@ -1,7 +1,7 @@
 #![feature(unboxed_closures, fn_traits)]
 
-use std::{io::Result, slice::Iter, slice::IterMut};
-use thatsit::{*, crossterm::event::Event};
+use std::{slice::Iter, slice::IterMut};
+use thatsit::*;
 
 /// The Focus API.
 pub trait Focus<T> {
