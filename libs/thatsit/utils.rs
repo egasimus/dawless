@@ -1,7 +1,8 @@
 use crate::*;
 
-/// Run the main loop. The main thread goes into a render loop. A separate input thread is
-/// launched, which sends input to the main thread.
+/// Set up the terminal and run the main loop. As the main thread goes into a render loop,
+/// a separate input thread is launched, which sends input events to the main thread.
+/// After the exit flag is set, reset the terminal and exit.
 ///
 /// # Arguments
 ///
@@ -38,6 +39,7 @@ pub fn run <T: Widget> (exited: &'static AtomicBool, term: &mut dyn Write, app: 
     Ok(())
 }
 
+/// Sets up the terminal. Optionally, configures a nicer panic handler.
 pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     if better_panic {
         std::panic::set_hook(Box::new(|panic_info| {
@@ -49,16 +51,20 @@ pub fn setup (term: &mut dyn Write, better_panic: bool) -> Result<()> {
     enable_raw_mode()
 }
 
+/// Resets the terminal to boring text mode.
 pub fn teardown (term: &mut dyn Write) -> Result<()> {
     term.execute(ResetColor)?.execute(Show)?.execute(LeaveAlternateScreen)?;
     disable_raw_mode()
 }
 
+/// Fills the terminal with emptiness.
 pub fn clear (term: &mut dyn Write) -> Result<()> {
-    term.queue(ResetColor)?.queue(Clear(ClearType::All))? .queue(Hide)?;
+    term.queue(ResetColor)?.queue(Clear(ClearType::All))?.queue(Hide)?;
     Ok(())
 }
 
+/// Spawns the input thread, which passes input events over a `mpsc::channel` into the render
+/// thread. Only stops when the exit flag is set.
 pub fn spawn_input_thread (tx: Sender<Event>, exited: &'static AtomicBool) {
     std::thread::spawn(move || {
         loop {
@@ -70,14 +76,15 @@ pub fn spawn_input_thread (tx: Sender<Event>, exited: &'static AtomicBool) {
     });
 }
 
-pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
-    clear(term)?;
-    term.queue(SetForegroundColor(Color::Red))?;
-    write_text(term, 0, 0, msg)
-}
-
+/// Write some text to the terminal.
 pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result<()> {
     term.execute(MoveTo(x, y))?.execute(Print(text))?;
     Ok(())
 }
 
+/// Write some red text to the terminal.
+pub fn write_error (term: &mut dyn Write, msg: &str) -> Result<()> {
+    clear(term)?;
+    term.queue(SetForegroundColor(Color::Red))?;
+    write_text(term, 0, 0, msg)
+}

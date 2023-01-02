@@ -1,11 +1,14 @@
 use crate::*;
 
+/// The unit of distance used throughout.
 pub type Unit = u16;
 
+/// A rectangle on the screen in (X, Y, W, H) format, from top left.
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Area(pub Unit, pub Unit, pub Unit, pub Unit);
 
 impl Area {
+
     /// Return an error if this area is larger than the minimum needed size
     pub fn min (&self, (min_w, min_h): (Unit, Unit)) -> Result<&Self> {
         if self.w() < min_w || self.h() < min_h {
@@ -101,9 +104,11 @@ impl<'a> Widget for Layout<'a> {
     });
 }
 
+/// X (horizontally), Y (vertically), or Z (towards the user)
 #[derive(Debug, Default)]
 pub enum Axis { X, #[default] Y, Z }
 
+/// Order multiple `Widget`s along X (columns), Y (rows), or Z (layers).
 #[derive(Debug, Default)]
 pub struct Stacked<'a>(pub Axis, pub Vec<Layout<'a>>);
 
@@ -153,6 +158,7 @@ impl<'a> Widget for Stacked<'a> {
     });
 }
 
+/// Direction in which to perform alignment
 #[derive(Copy, Clone, Default, Debug)]
 pub enum Align {
     TopLeft,
@@ -166,6 +172,7 @@ pub enum Align {
     BottomRight
 }
 
+/// Wraps a widget, applying alignment to it.
 #[derive(Copy, Clone, Default)]
 pub struct Aligned<W: Widget>(pub Align, pub W);
 

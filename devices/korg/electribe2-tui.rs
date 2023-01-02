@@ -35,10 +35,10 @@ impl Widget for Electribe2UI {
 
 /// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
-pub struct Electribe2PatternsUI<'a> {
+pub struct Electribe2PatternsUI {
     pub label:     String,
     /// File explorer for selecting a pattern bank
-    pub file_list: FileList<'a>,
+    pub file_list: FileList,
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
     /// Selector for editing an individual pattern
@@ -47,7 +47,7 @@ pub struct Electribe2PatternsUI<'a> {
     pub offset:    usize,
 }
 
-impl<'a> Electribe2PatternsUI<'a> {
+impl Electribe2PatternsUI {
     const SELECT_PATTERN_BANK: &'static str = " Select pattern bank: ";
     pub fn new () -> Self {
         let mut file_list = FileList::default();
@@ -81,7 +81,7 @@ impl<'a> Electribe2PatternsUI<'a> {
     }
 }
 
-impl<'a> Widget for Electribe2PatternsUI<'a> {
+impl Widget for Electribe2PatternsUI {
     impl_render!(self, out, area => {
         let Self { offset, bank, .. } = self;
         if let Some(bank) = &bank {
@@ -276,15 +276,15 @@ impl Widget for Electribe2PatternUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2SamplesUI<'a> {
+pub struct Electribe2SamplesUI {
     pub focused: bool,
-    pub file_list: FileList<'a>,
+    pub file_list: FileList,
     pub bank: Option<Electribe2SampleBank>,
     pub sample_list: (),//List<String>,
     pub sample: ()
 }
 
-impl<'a> Widget for Electribe2SamplesUI<'a> {
+impl Widget for Electribe2SamplesUI {
     impl_render!(self, out, area => {
         let Self { focused, .. } = *self;
         Border(InsetTall, Stacked::y(|row|{
@@ -298,7 +298,7 @@ impl<'a> Widget for Electribe2SamplesUI<'a> {
     });
 }
 
-impl<'a> Electribe2SamplesUI<'a> {
+impl Electribe2SamplesUI {
     pub fn new () -> Self {
         Self::default().update()
     }

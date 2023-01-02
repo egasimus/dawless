@@ -32,13 +32,11 @@ pub fn list_current_directory () -> (Vec<FileEntry>, usize) {
 /// A listing of a directory.
 /// FIXME deduplicate (currently FocusStack always erases the type)
 #[derive(Debug, Default)]
-pub struct FileList<'a>(pub Vec<FileEntry>, pub FocusStack<'a>);
+pub struct FileList(pub Vec<FileEntry>, pub FocusState<usize>);
 
-impl<'a> FileList<'a> {
+impl FileList {
     pub fn update (&mut self) -> &mut Self {
-        self.0 = list_current_directory().0;
-        let entries = self.0.clone();
-        self.replace(entries.into_iter().map(|entry|Layout::Box(Box::new(entry))).collect());
+        self.replace(list_current_directory().0);
         self.select(0);
         self
     }
@@ -50,17 +48,34 @@ impl<'a> FileList<'a> {
     }
 }
 
-impl<'a> Focus<Layout<'a>> for FileList<'a> {
-    fn items     (&self)     -> &Vec<Layout<'a>>       { self.1.items()     }
-    fn items_mut (&mut self) -> &mut Vec<Layout<'a>>   { self.1.items_mut() }
-    fn state     (&self)     -> &FocusState<usize>     { &self.1.state()    }
-    fn state_mut (&mut self) -> &mut FocusState<usize> { self.1.state_mut() }
+impl Focus<FileEntry> for FileList {
+    fn items     (&self)     -> &Vec<FileEntry>        { &self.0     }
+    fn items_mut (&mut self) -> &mut Vec<FileEntry>    { &mut self.0 }
+    fn state     (&self)     -> &FocusState<usize>     { &self.1     }
+    fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.1 }
 }
 
-impl<'a> Widget for FileList<'a> {
+impl Widget for FileList {
     impl_render!(self, out, area => {
-        Stacked::y(|row|{ for item in self.1.items().iter() { row(item) } }).render(out, area)
+        Stacked::y(|row|{
+            let focused = self.state().1;
+            for (index, item) in self.items().iter().enumerate() {
+                let label = format!(" {} {}", if item.is_dir { "📁" } else { "  " }, item.path);
+                let color = if focused == Some(index) { Color::Yellow } else { Color::White };
+                let bold  = item.is_dir;
+                let style = Box::new(move|s: String|{
+                    let s = s.with(color);
+                    let s = if bold { s.bold() } else { s };
+                    s
+                });
+                row(StyledBoxed(style, label));
+            }
+        }).render(out, area)
     });
+    impl_handle!(self, event => Ok(match_key!((event) {
+        KeyCode::Up    => { self.select_prev() },
+        KeyCode::Down  => { self.select_next() }
+    })));
 }
 
 #[derive(Debug, Default, Clone)]
@@ -77,19 +92,4 @@ impl FileEntry {
     fn dir (path: &str) -> Self {
         FileEntry { path: path.into(), is_dir: true, focused: false }
     }
-}
-
-impl Widget for FileEntry {
-    impl_render!(self, out, area => {
-        let Area(x, y, ..) = area;
-        let fg = Color::White;
-        let hi = Color::Yellow;
-        let label = format!(" {} {}", if self.is_dir { "📁" } else { "  " }, self.path);
-        out
-            .queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
-            .queue(SetBackgroundColor(Color::AnsiValue(235)))?
-            .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-            .queue(MoveTo(x, y))?.queue(Print(&label))?;
-        Ok((label.len() as Unit, 1))
-    });
 }

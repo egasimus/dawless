@@ -99,9 +99,9 @@ pub trait Focus<T> {
 #[derive(Debug, Default)]
 pub struct FocusState<T>(
     /// Whether this item is focused
-    bool,
+    pub bool,
     /// Whether an item owned by this item is focused
-    Option<T>
+    pub Option<T>
 );
 
 /// A list of sequentially selectable items
@@ -130,6 +130,7 @@ impl<T> Focus<T> for FocusList<T> {
     fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.state }
 }
 
+/// Like `Stacked`, but keeps track of focus
 #[derive(Debug, Default)]
 pub struct FocusStack<'a>(pub Stacked<'a>, pub FocusState<usize>);
 
@@ -158,9 +159,10 @@ impl<'a> Focus<Layout<'a>> for FocusStack<'a> {
 impl<'a> Widget for FocusStack<'a> {
     impl_render!(self, out, area => {
         if let Some(item) = self.get() {
-            item.render(out, area)?;
+            item.render(out, area)
+        } else {
+            Ok((0, 0))
         }
-        Ok((0, 0))
     });
 }
 

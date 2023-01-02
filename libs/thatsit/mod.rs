@@ -5,7 +5,7 @@ pub use crossterm::{
     self,
     QueueableCommand,
     style::Stylize,
-    event::{KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}
+    event::{Event, KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}
 };
 
 pub(crate) use crossterm::{
@@ -15,7 +15,6 @@ pub(crate) use crossterm::{
         StyledContent
     },
     cursor::{MoveTo, Show, Hide},
-    event::{Event},
     terminal::{
         size,
         Clear, ClearType,

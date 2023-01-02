@@ -20,6 +20,7 @@ use crate::*;
 pub trait Widget {
     impl_render!(self, _out, _area => Ok((0, 0)));
     impl_handle!(self, _event => Ok(false));
+    /// Thanks @steffahn for suggesting this!
     fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
         collect.0.push(Layout::Box(Box::new(self)));
     }
@@ -89,11 +90,25 @@ impl Widget for String {
 }
 
 /// Wrapper for integration with `crossterm::StyledContent`.
-pub struct Styled<'a, W: Widget + Stylize + Display>(pub &'a StyleFn<W>, pub W);
+pub struct Styled<'a, W: Widget + Stylize + Display>(pub &'a StyleFn<'a, W>, pub W);
 
-pub type StyleFn<W> = dyn Fn(W) -> StyledContent<W>;
+/// A closure which takes a stylable thing and returns a styled thing,
+/// using `crossterm::StyledContent`.
+pub type StyleFn<'a, W> = dyn Fn(W) -> StyledContent<W> + 'a;
 
 impl<'a, W: Widget + Stylize + Display + Clone> Widget for Styled<'a, W> {
+    impl_render!(self, out, area => {
+        let size = self.1.render(&mut Vec::<u8>::new(), area)?;
+        let styled = self.0(self.1.clone());
+        area.min(size)?.home(out)?.queue(Print(&styled))?;
+        Ok(size)
+    });
+}
+
+/// Same as `Styled` but takes a boxed closure.
+pub struct StyledBoxed<'a, W: Widget + Stylize + Display>(pub Box<StyleFn<'a, W>>, pub W);
+
+impl<'a, W: Widget + Stylize + Display + Clone> Widget for StyledBoxed<'a, W> {
     impl_render!(self, out, area => {
         let size = self.1.render(&mut Vec::<u8>::new(), area)?;
         let styled = self.0(self.1.clone());
