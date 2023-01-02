@@ -60,7 +60,7 @@ impl Widget for &str {
     impl_render!(self, out, area => {
         let w = self.len() as Unit;
         area.min(w, 1)?;
-        out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
+        out.queue(Print(&self))?;
         Ok((w, 1))
     });
 }
@@ -69,7 +69,7 @@ impl Widget for String {
     impl_render!(self, out, area => {
         let w = self.len() as Unit;
         area.min(w, 1)?;
-        out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
+        out.queue(Print(&self))?;
         Ok((w, 1))
     });
 }

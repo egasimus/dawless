@@ -28,7 +28,7 @@ impl Area {
 }
 
 #[derive(Copy, Clone, Default)]
-pub struct Offset<W: Widget>(Unit, Unit, W);
+pub struct Offset<W: Widget>(pub Unit, pub Unit, pub W);
 
 impl<W: Widget> Widget for Offset<W> {
     impl_render!(self, out, area => {
@@ -106,27 +106,35 @@ impl<'a> Stacked<'a> {
 
 impl<'a> Widget for Stacked<'a> {
     impl_render!(self, out, area => {
+        let mut x = 0;
+        let mut y = 0;
         match self.0 {
             Axis::X =>{
                 area.min(self.1.len() as Unit, 1)?;
-                for (index, item) in self.1.iter().enumerate() {
-                    Offset(index as Unit, 0, item).render(out, area)?;
+                for item in self.1.iter() {
+                    let (w, h) = Offset(x, 0, item).render(out, area)?;
+                    x = x + w;
+                    y = y.max(h);
                 }
             },
             Axis::Y => {
                 area.min(1, self.1.len() as Unit)?;
-                for (index, item) in self.1.iter().enumerate() {
-                    Offset(0, index as Unit, item).render(out, area)?;
+                for item in self.1.iter() {
+                    let (w, h) = Offset(0, y, item).render(out, area)?;
+                    x = x.max(w);
+                    y = y + h;
                 }
             },
             Axis::Z => {
                 area.min(1, 1 as Unit)?;
                 for item in self.1.iter() {
-                    item.render(out, area)?;
+                    let (w, h) = item.render(out, area)?;
+                    x = x.max(w);
+                    y = y.max(h);
                 }
             }
         };
-        Ok((0, 0))
+        Ok((x, y))
     });
 }
 
