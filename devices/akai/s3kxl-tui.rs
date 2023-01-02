@@ -1,11 +1,11 @@
 use thatsit::*;
 use thatsit_widgets::*;
 
-pub struct S3000XLTUI<'a> {
+pub struct S3000XLUI<'a> {
     menu: FocusStack<'a>
 }
 
-impl<'a> S3000XLTUI<'a> {
+impl<'a> S3000XLUI<'a> {
     pub fn new () -> Self {
         let mut menu = FocusStack::default();
         //menu.add("Edit sample".into(), ());
@@ -13,6 +13,6 @@ impl<'a> S3000XLTUI<'a> {
     }
 }
 
-impl<'a> Widget for S3000XLTUI<'a> {
+impl<'a> Widget for S3000XLUI<'a> {
     impl_render!(self, out, area => self.menu.render(out, area));
 }

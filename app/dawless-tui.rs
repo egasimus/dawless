@@ -1,18 +1,18 @@
 use std::io::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
 use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}}};
-use thatsit_tabs::*;
+use thatsit_widgets::*;
 
 /// Exit flag. Setting this to true terminates the main loop.
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
     run(&EXITED, &mut std::io::stdout(), App::new()
-        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2Render::new()))
-        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonRender::new()))
-        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLRender::new()))
-        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000Render::new()))
-        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLRender::new())))
+        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2UI::new()))
+        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonUI::new()))
+        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLUI::new()))
+        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000UI::new()))
+        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLUI::new())))
 }
 
 /// The main app object, containing a menu of supported devices.
@@ -21,7 +21,7 @@ struct App {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
     /// A tabbed collection of supported devices.
-    devices: TabsLeft<Box<dyn Render>>,
+    devices: TabsLeft<Box<dyn Widget>>,
 }
 
 impl App {
@@ -29,22 +29,22 @@ impl App {
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app
-    fn page (mut self, label: &str, device: Box<dyn Render>) -> Self {
+    fn page (mut self, label: &str, device: Box<dyn Widget>) -> Self {
         self.devices.add(label.into(), device);
         self
     }
 }
 
-impl Render for App {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        Ok(Centered.around(Outset(1).around(self.devices.layout(max)?)))
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
+impl Widget for App {
+    impl_render!(self, out, area => {
+        Aligned(Align::Center, Border(InsetTall, &self.devices)).render(out, area)
+    });
+    impl_handle!(self, event => {
         Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
             self.exit();
             true
         } else {
             self.devices.handle(event)?
         })
-    }
+    });
 }

@@ -2,15 +2,15 @@ use crate::*;
 
 pub type Unit = u16;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Area(pub Unit, pub Unit, pub Unit, pub Unit);
 
 impl Area {
     pub fn min (&self, w: Unit, h: Unit) -> Result<()> {
         if self.2 < w || self.3 < h {
-            Ok(())
+            Err(Error::new(ErrorKind::Other, format!("no space ({:?} < {}x{})", self, w, h)))
         } else {
-            Err(Error::new(ErrorKind::Other, format!("no space")))
+            Ok(())
         }
     }
     pub fn x (&self) -> Unit {
@@ -127,5 +127,27 @@ impl<'a> Widget for Stacked<'a> {
             }
         };
         Ok((0, 0))
+    });
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+pub enum Align {
+    TopLeft,
+    Top,
+    TopRight,
+    Left,
+    #[default] Center,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct Aligned<W: Widget>(pub Align, pub W);
+
+impl<W: Widget> Widget for Aligned<W> {
+    impl_render!(self, out, area => {
+        self.1.render(out, area)
     });
 }
