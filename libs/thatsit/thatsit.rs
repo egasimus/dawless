@@ -260,6 +260,12 @@ impl<'l> Layout<'l> {
     }
 }
 
+impl <'l, T: TUI> From<&'l T> for Layout<'l> {
+    fn from (widget: &'l T) -> Self {
+        Layout::one(widget)
+    }
+}
+
 pub struct Collect<'l>(pub Vec<Layout<'l>>);
 
 impl<'l> FnOnce<(Layout<'l>, )> for Collect<'l> {

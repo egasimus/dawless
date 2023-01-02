@@ -149,17 +149,19 @@ impl<T: TUI> FocusList<T> for FocusColumn<T> {
 }
 
 impl<T: TUI> TUI for FocusColumn<T> {
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        Ok(col_stretch(|add|{ for item in self.items.items.iter() { add(&*item); } }))
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match self.get_mut() {
-            Some(item) => item.handle(event),
-            None => Ok(false)
-        }? || match_key!((event) {
-            KeyCode::Up   => { self.select_prev() },
-            KeyCode::Down => { self.select_next() }
-        }))
+    tui! {
+        layout (self, max) {
+            Ok(Layout::rows(|add|{ for item in self.items.items.iter() { add(&*item); } }))
+        }
+        handle (self, event) {
+            Ok(match self.get_mut() {
+                Some(item) => item.handle(event),
+                None => Ok(false)
+            }? || match_key!((event) {
+                KeyCode::Up   => { self.select_prev() },
+                KeyCode::Down => { self.select_next() }
+            }))
+        }
     }
 }
 
@@ -184,17 +186,19 @@ impl<T: TUI> FocusRow<T> {
 }
 
 impl<T: TUI> TUI for FocusRow<T> {
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        Ok(row(|add|{ for item in self.items.items.iter() { add(&*item); } }))
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        Ok(match self.get_mut() {
-            Some(item) => item.handle(event),
-            None => Ok(false)
-        }? || match_key!((event) {
-            KeyCode::Up   => { self.select_prev() },
-            KeyCode::Down => { self.select_next() }
-        }))
+    tui! {
+        layout (self, max) {
+            Ok(Layout::columns(|add|{ for item in self.items.items.iter() { add(&*item); } }))
+        }
+        handle (self, event) {
+            Ok(match self.get_mut() {
+                Some(item) => item.handle(event),
+                None => Ok(false)
+            }? || match_key!((event) {
+                KeyCode::Up   => { self.select_prev() },
+                KeyCode::Down => { self.select_next() }
+            }))
+        }
     }
 }
 
@@ -214,13 +218,15 @@ impl<T: TUI> FocusStack<T> {
 }
 
 impl<T: TUI> TUI for FocusStack<T> {
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        match self.get() { Some(item) => item.layout(max), None => Ok(BLANK.into()) }
-    }
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        match self.get_mut() {
-            Some(item) => item.handle(event),
-            None => Ok(false)
+    tui! {
+        layout (self, max) {
+            match self.get() { Some(item) => item.layout(max), None => Ok(BLANK.into()) }
+        }
+        handle (self, event) {
+            match self.get_mut() {
+                Some(item) => item.handle(event),
+                None => Ok(false)
+            }
         }
     }
 }

@@ -24,18 +24,21 @@ impl FileEntry {
 }
 
 impl TUI for FileEntry {
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        Ok(Size(self.path.len() as u16, 1).into())
-    }
-    fn render (&self, term: &mut dyn Write, Area(Point(x, y), _): Area) -> Result<()> {
-        let fg = Color::White;
-        let hi = Color::Yellow;
-        let label = format!(" {} {}", if self.is_dir { "📁" } else { "  " }, self.path);
-        term.queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
-            .queue(SetBackgroundColor(Color::AnsiValue(235)))?
-            .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-            .queue(MoveTo(x, y))?.queue(Print(label))?;
-        Ok(())
+    tui! {
+        layout (self, max) {
+            Ok(Size(self.path.len() as u16, 1).into())
+        }
+        render (self, term, area) {
+            let Area(Point(x, y), _) = area;
+            let fg = Color::White;
+            let hi = Color::Yellow;
+            let label = format!(" {} {}", if self.is_dir { "📁" } else { "  " }, self.path);
+            term.queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
+                .queue(SetBackgroundColor(Color::AnsiValue(235)))?
+                .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
+                .queue(MoveTo(x, y))?.queue(Print(label))?;
+            Ok(())
+        }
     }
 }
 
@@ -62,11 +65,15 @@ impl FocusList<FileEntry> for FileList {
 }
 
 impl TUI for FileList {
-    fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
-    fn layout <'a> (&'a self, _: Size) -> Result<Thunk<'a>> {
-        let mut layout = col(|add|{ for item in self.0.items().iter() { add(item) } });
-        layout.min_size = layout.min_size + Size(4, 0);
-        Ok(layout)
+    tui! {
+        layout (self, max) {
+            let mut layout = col(|add|{ for item in self.0.items().iter() { add(item) } });
+            layout.min_size = layout.min_size + Size(4, 0);
+            Ok(layout)
+        }
+        handle (self, event) {
+            self.0.handle(event)
+        }
     }
 }
 

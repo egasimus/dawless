@@ -73,10 +73,10 @@ impl TUI for App {
         layout (self, max) {
             Ok(Layout::layers(|add|{
                 add(&self.frame);
-                Layout::columns(|add|{
+                add(Layout::columns(|add|{
                     add(&self.component1);
                     add(&self.component2);
-                });
+                }));
             }))
         }
     }
@@ -87,10 +87,10 @@ impl TUI for Component {
         layout (self, max) {
             Ok(Layout::layers(|add|{
                 add(&self.frame);
-                Layout::columns(|add|{
+                add(Layout::columns(|add|{
                     add(&self.subcomponent1);
                     add(&self.subcomponent2);
-                });
+                }));
             }))
         }
     }
@@ -99,8 +99,7 @@ impl TUI for Component {
 impl TUI for Subcomponent {
     tui! {
         layout (self, max) {
-            Ok(Layout::layers(|add|{ add(&self.frame); }))
+            Ok((&self.frame).into())
         }
     }
 }
-
