@@ -11,7 +11,7 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
 impl TUI for Spacer {
-    tui! { layout (self, max) { self.0.constrain(max, Wrapper::one(self)) } }
+    tui! { layout (self, max) { self.0.constrain(max, Layout::one(self)) } }
 }
 
 /// A debug widget that displays its size and position on a colored background
@@ -26,7 +26,7 @@ impl Default for DebugBox {
 impl TUI for DebugBox {
     tui! {
         layout (self, max) {
-            Size(16, 3).constrain(max, Wrapper::one(self))
+            Size(16, 3).constrain(max, Layout::one(self))
         }
         render (self, term, area) {
             let Area(Point(x, y), Size(w, h)) = area;
@@ -44,7 +44,7 @@ impl TUI for DebugBox {
 impl TUI for String {
     tui! {
         layout (self, max) {
-            Size(self.len() as u16, 1).constrain(max, Wrapper::one(self))
+            Size(self.len() as u16, 1).constrain(max, Layout::one(self))
         }
         render (self, term, area) {
             let Area(Point(x, y), Size(w, h)) = area;
@@ -57,7 +57,7 @@ impl TUI for String {
 impl TUI for &str {
     tui! {
         layout (self, max) {
-            Size(self.len() as u16, 1).constrain(max, Wrapper::one(self))
+            Size(self.len() as u16, 1).constrain(max, Layout::one(self))
         }
         render (self, term, area) {
             let Area(Point(x, y), Size(w, h)) = area;
@@ -88,7 +88,7 @@ impl<'a> Text<'a> {
 impl<'a> TUI for Text<'a> {
     tui! {
         layout (self, max) {
-            Size(self.0.len() as u16, 1).constrain(max, Wrapper::Empty)
+            Size(self.0.len() as u16, 1).constrain(max, Layout::Ref(self))
         }
         render (self, term, area) {
             let Area(Point(x, y), Size(w, h)) = area;
@@ -185,7 +185,7 @@ impl Button {
 impl TUI for Button {
     tui! {
         layout (self, max) {
-            Size(self.text.len() as u16 + 6, 3).constrain(max, Wrapper::Empty)
+            Size(self.text.len() as u16 + 6, 3).constrain(max, Layout::Ref(self))
         }
         render (self, term, area) {
             let border = (if self.pressed { &Inset(0) as &dyn TUI } else { &Outset(0) as &dyn TUI })
@@ -372,37 +372,37 @@ pub struct Centered;
 impl<'a> TUI for Centered {}
 
 //pub trait Border {
-    //fn around <'a> (&'a self, thunk: Wrapper<'a>) -> Wrapper<'a>;
+    //fn around <'a> (&'a self, thunk: Layout<'a>) -> Layout<'a>;
 //}
 
 //impl Border for Inset {
-    //fn around <'a> (&'a self, mut thunk: Wrapper<'a>) -> Wrapper<'a> {
+    //fn around <'a> (&'a self, mut thunk: Layout<'a>) -> Layout<'a> {
         //let padding   = Size(self.0, self.0);
         //let min_size  = thunk.min_size + padding + padding;
         //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
         //let items = vec![self.into(), thunk.into()];
         //let render_fn = render_stack;
-        //Wrapper { min_size, items, render_fn }
+        //Layout { min_size, items, render_fn }
     //}
 //}
 
 //impl Border for Outset {
-    //fn around <'a> (&'a self, mut thunk: Wrapper<'a>) -> Wrapper<'a> {
+    //fn around <'a> (&'a self, mut thunk: Layout<'a>) -> Layout<'a> {
         //let padding = Size(self.0, self.0);
         //let min_size = thunk.min_size + padding + padding;
         //if self.0 > 0 { thunk = pad(padding, thunk.into()) }
         //let items = vec![self.into(), thunk.into()];
         //let render_fn = render_stack;
-        //Wrapper { min_size, items, render_fn }
+        //Layout { min_size, items, render_fn }
     //}
 //}
 
 //impl Border for Centered {
-    //fn around <'a> (&'a self, thunk: Wrapper<'a>) -> Wrapper<'a> {
+    //fn around <'a> (&'a self, thunk: Layout<'a>) -> Layout<'a> {
         //let min_size  = thunk.min_size;
         //let items     = vec![thunk.into()];
         //let render_fn = render_centered;
-        //Wrapper { min_size, items, render_fn }
+        //Layout { min_size, items, render_fn }
     //}
 //}
 

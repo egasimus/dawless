@@ -129,7 +129,7 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 /// A terminal UI widget
 pub trait TUI {
     tui!(handle (self, _event) { Ok(false) });
-    tui!(layout (self, _max) { Ok(Wrapper::empty()) });
+    tui!(layout (self, _max) { Ok(Layout::empty()) });
     tui!(render (self, _term, _area) { Ok(()) });
 }
 
@@ -154,7 +154,7 @@ impl TUI for Box<dyn TUI> {
 /// (losing their state)
 impl<T: TUI> TUI for Option<T> {
     tui!(handle (self, event) { match self { Some(x) => x.handle(event), None => Ok(false) } });
-    tui!(layout (self, max) { match self { Some(x) => x.layout(max), None => Ok(Wrapper::empty()) } });
+    tui!(layout (self, max) { match self { Some(x) => x.layout(max), None => Ok(Layout::empty()) } });
     tui!(render (self, term, area) { match self { Some(x) => x.render(term, area), None => Ok(()) } });
 }
 
@@ -196,60 +196,74 @@ impl Debug for Box<dyn TUI> {
     }
 }
 
-pub type LayoutFn<'l> = &'l dyn Fn(&'l [Wrapper<'l>], &mut dyn Write, Area)->Result<()>;
+pub type LayoutFn<'l> = &'l dyn Fn(&'l [Layout<'l>], &mut dyn Write, Area)->Result<()>;
 
-pub enum Wrapper<'l> {
-    Layout(Size, LayoutFn<'l>, Vec<Wrapper<'l>>),
-    Widget(&'l dyn TUI),
-    Empty
+pub enum Layout<'l> {
+    Many(Size, LayoutFn<'l>, Vec<Layout<'l>>),
+    Ref(&'l dyn TUI),
+    Box(Box<dyn TUI>),
+    None
 }
 
-impl<'l> Wrapper<'l> {
+impl<'l> Layout<'l> {
     pub fn empty () -> Self {
-        Self::Empty
+        Self::None
     }
     pub fn one (item: &'l dyn TUI) -> Self {
-        Self::Widget(item)
+        Self::Ref(item)
+    }
+    pub fn boxed <T: TUI> (item: T) -> Self {
+        Self::Box(Box::new(item))
     }
     pub fn columns (define: impl Fn(&mut Collect<'l>)) -> Self {
         let mut items = Collect(vec![]);
         define(&mut items);
         let items = items.0;
-        Self::Layout(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
     }
     pub fn rows (define: impl Fn(&mut Collect<'l>)) -> Self {
         let mut items = Collect(vec![]);
         define(&mut items);
         let items = items.0;
-        Self::Layout(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+    }
+    pub fn layers (define: impl Fn(&mut Collect<'l>)) -> Self {
+        let mut items = Collect(vec![]);
+        define(&mut items);
+        let items = items.0;
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
     }
     pub fn render (&'l self, term: &mut dyn Write, area: Area) -> Result<()> {
         match self {
-            Self::Layout(_, render, items) => render(items.as_slice(), term, area),
-            Self::Widget(item) => item.render(term, area),
-            Self::Empty => Ok(())
+            Self::Many(_, render, items) => render(items.as_slice(), term, area),
+            Self::Ref(item) => item.render(term, area),
+            Self::Box(item) => item.render(term, area),
+            Self::None => Ok(())
         }
     }
 }
 
-pub struct Collect<'l>(pub Vec<Wrapper<'l>>);
+pub struct Collect<'l>(pub Vec<Layout<'l>>);
 
-impl<'l> FnOnce<(Wrapper<'l>, )> for Collect<'l> {
+impl<'l> FnOnce<(Layout<'l>, )> for Collect<'l> {
     type Output = ();
-    extern "rust-call" fn call_once (self, _: (Wrapper<'l>,)) -> Self::Output { unreachable!() }
+    extern "rust-call" fn call_once (self, _: (Layout<'l>,)) -> Self::Output { unreachable!() }
 }
-impl<'l> FnMut<(Wrapper<'l>, )> for Collect<'l> {
-    extern "rust-call" fn call_mut (&mut self, args: (Wrapper<'l>,)) -> Self::Output {
+
+impl<'l> FnMut<(Layout<'l>, )> for Collect<'l> {
+    extern "rust-call" fn call_mut (&mut self, args: (Layout<'l>,)) -> Self::Output {
         self.0.push(args.0)
     }
 }
+
 impl<'l, T: TUI> FnOnce<(&'l T, )> for Collect<'l> {
     type Output = ();
     extern "rust-call" fn call_once (self, _: (&'l T,)) -> Self::Output { unreachable!() }
 }
+
 impl<'l, T: TUI> FnMut<(&'l T, )> for Collect<'l> {
     extern "rust-call" fn call_mut (&mut self, args: (&'l T,)) -> Self::Output {
-        self.0.push(Wrapper::one(args.0))
+        self.0.push(Layout::one(args.0))
     }
 }
 
@@ -279,13 +293,13 @@ mod test {
 
     impl TUI for Something {
         tui!(layout (self, max) {
-            Ok(Wrapper::columns(|add|{
+            Ok(Layout::columns(|add|{
                 add(&self.a);
-                add(Wrapper::rows(|add|{
+                add(Layout::rows(|add|{
                     add(&self.b);
                     add(&self.c);
                 }));
-                add(Wrapper::rows(|add|{
+                add(Layout::rows(|add|{
                     add(&self.d);
                     add(&self.e);
                     add(&self.f);

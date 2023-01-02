@@ -3,24 +3,20 @@
 /// because when they change, they tend to change quite a bit,
 /// all at once, in numerous places.
 #[macro_export] macro_rules! tui {
-    (
-        $(layout ($self1:ident, $max:ident) $body1:block)?
-        $(render ($self2:ident, $term:ident, $area:ident) $body2:block)?
-        $(handle ($self3:ident, $event:ident) $body3:block)?
-    ) => {
-        $(
-            /// Describe this widget out of renderable elements
-            fn layout <'l> (&'l $self1, $max: Size) -> Result<Layout<'l>> $body1
-        )?
-        $(
-            /// Render this widget by directly emitting draw commands
-            fn render ($self2, $term: &mut dyn Write, $area: Area) -> Result<()> $body2
-        )?
-        $(
-            /// Handle an input event. Return whether the event was captured.
-            fn handle (&mut $self3, $event: &Event) -> Result<bool> $body3
-        )?
-    }
+    (handle ($self:ident, $event:ident) $body:block) => {
+        /// Handle an input event. Return whether the event was captured.
+        fn handle (&mut $self, $event: &Event) -> Result<bool> $body
+    };
+    (layout ($self:ident, $max:ident) $body:block) => {
+        /// Describe this widget out of renderable elements
+        fn layout <'l> (&$self, $max: Size) -> Result<Box<dyn TUI>>
+        $body
+    };
+    (render ($self:ident, $term:ident, $area:ident) $body:block) => {
+        /// Render this widget by directly emitting draw commands
+        fn render ($self, $term: &mut dyn Write, $area: Area) -> Result<()>
+        $body
+    };
 }
 
 /// Generate an `Event::Key(KeyEvent { ... })` variant
