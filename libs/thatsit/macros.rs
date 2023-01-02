@@ -4,30 +4,26 @@
 /// all at once, in numerous places.
 #[macro_export] macro_rules! tui {
     (
-        $lifetime:lifetime
-        $(layout ($self1:ident, $max:ident) $body1:block)?
-        //$(render ($self2:ident, $term:ident, $area:ident) $body2:block)?
-        $(handle ($self3:ident, $event:ident) $body3:block)?
+        <$l1:lifetime$(,$($id:ident:$ty:path),+)?> $type:ty {
+            $(<$l2:lifetime> layout ($self1:ident, $max:ident) $body1:block)?
+            $(handle ($self3:ident, $event:ident) $body3:block)?
+        }
     ) => {
-        $(
-            /// Describe this widget out of renderable elements
-            fn layout (&$lifetime $self1, $max: Size)
-                -> Result<Layout<$lifetime>>
-            $body1
-        )?
-        $(
-            /// Handle an input event. Return whether the event was captured.
-            fn handle (&$lifetime mut $self3, $event: &Event)
-                -> Result<bool>
-            $body3
-        )?
-        //$(
-            ///// Render this widget by directly emitting draw commands
-            //fn render (&$lifetime $self2, $term: &mut dyn Write, $area: Area)
-                //-> Result<()>
-            //$body2
-        //)?
-    }
+        impl<$l1$(,$($id:$ty),+)?> TUI<$l1> for $type {
+            $(
+                /// Describe this widget out of renderable elements
+                fn layout <$l2: $l1> (&$l2 $self1, $max: Size)
+                    -> Result<Layout<$l2>>
+                $body1
+            )?
+            $(
+                /// Handle an input event. Return whether the event was captured.
+                fn handle (&mut $self3, $event: &Event)
+                    -> Result<bool>
+                $body3
+            )?
+        }
+    };
 }
 
 /// Generate an `Event::Key(KeyEvent { ... })` variant

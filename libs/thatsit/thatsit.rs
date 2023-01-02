@@ -42,7 +42,7 @@ use std::{
 /// * `exited` - Atomic exit flag. Setting this to `true` tells both threads to end.
 /// * `term` - A writable output, such as `std::io::stdout()`.
 /// * `app` - An instance of the root widget that contains your application.
-pub fn run <'a, T: TUI<'a> + 'a> (
+pub fn run <T: TUI> (
     exited: &'static std::sync::atomic::AtomicBool,
     term:   &mut dyn Write,
     app:    T
@@ -63,7 +63,8 @@ pub fn run <'a, T: TUI<'a> + 'a> (
         }
         // Render
         let screen_size: Size = size().unwrap().into();
-        match app.borrow().layout(screen_size) {
+        let layout = app.borrow().layout(screen_size);
+        match layout {
             Ok(layout) => if let Err(error) = layout.render(
                 term, Area(Point::MIN, screen_size)
             ) {
@@ -128,32 +129,20 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 
 /// A terminal UI widget
 pub trait TUI<'a> {
-    tui! { 'a
-        layout (self, _max) { Ok(Layout::None) }
-        handle (self, _event) { Ok(false) }
-    }
+    fn layout <'b: 'a> (&'b self, _max: Size) -> Result<Layout<'b>> { Ok(Layout::None) }
+    fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
 }
 
-impl<'a, T: TUI<'a> + ?Sized> TUI<'a> for &T {
-    tui! { 'a
-        layout (self, max) { (*self).layout(max) }
-        handle (self, _event) { unreachable!() }
-    }
-}
-
-/// Box widgets to transfer ownership where you don't want to specify the type.
-impl<'a> TUI<'a> for Box<dyn TUI<'a>> {
-    tui! { 'a
-        layout (self, max) { (**self).layout(max) }
+tui! {
+    <'a> Box<dyn TUI<'a>> {
+        <'b> layout (self, max) { (**self).layout(max) }
         handle (self, event) { (*self).deref_mut().handle(event) }
     }
 }
 
-/// Optional widgets can be hidden by setting them to `None`
-/// (losing their state)
-impl<'a, T: TUI<'a>> TUI<'a> for Option<T> {
-    tui! { 'a
-        layout (self, max) {
+tui! {
+    <'a, T: TUI<'a>> Option<T> {
+        <'b> layout (self, max) {
             match self { Some(x) => x.layout(max), None => Ok(Layout::None) }
         }
         handle (self, event) {
@@ -162,10 +151,9 @@ impl<'a, T: TUI<'a>> TUI<'a> for Option<T> {
     }
 }
 
-/// `RefCell<T> where T: TUI` transparently wraps widgets
-impl<'a, T: TUI<'a>> TUI<'a> for RefCell<T> {
-    tui! { 'a
-        layout (self, max) {
+tui! {
+    <'a, T: TUI<'a>> RefCell<T> {
+        <'b> layout (self, max) {
             unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
         }
         handle (self, event) {
@@ -175,9 +163,9 @@ impl<'a, T: TUI<'a>> TUI<'a> for RefCell<T> {
 }
 
 /// `Rc<RefCell<T>> where T: TUI`s transparently wraps widgets
-impl<'a, T: TUI<'a>> TUI<'a> for Rc<RefCell<T>> {
-    tui! { 'a
-        layout (self, max) {
+tui! {
+    <'a, T: TUI<'a>> Rc<RefCell<T>> {
+        <'b> layout (self, max) {
             unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
         }
         handle (self, event) {
@@ -274,12 +262,8 @@ mod test {
     #[derive(Default)]
     struct One;
 
-    impl<'a> TUI<'a> for One {
-        tui!('a 
-            render (self, term, area) {
-                write!(term, "\n{}", area)
-            }
-        );
+    tui! {
+        <'a> One {}
     }
     
     #[derive(Default)]
@@ -292,9 +276,9 @@ mod test {
         f: One,
     }
 
-    impl<'a> TUI<'a> for Something {
-        tui! { 'a
-            layout (self, max) {
+    tui! {
+        <'a> Something {
+            <'b> layout (self, max) {
                 Ok(Layout::columns(|add|{
                     add(&self.a);
                     add(Layout::rows(|add|{

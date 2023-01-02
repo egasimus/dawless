@@ -1,0 +1,13 @@
+[package]
+name = "thatsit2"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "thatsit2.rs"
+
+[dependencies]
+crossterm = "0.25"
+better-panic = "0.3.0"
+opt-mod = { path = "../opt-mod" }
+

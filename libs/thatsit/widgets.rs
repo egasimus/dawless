@@ -10,7 +10,7 @@ pub const BLANK: &'static Spacer = &Spacer(Size::MIN);
 /// A global instance of the 1x1 empty widget
 pub const SPACE: &'static Spacer = &Spacer(Size(1, 1));
 
-impl<'a> TUI<'a> for Spacer {
+impl TUI for Spacer {
     tui! { 'a layout (self, max) { self.0.constrain(max, Layout::One(self)) } }
 }
 
@@ -23,10 +23,9 @@ impl Default for DebugBox {
     }
 }
 
-impl<'a> TUI<'a> for DebugBox {
-    tui! {
-        'a
-        layout (self, max) {
+tui! {
+    <'a> DebugBox {
+        <'b> layout (self, max) {
             Size(16, 3).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
                 let Area(Point(x, y), Size(w, h)) = area;
                 let background = " ".repeat(w as usize);
@@ -41,10 +40,9 @@ impl<'a> TUI<'a> for DebugBox {
     }
 }
 
-impl<'a> TUI<'a> for String {
-    tui! {
-        'a
-        layout (self, max) {
+tui! {
+    <'a> String {
+        <'b> layout (self, max) {
             Size(self.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
                 let Area(Point(x, y), Size(w, h)) = area;
                 term.queue(MoveTo(x, y))?.queue(Print(&self))?;
@@ -54,10 +52,9 @@ impl<'a> TUI<'a> for String {
     }
 }
 
-impl<'a> TUI<'a> for &str {
-    tui! {
-        'a
-        layout (self, max) {
+tui! {
+    <'a> &str {
+        <'b> layout (self, max) {
             Size(self.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term, area|{
                 let Area(Point(x, y), Size(w, h)) = area;
                 term.queue(MoveTo(x, y))?.queue(Print(&self))?;
@@ -85,10 +82,9 @@ impl<'a> Text<'a> {
     pub fn bg (&mut self, color: Option<Color>) -> Self { self.2 = color; *self }
 }
 
-impl<'a> TUI<'a> for Text<'a> {
-    tui! {
-        'a
-        layout (self, max) {
+tui! {
+    <'a> Text<'a> {
+        <'b> layout (self, max) {
             Size(self.0.len() as u16, 1).constrain(max, Layout::CustomBox(Box::new(move |term,area|{
                 let Area(Point(x, y), Size(w, h)) = area;
                 term.queue(MoveTo(x, y))?.queue(Print(&self.0))?;
@@ -102,10 +98,9 @@ impl<'a> TUI<'a> for Text<'a> {
 #[derive(Debug)]
 pub struct Filled(pub Color);
 
-impl<'a> TUI<'a> for Filled {
-    tui! {
-        'a
-        layout (self, max) {
+tui! {
+    <'a> Filled {
+        <'b> layout (self, max) {
             Ok(Layout::CustomBox(Box::new(move |term,area|{
                 let Area(Point(x, y), Size(w, h)) = area;
                 let background  = " ".repeat(w as usize);
@@ -119,8 +114,7 @@ impl<'a> TUI<'a> for Filled {
 
 /// A widget that switches between two states
 #[derive(Default, Debug)]
-pub struct Toggle<'a, T: TUI<'a>, U: TUI<'a>> {
-    pub _phantom: std::marker::PhantomData<&'a T>,
+pub struct Toggle<T: TUI, U: TUI> {
     /// The widget displayed when `state == false`
     pub closed: T,
     /// The widget displayed when `state == true`
@@ -129,8 +123,8 @@ pub struct Toggle<'a, T: TUI<'a>, U: TUI<'a>> {
     state: bool,
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
-    pub fn new (closed: T, open: U) -> Self { Self { state: false, closed, open, _phantom: std::marker::PhantomData } }
+impl<T: TUI, U: TUI> Toggle<T, U> {
+    pub fn new (closed: T, open: U) -> Self { Self { state: false, closed, open } }
     pub fn toggle (&mut self) { self.state = !self.state }
     pub fn get (&mut self) -> bool { self.state }
     pub fn set (&mut self, value: bool) { self.state = value }
@@ -138,21 +132,21 @@ impl<'a, T: TUI<'a>, U: TUI<'a>> Toggle<'a, T, U> {
     pub fn closed_mut (&mut self) -> &mut T { &mut self.closed }
     pub fn open (&mut self) -> &U { &self.open }
     pub fn open_mut (&mut self) -> &mut U { &mut self.open }
-    pub fn current (&'a self) -> &dyn TUI { if self.state { &self.open } else { &self.closed } }
-    pub fn current_mut (&'a mut self) -> &mut dyn TUI<'a> {
+    pub fn current (&self) -> &dyn TUI { if self.state { &self.open } else { &self.closed } }
+    pub fn current_mut (&mut self) -> &mut dyn TUI {
         if self.state { &mut self.open } else { &mut self.closed }
     }
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> From<Toggle<'a, T, U>> for bool {
-    fn from (it: Toggle<'a, T, U>) -> Self { it.state }
+impl<T: TUI, U: TUI> From<Toggle<T, U>> for bool {
+    fn from (it: Toggle<T, U>) -> Self { it.state }
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> From<&'a Toggle<'a, T, U>> for bool {
-    fn from (it: &'a Toggle<'a, T, U>) -> Self { it.state }
+impl<'a, T: TUI, U: TUI> From<&'a Toggle<T, U>> for bool {
+    fn from (it: &'a Toggle<T, U>) -> Self { it.state }
 }
 
-impl<'a, T: TUI<'a>, U: TUI<'a>> TUI<'a> for Toggle<'a, T, U> {
+impl<T: TUI, U: TUI> TUI for Toggle<T, U> {
     tui! {
         'a
         layout (self, max) {
@@ -187,7 +181,7 @@ impl Button {
     }
 }
 
-impl<'a> TUI<'a> for Button {
+impl TUI for Button {
     tui! {
         'a
         layout (self, max) {
@@ -224,7 +218,7 @@ impl<'a> TUI<'a> for Button {
 }
 
 #[derive(Clone, Copy)]
-pub struct Columns<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
+pub struct Columns<'a, const N: usize>(pub [&'a dyn TUI; N]);
 
 impl<'a, const N: usize> Columns<'a, N> {
     fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
@@ -244,9 +238,8 @@ impl<'a, const N: usize> Columns<'a, N> {
     }
 }
 
-impl<'a, const N: usize> TUI<'a> for Columns<'a, N> {
-    tui! {
-        'a
+impl<'a, const N: usize> TUI for Columns<'a, N> {
+    tui! { 'b
         layout (self, max) {
             let items = self.0.iter().map(|item|Layout::One(item)).collect();
             Ok(Layout::Many(max, &Self::render, items))
@@ -254,7 +247,7 @@ impl<'a, const N: usize> TUI<'a> for Columns<'a, N> {
     }
 }
 
-pub struct Rows<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
+pub struct Rows<'a, const N: usize>(pub [&'a dyn TUI; N]);
 
 impl<'a, const N: usize> Rows<'a, N> {
     fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
@@ -269,9 +262,9 @@ impl<'a, const N: usize> Rows<'a, N> {
     }
 }
 
-impl<'a, const N: usize> TUI<'a> for Rows<'a, N> {
+impl<'a, const N: usize> TUI for Rows<'a, N> {
     tui! {
-        'a
+        'b
         layout (self, max) {
             let items = self.0.iter().map(|item|Layout::One(item)).collect();
             Ok(Layout::Many(max, &Self::render, items))
@@ -279,7 +272,7 @@ impl<'a, const N: usize> TUI<'a> for Rows<'a, N> {
     }
 }
 
-pub struct Layers<'a, const N: usize>(pub [&'a dyn TUI<'a>; N]);
+pub struct Layers<'a, const N: usize>(pub [&'a dyn TUI; N]);
 
 impl<'a, const N: usize> Layers<'a, N> {
     fn render (items: &Vec<Layout<'a>>, term: &mut dyn Write, area: Area)->Result<()> {
@@ -288,9 +281,9 @@ impl<'a, const N: usize> Layers<'a, N> {
     }
 }
 
-impl<'a, const N: usize> TUI<'a> for Layers<'a, N> {
+impl<'a, const N: usize> TUI for Layers<'a, N> {
     tui! {
-        'a
+        'b
         layout (self, max) {
             Ok(Layout::Many(
                 max,
@@ -336,7 +329,7 @@ impl Inset {
     }
 }
 
-impl<'a> TUI<'a> for Inset {
+impl TUI for Inset {
     tui! {
         'a
         layout (self, max) {
@@ -380,7 +373,7 @@ impl Outset {
     }
 }
 
-impl<'a> TUI<'a> for Outset {
+impl TUI for Outset {
     tui! {
         'a
         layout (self, max) {
@@ -392,4 +385,4 @@ impl<'a> TUI<'a> for Outset {
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Centered;
 
-impl<'a> TUI<'a> for Centered {}
+impl TUI for Centered {}
