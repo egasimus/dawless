@@ -116,8 +116,8 @@ impl Widget for Electribe2PatternListUI {
 
     impl_render!(self, out, area => {
         Stacked::x(|add|{
-            add(Stacked::y(|row|{
-                row(Self::format_header(
+            add(Stacked::y(|add|{
+                add(Self::format_header(
                     "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
                 ).with(Color::White).bold());
 
@@ -129,9 +129,15 @@ impl Widget for Electribe2PatternListUI {
                         break
                     }
                     if let Some(selected) = self.selected() && selected == index {
-                        row(Styled(&|s: String|s.on(Color::Yellow).with(Color::Black).bold(), label.clone()));
+                        add(Styled(&|s: String|s
+                            .on(Color::Yellow)
+                            .with(Color::Black)
+                            .bold(),
+                            label.clone()));
                     } else {
-                        row(Styled(&|s: String|s.with(Color::White), label.clone()));
+                        add(Styled(&|s: String|s
+                            .with(Color::White),
+                            label.clone()));
                     }
                 }
             }));
@@ -253,13 +259,13 @@ impl Electribe2PatternUI {
     pub fn field (
         label: &str, label_width: Unit, value: impl Display, value_width: Unit
     ) -> Fix<Stacked> {
-        Fix::XY((label_width + value_width, 3), Stacked::x(|add|{
-            add(Fix::X(label_width,
-                Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
-            ));
+        Fix::XY((label_width + value_width, 3), Stacked::z(|add|{
             add(Fix::X(value_width, Border(InsetTall,
                 Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
             )));
+            add(Fix::X(label_width,
+                Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
+            ));
         }))
     }
 }
@@ -326,47 +332,57 @@ impl Electribe2PartUI {
             ));
         }))
     }
+    pub fn layout_metadata (&self) -> Stacked {
+        Stacked::y(|add|{
+            add(Stacked::x(|add|{
+                add(Self::field("Sample", &self.0.sample));
+                add(1);
+                add(Self::field("Pitch", &self.0.pitch));
+                add(1);
+                add(Self::field("Osc", &self.0.pitch));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("Filter", &self.0.filter_type));
+                add(1);
+                add(Self::field("Freq", &self.0.filter_type));
+                add(1);
+                add(Self::field("Res", &self.0.filter_type));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("Mod", &self.0.filter_type));
+                add(1);
+                add(Self::field("Speed", &self.0.filter_type));
+                add(1);
+                add(Self::field("Depth", &self.0.filter_type));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("IFX", &self.0.filter_type));
+                add(1);
+                add(Self::field("Type", &self.0.filter_type));
+                add(1);
+                add(Self::field("Param", &self.0.filter_type));
+            }));
+        })
+    }
+    pub fn layout_piano_roll (&self) -> laterna::PianoRoll {
+        let mut events = vec![];
+        for (index, step) in self.0.steps.iter().enumerate() {
+            events.push((index, step.note_1 as usize));
+        }
+        laterna::PianoRoll(events)
+    }
 }
 
 impl Widget for Electribe2PartUI {
 
     impl_render!(self, out, area => {
         Stacked::x(|add|{
-            add(Stacked::y(|add|{
-                add(Stacked::x(|add|{
-                    add(Self::field("Sample", &self.0.sample));
-                    add(1);
-                    add(Self::field("Pitch", &self.0.pitch));
-                    add(1);
-                    add(Self::field("Osc", &self.0.pitch));
-                }));
-                add(1);
-                add(Stacked::x(|add|{
-                    add(Self::field("Filter", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Freq", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Res", &self.0.filter_type));
-                }));
-                add(1);
-                add(Stacked::x(|add|{
-                    add(Self::field("Mod", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Speed", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Depth", &self.0.filter_type));
-                }));
-                add(1);
-                add(Stacked::x(|add|{
-                    add(Self::field("IFX", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Type", &self.0.filter_type));
-                    add(1);
-                    add(Self::field("Param", &self.0.filter_type));
-                }));
-            }));
+            add(self.layout_metadata());
             add(1);
-            add(laterna::PianoRoll(vec![]));
+            add(self.layout_piano_roll());
         }).render(out, area)
     });
 

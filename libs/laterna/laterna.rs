@@ -25,8 +25,16 @@ impl Widget for PianoRoll {
                 .queue(MoveTo(area.x() + 3, area.y() + i))?
                 .queue(Print(grid))?;
         }
+        out.queue(SetForegroundColor(Color::AnsiValue(200)))?;
+        for (time, pitch) in self.0.iter() {
+            let x = area.x() + 3 + *time as Unit;
+            let y = area.y() + (*pitch as Unit + *time as Unit) % 12;
+            let c = if pitch % 2 == 1 {"▀"} else {"▄"};
+            out.queue(MoveTo(x, y))?.queue(Print(c))?;
+        }
         out
-            .queue(SetForegroundColor(Color::AnsiValue(200)))?
+            .queue(SetForegroundColor(Color::Green))?
+            //.queue(SetForegroundColor(Color::AnsiValue(200)))?
             .queue(MoveTo(area.x() + 15, area.y() + 6))?.queue(Print("▀ ▄▄"))?
             .queue(MoveTo(area.x() + 19, area.y() + 7))?.queue(Print("▄▄  ▄▄"))?
             .queue(MoveTo(area.x() + 25, area.y() + 8))?.queue(Print("▄▄▄▄  "))?;

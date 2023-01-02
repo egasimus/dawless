@@ -52,7 +52,8 @@ pub struct Offset<W: Widget>(pub Unit, pub Unit, pub W);
 impl<W: Widget> Widget for Offset<W> {
     impl_render!(self, out, area => {
         let Area(x, y, w, h) = area;
-        self.2.render(out, Area(x + self.0, y + self.1, w - self.0, h - self.1))
+        let area = Area(x + self.0, y + self.1, w.saturating_sub(self.0), h.saturating_sub(self.1));
+        self.2.render(out, area)
     });
 }
 
