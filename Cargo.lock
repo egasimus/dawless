@@ -300,7 +300,7 @@ dependencies = [
  "dawless-korg",
  "opt-mod",
  "thatsit",
- "thatsit-tabs",
+ "thatsit-widgets",
 ]
 
 [[package]]
@@ -314,7 +314,7 @@ dependencies = [
  "opt-mod",
  "tabwriter",
  "thatsit",
- "thatsit-focus",
+ "thatsit-widgets",
 ]
 
 [[package]]
@@ -322,7 +322,7 @@ name = "dawless-iconnectivity"
 version = "0.1.0"
 dependencies = [
  "thatsit",
- "thatsit-focus",
+ "thatsit-widgets",
 ]
 
 [[package]]
@@ -336,9 +336,7 @@ dependencies = [
  "opt-mod",
  "tabwriter",
  "thatsit",
- "thatsit-focus",
- "thatsit-fs",
- "thatsit-tabs",
+ "thatsit-widgets",
 ]
 
 [[package]]
@@ -868,28 +866,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "thatsit-focus"
+name = "thatsit-widgets"
 version = "0.1.0"
 dependencies = [
- "thatsit",
-]
-
-[[package]]
-name = "thatsit-fs"
-version = "0.1.0"
-dependencies = [
- "crossterm",
+ "opt-mod",
  "pathdiff",
  "thatsit",
- "thatsit-focus",
-]
-
-[[package]]
-name = "thatsit-tabs"
-version = "0.1.0"
-dependencies = [
- "thatsit",
- "thatsit-focus",
 ]
 
 [[package]]

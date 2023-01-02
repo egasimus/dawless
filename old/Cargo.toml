@@ -1,10 +1,14 @@
 [package]
-name = "thatsit"
+name = "thatsit0"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-path = "mod.rs"
+path = "thatsit.rs"
+
+[[example]]
+name = "thatsit-layout-example"
+path = "examples/layout.rs"
 
 [dependencies]
 crossterm = "0.25"

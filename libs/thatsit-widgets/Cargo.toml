@@ -1,5 +1,5 @@
 [package]
-name = "thatsit"
+name = "thatsit-widgets"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,10 +7,10 @@ edition = "2021"
 path = "mod.rs"
 
 [[example]]
-name = "thatsit"
+name = "thatsit-widgets"
 path = "example.rs"
 
 [dependencies]
-crossterm = "0.25"
-better-panic = "0.3.0"
 opt-mod = { path = "../opt-mod" }
+thatsit = { path = "../thatsit" }
+pathdiff = "0.2"

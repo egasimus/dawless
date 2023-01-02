@@ -1,11 +1,8 @@
 [workspace]
 members = [
   # UI framework
-  "libs/thatsit2",
-  #"libs/thatsit"
-  "libs/thatsit-focus",
-  "libs/thatsit-fs",
-  "libs/thatsit-tabs",
+  "libs/thatsit",
+  "libs/thatsit-widgets",
 
   # Data formats
   "libs/opt-mod",

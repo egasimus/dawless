@@ -14,12 +14,10 @@ clap = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter = { optional = true, version = "1.2.1" }
 lazy_static = { optional = true, version = "1.4" }
 
-laterna       = { optional = true, path = "../../libs/laterna" }
-thatsit       = { optional = true, path = "../../libs/thatsit2" }
-thatsit-fs    = { optional = true, path = "../../libs/thatsit-fs" }
-thatsit-focus = { optional = true, path = "../../libs/thatsit-focus" }
-thatsit-tabs  = { optional = true, path = "../../libs/thatsit-tabs" }
+laterna = { optional = true, path = "../../libs/laterna" }
+thatsit = { optional = true, path = "../../libs/thatsit" }
+thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
 
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "lazy_static", "laterna", "thatsit", "thatsit-fs", "thatsit-focus", "thatsit-tabs" ]
+tui = [ "lazy_static", "laterna", "thatsit", "thatsit-widgets" ]

@@ -1,5 +1,4 @@
 use thatsit::*;
-use thatsit_focus::*;
 use std::{env::current_dir, fs::{metadata, read_dir}};
 use crossterm::{
     style::{SetAttribute, Attribute, SetBackgroundColor, SetForegroundColor, Print, Color},

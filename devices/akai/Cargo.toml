@@ -15,9 +15,9 @@ clap = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter = { optional = true, version = "1.2.1" }
 lazy_static = { optional = true, version = "1.4" }
 
-thatsit       = { optional = true, path = "../../libs/thatsit2" }
-thatsit-focus = { optional = true, path = "../../libs/thatsit-focus" }
+thatsit = { optional = true, path = "../../libs/thatsit" }
+thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
 
 [features]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "cursive", "lazy_static", "thatsit", "thatsit-focus" ]
+tui = [ "cursive", "lazy_static", "thatsit", "thatsit-widgets" ]

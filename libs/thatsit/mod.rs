@@ -24,6 +24,7 @@ use std::{
 opt_mod::module_flat!(render);
 opt_mod::module_flat!(layout);
 opt_mod::module_flat!(handle);
+opt_mod::module_flat!(focus);
 
 /// Run the main loop. The main thread goes into a render loop. A separate input thread is
 /// launched, which sends input to the main thread.

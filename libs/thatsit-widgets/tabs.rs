@@ -1,6 +1,5 @@
 use std::io::Result;
 use thatsit::{*, crossterm::{self, event::Event, style::Color}};
-use thatsit_focus::*;
 
 pub struct DefaultTabsTheme;
 

@@ -1,7 +1,5 @@
-#![feature(unboxed_closures, fn_traits)]
-
+use crate::*;
 use std::{slice::Iter, slice::IterMut};
-use thatsit::*;
 
 /// The Focus API.
 pub trait Focus<T> {
