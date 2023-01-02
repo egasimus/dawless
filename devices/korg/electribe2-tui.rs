@@ -252,21 +252,21 @@ impl Electribe2PatternListUI {
                     }));
                     add(1);
                     add(Stacked::x(|add|{
-                        add(self.layout_field("Key",        4, &page.pattern.key, 9));
+                        add(self.layout_field("Key", 4, &page.pattern.key, 9));
                         add(2);
-                        add(self.layout_field("Scale",      6, &page.pattern.scale, 9));
+                        add(self.layout_field("Scale", 6, &page.pattern.scale, 9));
                         add(2);
-                        add(self.layout_field("Chords",     7, &page.pattern.chord_set, 10));
+                        add(self.layout_field("Chords", 7, &page.pattern.chord_set, 10));
                         add(2);
-                        add(self.layout_field("MFX",        6, &page.pattern.mfx_type, 10));
+                        add(self.layout_field("MFX", 6, &page.pattern.mfx_type, 10));
                     }));
                     add(1);
                     add(Stacked::x(|add|{
-                        add(self.layout_field("Gate arp",   9, &page.pattern.gate_arp, 9));
+                        add(self.layout_field("Gate arp", 9, &page.pattern.gate_arp, 9));
                         add(2);
-                        add(self.layout_field("Alt 13/14", 10, &page.pattern.scale, 10));
+                        add(self.layout_field("Alt 13/14", 10, &page.pattern.alt_13_14, 10));
                         add(2);
-                        add(self.layout_field("Alt 15/16", 10, &page.pattern.chord_set, 10));
+                        add(self.layout_field("Alt 15/16", 10, &page.pattern.alt_15_16, 10));
                     }))
                 }));
             })))

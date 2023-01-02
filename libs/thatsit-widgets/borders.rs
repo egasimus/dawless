@@ -14,6 +14,7 @@ impl<T: BorderStyle, W: Widget> Widget for Border<T, W> {
         let bottom_edge = "▁".repeat((w - 1) as usize);
         let left_edge   = "▊";
         let right_edge  = "▎";
+        let background  = " ".repeat(w.saturating_sub(2) as usize);
         out.queue(ResetColor)?
             .queue(SetBackgroundColor(Color::AnsiValue(16)))?
             .queue(SetForegroundColor(bg))?
@@ -27,6 +28,9 @@ impl<T: BorderStyle, W: Widget> Widget for Border<T, W> {
             .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
         for y in y..y+h {
             out.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
+        }
+        for y in y+1..y+h-1 {
+            out.queue(MoveTo(x+1, y))?.queue(Print(&background))?;
         }
         self.1.render(out, Area(x+1, y+1, w-2, h-2))
     });
