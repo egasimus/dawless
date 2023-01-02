@@ -115,9 +115,29 @@ pub struct Electribe2PatternListUI(
 impl Widget for Electribe2PatternListUI {
 
     impl_render!(self, out, area => {
-        Stacked::x(|column|{
-            column(self.layout_list(area));
-            column(self.layout_detail());
+        Stacked::x(|add|{
+            add(Stacked::y(|row|{
+                row(Self::format_header(
+                    "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
+                ).with(Color::White).bold());
+
+                let max_height = area.h() - 1; // TODO determine automatically by Stacked
+                                               // by providing shrunken Area
+
+                for (index, (label, _)) in self.iter().enumerate().skip(self.0) {
+                    if index as Unit >= max_height {
+                        break
+                    }
+                    if let Some(selected) = self.selected() && selected == index {
+                        row(Styled(&|s: String|s.on(Color::Yellow).with(Color::Black).bold(), label.clone()));
+                    } else {
+                        row(Styled(&|s: String|s.with(Color::White), label.clone()));
+                    }
+                }
+            }));
+            if self.1.open && let Some((_,page)) = self.1.pages.get() {
+                add(page);
+            }
         }).render(out, area)
     });
 
@@ -161,10 +181,12 @@ impl Electribe2PatternListUI {
             scale,
         )
     }
+
     #[inline]
     pub fn len (&self) -> usize {
         self.1.len()
     }
+
     pub fn replace (&mut self, bank: &Electribe2PatternBank) {
         self.1.pages.replace(bank.patterns.iter().enumerate()
             .map(|(index,pattern)|(Self::format_header(
@@ -175,17 +197,20 @@ impl Electribe2PatternListUI {
                 pattern.beats,
                 pattern.key,
                 pattern.scale,
-            ), Electribe2PatternUI::new(pattern))).collect::<Vec<_>>());
+            ), Electribe2PatternUI(pattern.clone()))).collect::<Vec<_>>());
         self.1.pages.select_next();
     }
+
     #[inline]
     pub fn selected (&self) -> Option<usize> {
         self.1.pages.selected()
     }
+
     #[inline]
     pub fn iter (&self) -> Iter<(String, Electribe2PatternUI)> {
         self.1.pages.iter()
     }
+
     pub fn swap_up (&mut self) -> bool {
         if let Some(index) = self.selected() {
             if index > 0 {
@@ -196,6 +221,7 @@ impl Electribe2PatternListUI {
         }
         false
     }
+
     pub fn swap_down (&mut self) -> bool {
         if let Some(index) = self.selected() {
             if index < self.len() - 1 {
@@ -206,77 +232,15 @@ impl Electribe2PatternListUI {
         }
         false
     }
-    //pub fn index (&self) -> usize { self.0.index() }
 
-    pub fn layout_list (&self, area: Area) -> Stacked {
-        Stacked::y(|row|{
-            row(Self::format_header(
-                "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
-            ).with(Color::White).bold());
+}
 
-            let max_height = area.h() - 1; // TODO determine automatically by Stacked
-                                           // by providing shrunken Area
+#[derive(Debug, Default)]
+pub struct Electribe2PatternUI(pub Electribe2Pattern);
 
-            for (index, (label, _)) in self.iter().enumerate().skip(self.0) {
-                if index as Unit >= max_height {
-                    break
-                }
-                if let Some(selected) = self.selected() && selected == index {
-                    row(Styled(&|s: String|s.with(Color::Yellow), label.clone()));
-                } else {
-                    row(Styled(&|s: String|s.with(Color::White), label.clone()));
-                }
-            }
-        })
-    }
-
-    pub fn layout_detail (&self) -> Option<Border<InsetTall, Stacked>> {
-        if self.1.open && let Some((_,page)) = self.1.pages.get() {
-            Some(Border(InsetTall, Stacked::x(|add|{
-                add(1);
-                add(Stacked::y(|add|{
-                    add(Stacked::x(|add|{
-                        add(self.layout_field("Pattern name", 13, &page.pattern.name, 24));
-                        add(2);
-                        add(self.layout_field("Level", 6, &page.pattern.level, 8));
-                    }));
-                    add(1);
-                    add(Stacked::x(|add|{
-                        add(self.layout_field("BPM", 4, format!("{:>5.1}", page.pattern.bpm), 9));
-                        add(2);
-                        add(self.layout_field("Swing", 6, &page.pattern.swing, 9));
-                        add(2);
-                        add(self.layout_field("Length", 7, &page.pattern.length, 10));
-                        add(2);
-                        add(self.layout_field("Beats", 6, &page.pattern.beats, 10));
-                    }));
-                    add(1);
-                    add(Stacked::x(|add|{
-                        add(self.layout_field("Key", 4, &page.pattern.key, 9));
-                        add(2);
-                        add(self.layout_field("Scale", 6, &page.pattern.scale, 9));
-                        add(2);
-                        add(self.layout_field("Chords", 7, &page.pattern.chord_set, 10));
-                        add(2);
-                        add(self.layout_field("MFX", 6, &page.pattern.mfx_type, 10));
-                    }));
-                    add(1);
-                    add(Stacked::x(|add|{
-                        add(self.layout_field("Gate arp", 9, &page.pattern.gate_arp, 9));
-                        add(2);
-                        add(self.layout_field("Alt 13/14", 10, &page.pattern.alt_13_14, 10));
-                        add(2);
-                        add(self.layout_field("Alt 15/16", 10, &page.pattern.alt_15_16, 10));
-                    }))
-                }));
-            })))
-        } else {
-            None
-        }
-    }
-
-    pub fn layout_field (
-        &self, label: &str, label_width: Unit, value: impl Display, value_width: Unit
+impl Electribe2PatternUI {
+    pub fn field (
+        label: &str, label_width: Unit, value: impl Display, value_width: Unit
     ) -> Fix<Stacked> {
         Fix::XY((label_width + value_width, 3), Stacked::x(|add|{
             add(Fix::X(label_width,
@@ -289,49 +253,48 @@ impl Electribe2PatternListUI {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Electribe2PatternUI {
-    pattern: Electribe2Pattern,
-}
-
-impl Electribe2PatternUI {
-    fn new (pattern: &Electribe2Pattern) -> Self {
-        Self { pattern: pattern.clone(), }
-    }
-}
-
 impl Widget for Electribe2PatternUI {
-    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        //return Ok(())
-        //return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
-            //.render(term, area);
-
-        //let Area(Point(x, y), Size(w, h)) = area;
-        //let Theme { bg, fg, hi } = THEME;
-        ////let  = *space;
-        //let title = String::from("Pattern details");
-        ////Inset { theme: THEME, focused: true, title }
-            ////.render(term, &Space(Point(x, y), Point(46, 30)))?;
-        //term.queue(SetForegroundColor(fg))?
-            //.queue(MoveTo(x +  1, y + 2))?.queue(Print(&self.pattern.name))?
-            //.queue(MoveTo(x + 21, y + 2))?.queue(Print(&self.pattern.level))?
-            //.queue(MoveTo(x +  1, y + 3))?.queue(Print(&self.pattern.bpm))?
-            //.queue(MoveTo(x + 21, y + 3))?.queue(Print(&self.pattern.swing))?
-            //.queue(MoveTo(x +  1, y + 4))?.queue(Print(&self.pattern.length))?
-            //.queue(MoveTo(x + 21, y + 4))?.queue(Print(&self.pattern.beats))?
-            //.queue(MoveTo(x +  1, y + 5))?.queue(Print(&self.pattern.key))?
-            //.queue(MoveTo(x + 21, y + 5))?.queue(Print(&self.pattern.scale))?
-            //.queue(MoveTo(x +  1, y + 6))?.queue(Print(&self.pattern.chord_set))?
-            //.queue(MoveTo(x + 21, y + 6))?.queue(Print(&self.pattern.gate_arp))?
-            //.queue(MoveTo(x +  1, y + 7))?.queue(Print(&self.pattern.mfx_type))?
-            //.queue(MoveTo(x +  1, y + 8))?.queue(Print(&self.pattern.alt_13_14))?
-            //.queue(MoveTo(x + 21, y + 8))?.queue(Print(&self.pattern.alt_15_16))?
-            //.queue(MoveTo(x + 1, y + 10))?
-            //.queue(SetAttribute(Attribute::Bold))?
-            //.queue(Print("Part  Snd  Pit  Fil  Mod  IFX  Vol  Pan  MFX"))?
-            //.queue(SetAttribute(Attribute::Reset))?
-            //.queue(SetBackgroundColor(bg))?
-            //.queue(SetForegroundColor(fg))?;
+    impl_render!(self, out, area => {
+        Stacked::x(|add|{
+            add(1);
+            add(Stacked::y(|add|{
+                add(Stacked::x(|add|{
+                    add(Self::field("Pattern name", 13, &self.0.name, 20));
+                    add(2);
+                    add(Self::field("Level", 6, &self.0.level, 8));
+                }));
+                add(1);
+                add(Stacked::x(|add|{
+                    add(Self::field("BPM", 4, format!("{:>5.1}", self.0.bpm), 9));
+                    add(2);
+                    add(Self::field("Swing", 6, &self.0.swing, 9));
+                    add(2);
+                    add(Self::field("Length", 7, &self.0.length, 10));
+                    add(2);
+                    add(Self::field("Beats", 6, &self.0.beats, 10));
+                }));
+                add(1);
+                add(Stacked::x(|add|{
+                    add(Self::field("Key", 4, &self.0.key, 9));
+                    add(2);
+                    add(Self::field("Scale", 6, &self.0.scale, 9));
+                    add(2);
+                    add(Self::field("Chords", 7, &self.0.chord_set, 10));
+                    add(2);
+                    add(Self::field("MFX", 6, &self.0.mfx_type, 10));
+                }));
+                add(1);
+                add(Stacked::x(|add|{
+                    add(Self::field("Gate arp", 9, &self.0.gate_arp, 9));
+                    add(2);
+                    add(Self::field("Alt 13/14", 10, &self.0.alt_13_14, 10));
+                    add(2);
+                    add(Self::field("Alt 15/16", 10, &self.0.alt_15_16, 10));
+                }));
+                add(1);
+            }));
+        }).render(out, area)
+    });
         //for index in 0..17 {
             //term.queue(MoveTo(x + 1, y + 12 + index))?
                 //.queue(if let Some(part) = self.pattern.parts.get(index as usize) {
