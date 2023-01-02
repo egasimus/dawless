@@ -64,7 +64,7 @@ pub fn run <T: TUI> (
         // Render
         let screen_size: Size = size().unwrap().into();
         match app.borrow().layout(screen_size) {
-            Ok(layout) => if let Err(error) = layout(
+            Ok(layout) => if let Err(error) = layout.render(
                 term, Area(Point::MIN, screen_size)
             ) {
                 write_error(term, format!("{error}").as_str()).unwrap();
@@ -128,82 +128,48 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 
 /// A terminal UI widget
 pub trait TUI {
-    /// Handle input events.
-    fn handle (&mut self, _event: &Event) -> Result<bool> { Ok(false) }
-    /// Describe this widget out of renderable elements
-    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
-        Ok(Box::new(move |term, area|{
-            self.render(term, Area(Point(0, 0), max))?;
-            Ok(())
-        }))
-    }
-    /// Render this widget by directly emitting draw commands
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        Ok(())
-    }
+    tui!(handle (self, _event) { Ok(false) });
+    tui!(layout (self, _max) { Ok(Wrapper::empty()) });
+    tui!(render (self, _term, _area) { Ok(()) });
 }
 
-impl<T: TUI> TUI for &T {
-    fn handle (&mut self, _event: &Event) -> Result<bool> { unreachable!() }
-    fn layout <'l> (&'l self, max: Size) -> Result<Thunk<'l>> {
-        (*self).layout(max)
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        (*self).render(term, area)
-    }
+fn render_nil <T: TUI> (_: &T, term: &mut dyn Write, area: Area) -> Result<()> {
+    Ok(())
+}
+
+impl<T: TUI + ?Sized> TUI for &T {
+    tui!(handle (self, _event) { unreachable!() });
+    tui!(layout (self, max) { (*self).layout(max) });
+    tui!(render (self, term, area) { self.deref().render(term, area) });
 }
 
 /// Box widgets to transfer ownership where you don't want to specify the type.
 impl TUI for Box<dyn TUI> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        (*self).deref_mut().handle(event)
-    }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        (*self).deref().layout(max) 
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        (*self).deref().render(term, area)
-    }
+    tui!(handle (self, event) { (*self).deref_mut().handle(event) });
+    tui!(layout (self, max) { (**self).layout(max) });
+    tui!(render (self, term, area) { (*self).render(term, area) });
 }
 
 /// Optional widgets can be hidden by setting them to `None`
 /// (losing their state)
 impl<T: TUI> TUI for Option<T> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        match self { Some(x) => x.handle(event), None => Ok(false) }
-    }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        match self { Some(x) => x.layout(max), None => Ok(Box::new(|term,area|{Ok(())})) }
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        match self { Some(x) => x.render(term, area), None => Ok(()) }
-    }
+    tui!(handle (self, event) { match self { Some(x) => x.handle(event), None => Ok(false) } });
+    tui!(layout (self, max) { match self { Some(x) => x.layout(max), None => Ok(Wrapper::empty()) } });
+    tui!(render (self, term, area) { match self { Some(x) => x.render(term, area), None => Ok(()) } });
 }
 
 /// `RefCell<T> where T: TUI` transparently wraps widgets
 impl<T: TUI> TUI for RefCell<T> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.borrow_mut().handle(event)
-    }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.borrow().render(term, area)
-    }
+    tui!(handle (self, event) { self.borrow_mut().handle(event) });
+    tui!(layout (self, max) { unsafe { self.try_borrow_unguarded() }.unwrap().layout(max) });
+    tui!(render (self, term, area) { unsafe { self.try_borrow_unguarded() }.unwrap().render(term, area) });
 }
 
 /// `Rc<RefCell<T>> where T: TUI`s transparently wraps widgets
 impl<T: TUI> TUI for Rc<RefCell<T>> {
-    fn handle (&mut self, event: &Event) -> Result<bool> {
-        self.borrow_mut().handle(event)
-    }
-    fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
-        unsafe { self.try_borrow_unguarded() }.unwrap().layout(max)
-    }
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self.borrow().render(term, area)
-    }
+    tui!(handle (self, event) { self.borrow_mut().handle(event) });
+    tui!(layout (self, max) { unsafe { self.try_borrow_unguarded() }.unwrap().layout(max) });
+    tui!(render (self, term, area) { unsafe { self.try_borrow_unguarded() }.unwrap().render(term, area) });
 }
 
 /// Where an unspecified widget is used, the blank one is provided.
@@ -230,41 +196,60 @@ impl Debug for Box<dyn TUI> {
     }
 }
 
-pub type ThunkFn = dyn Fn(&mut dyn Write, Area)->Result<()>;
+pub type LayoutFn<'l> = &'l dyn Fn(&'l [Wrapper<'l>], &mut dyn Write, Area)->Result<()>;
 
-impl TUI for ThunkFn {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self(term, area)
+pub enum Wrapper<'l> {
+    Layout(Size, LayoutFn<'l>, Vec<Wrapper<'l>>),
+    Widget(&'l dyn TUI),
+    Empty
+}
+
+impl<'l> Wrapper<'l> {
+    pub fn empty () -> Self {
+        Self::Empty
     }
-}
-
-pub type Thunk<'l> = Box<dyn Fn(&mut dyn Write, Area)->Result<()> + 'l>;
-
-impl<'l> TUI for Thunk<'l> {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        self(term, area)
+    pub fn one (item: &'l dyn TUI) -> Self {
+        Self::Widget(item)
     }
-}
-
-/// A leaf of the layout tree, containing either a widget or a thunk,
-/// alongside sizing, padding, and scrolling preferences.
-pub enum ThunkItem<'a> {
-    /// A reference to a single widget.
-    Ref(&'a dyn TUI),
-    /// An owned single widget.
-    Box(Box<dyn TUI>),
-    /// An owned single widget.
-    Fn(Box<dyn Fn(&mut dyn Write, Area)->Result<()> + 'a>),
-}
-
-impl<'a> ThunkItem<'a> {
-    pub fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        match &self {
-            Self::Ref(item) => item.render(term, area),
-            Self::Box(item) => item.render(term, area),
-            Self::Fn(item)  => item(term, area),
-            //Self::Thunk(thunk) => thunk.render(term, area)
+    pub fn columns (define: impl Fn(&mut Collect<'l>)) -> Self {
+        let mut items = Collect(vec![]);
+        define(&mut items);
+        let items = items.0;
+        Self::Layout(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+    }
+    pub fn rows (define: impl Fn(&mut Collect<'l>)) -> Self {
+        let mut items = Collect(vec![]);
+        define(&mut items);
+        let items = items.0;
+        Self::Layout(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+    }
+    pub fn render (&'l self, term: &mut dyn Write, area: Area) -> Result<()> {
+        match self {
+            Self::Layout(_, render, items) => render(items.as_slice(), term, area),
+            Self::Widget(item) => item.render(term, area),
+            Self::Empty => Ok(())
         }
+    }
+}
+
+pub struct Collect<'l>(pub Vec<Wrapper<'l>>);
+
+impl<'l> FnOnce<(Wrapper<'l>, )> for Collect<'l> {
+    type Output = ();
+    extern "rust-call" fn call_once (self, _: (Wrapper<'l>,)) -> Self::Output { unreachable!() }
+}
+impl<'l> FnMut<(Wrapper<'l>, )> for Collect<'l> {
+    extern "rust-call" fn call_mut (&mut self, args: (Wrapper<'l>,)) -> Self::Output {
+        self.0.push(args.0)
+    }
+}
+impl<'l, T: TUI> FnOnce<(&'l T, )> for Collect<'l> {
+    type Output = ();
+    extern "rust-call" fn call_once (self, _: (&'l T,)) -> Self::Output { unreachable!() }
+}
+impl<'l, T: TUI> FnMut<(&'l T, )> for Collect<'l> {
+    extern "rust-call" fn call_mut (&mut self, args: (&'l T,)) -> Self::Output {
+        self.0.push(Wrapper::one(args.0))
     }
 }
 
@@ -277,25 +262,36 @@ mod test {
     struct One;
 
     impl<'a> TUI for One {
-        fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
+        tui!(render (self, term, area) {
             write!(term, "\n{}", area)
-        }
+        });
     }
     
     #[derive(Default)]
     struct Something {
         a: One,
         b: One,
-        c: One
+        c: One,
+        d: One,
+        e: One,
+        f: One,
     }
 
     impl TUI for Something {
-        fn layout <'a> (&'a self, max: Size) -> Result<Layout> {
-            Columns(&|column|{
-                column(self.a);
-                column(Rows(&|row|{ row(self.b); row(self.c); }));
-            }).layout(max)
-        }
+        tui!(layout (self, max) {
+            Ok(Wrapper::columns(|add|{
+                add(&self.a);
+                add(Wrapper::rows(|add|{
+                    add(&self.b);
+                    add(&self.c);
+                }));
+                add(Wrapper::rows(|add|{
+                    add(&self.d);
+                    add(&self.e);
+                    add(&self.f);
+                }));
+            }))
+        });
     }
 
     #[test]

@@ -1,3 +1,28 @@
+/// Glue macro to quickly implement a TUI trait.
+/// This constains the actual type definitions of the trait methods
+/// because when they change, they tend to change quite a bit,
+/// all at once, in numerous places.
+#[macro_export] macro_rules! tui {
+    (
+        $(layout ($self1:ident, $max:ident) $body1:block)?
+        $(render ($self2:ident, $term:ident, $area:ident) $body2:block)?
+        $(handle ($self3:ident, $event:ident) $body3:block)?
+    ) => {
+        $(
+            /// Describe this widget out of renderable elements
+            fn layout <'l> (&'l $self1, $max: Size) -> Result<Wrapper<'l>> $body1
+        )?
+        $(
+            /// Render this widget by directly emitting draw commands
+            fn render ($self2, $term: &mut dyn Write, $area: Area) -> Result<()> $body2
+        )?
+        $(
+            /// Handle an input event. Return whether the event was captured.
+            fn handle (&mut $self3, $event: &Event) -> Result<bool> $body3
+        )?
+    }
+}
+
 /// Generate an `Event::Key(KeyEvent { ... })` variant
 #[macro_export] macro_rules! key {
     ($code:ident) => {

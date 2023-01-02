@@ -77,9 +77,7 @@ impl Size {
         Ok(())
     }
 
-    pub fn limit <'l, T: TUI> (self, max: Self, render: T)
-        -> Result<T>
-    {
+    pub fn constrain <'l, T> (self, max: Self, render: T) -> Result<T> {
         if self.0 <= max.0 && self.1 <= max.1 {
             Ok(render)
         } else {
