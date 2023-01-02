@@ -119,7 +119,7 @@ impl<'a, W: Widget + Stylize + Display + Clone> Widget for StyledBoxed<'a, W> {
 
 impl<D: Display> Widget for StyledContent<D> {
     impl_render!(self, out, area => {
-        let size = (1, 1);
+        let size = (self.content().to_string().len() as Unit, 1);
         area.min(size)?.home(out)?.queue(Print(&self))?;
         Ok((1, 1))
     });
@@ -156,10 +156,26 @@ impl<T: Fn(&Self)->Result<bool>, U: Widget> Widget for Link<T, U> {
             state:     crossterm::event::KeyEventState::NONE
         })
     };
+    ($char:literal) => {
+        crossterm::event::Event::Key(crossterm::event::KeyEvent {
+            code:      crossterm::event::KeyCode::Char($char),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            kind:      crossterm::event::KeyEventKind::Press,
+            state:     crossterm::event::KeyEventState::NONE
+        })
+    };
     (Ctrl-$code:ident) => {
         crossterm::event::Event::Key(KeyEvent {
             code:      crossterm::event::KeyCode::$code,
             modifiers: crossterm::event::KeyModifiers::CONTROL,
+            kind:      crossterm::event::KeyEventKind::Press,
+            state:     crossterm::event::KeyEventState::NONE
+        })
+    };
+    (Alt-$code:ident) => {
+        crossterm::event::Event::Key(KeyEvent {
+            code:      crossterm::event::KeyCode::$code,
+            modifiers: crossterm::event::KeyModifiers::ALT,
             kind:      crossterm::event::KeyEventKind::Press,
             state:     crossterm::event::KeyEventState::NONE
         })

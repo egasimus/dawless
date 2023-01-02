@@ -44,27 +44,6 @@ pub struct Electribe2PatternsUI {
     pub patterns:  Electribe2PatternListUI,
 }
 
-impl Electribe2PatternsUI {
-    pub fn new () -> Self {
-        let mut file_list = FileList::default();
-        file_list.update();
-        Self {
-            bank: None,
-            patterns: Electribe2PatternListUI::default(),
-            file_list,
-        }
-    }
-    pub fn update (&mut self) {
-        self.file_list.update();
-    }
-    pub fn import (&mut self, bank: &std::path::Path) {
-        let data = crate::read(bank);
-        let bank = Electribe2PatternBank::read(&data);
-        self.bank = Some(bank);
-        self.patterns.replace(self.bank.as_ref().unwrap());
-    }
-}
-
 impl Widget for Electribe2PatternsUI {
 
     impl_render!(self, out, area => {
@@ -104,6 +83,27 @@ impl Widget for Electribe2PatternsUI {
     });
 }
 
+impl Electribe2PatternsUI {
+    pub fn new () -> Self {
+        let mut file_list = FileList::default();
+        file_list.update();
+        Self {
+            bank: None,
+            patterns: Electribe2PatternListUI::default(),
+            file_list,
+        }
+    }
+    pub fn update (&mut self) {
+        self.file_list.update();
+    }
+    pub fn import (&mut self, bank: &std::path::Path) {
+        let data = crate::read(bank);
+        let bank = Electribe2PatternBank::read(&data);
+        self.bank = Some(bank);
+        self.patterns.replace(self.bank.as_ref().unwrap());
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Electribe2PatternListUI(
     /// Scroll offset
@@ -111,6 +111,33 @@ pub struct Electribe2PatternListUI(
     /// Collection of pattern editors
     TabsLeft<Electribe2PatternUI>
 );
+
+impl Widget for Electribe2PatternListUI {
+
+    impl_render!(self, out, area => {
+        Stacked::x(|column|{
+            column(self.render_list(area));
+            column(self.render_detail(area));
+        }).render(out, area)
+    });
+
+    impl_handle!(self, event => Ok(
+        if *event == key!(Ctrl-Up) {
+            self.swap_up()
+        } else if *event == key!(Ctrl-Down) {
+            self.swap_down()
+        } else if *event == key!(Up) {
+            self.1.pages.select_prev()
+        } else if *event == key!(Down) {
+            self.1.pages.select_next()
+        } else if *event == key!(Enter) {
+            self.1.open()
+        } else {
+            false
+        }
+    ));
+
+}
 
 impl Electribe2PatternListUI {
 
@@ -180,89 +207,58 @@ impl Electribe2PatternListUI {
         false
     }
     //pub fn index (&self) -> usize { self.0.index() }
-}
 
-impl Widget for Electribe2PatternListUI {
+    pub fn render_list (&self, area: Area) -> Stacked {
+        Stacked::y(|row|{
+            row(Self::format_header(
+                "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
+            ).with(Color::White).bold());
 
-    impl_render!(self, out, area => {
-        Stacked::x(|column|{
-            column(Stacked::y(|row|{
-                row(Self::format_header(
-                    "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
-                ).with(Color::White).bold());
-                for (index, (label, _)) in self.iter().enumerate().skip(self.0) {
-                    if index as Unit >= area.h() - 1 {
-                        break
-                    }
-                    if let Some(selected) = self.selected() && selected == index {
-                        row(Styled(&|s: String|s.with(Color::Yellow), label.clone()));
-                    } else {
-                        row(Styled(&|s: String|s.with(Color::White), label.clone()));
-                    }
+            let max_height = area.h() - 1; // TODO determine automatically by Stacked
+                                           // by providing shrunken Area
+
+            for (index, (label, _)) in self.iter().enumerate().skip(self.0) {
+                if index as Unit >= max_height {
+                    break
                 }
-            }));
-            //if self.open && let Some((_,page)) = self.pages.get() {
-                //column((1, 0));
-                //column(page);
-            //}
-        }).render(out, area)
-    });
+                if let Some(selected) = self.selected() && selected == index {
+                    row(Styled(&|s: String|s.with(Color::Yellow), label.clone()));
+                } else {
+                    row(Styled(&|s: String|s.with(Color::White), label.clone()));
+                }
+            }
+        })
+    }
 
-    impl_handle!(self, event => Ok(
-        if *event == key!(Ctrl-Up) {
-            self.swap_up()
-        } else if *event == key!(Ctrl-Down) {
-            self.swap_down()
-        } else if *event == key!(Up) {
-            self.1.pages.select_prev()
-        } else if *event == key!(Down) {
-            self.1.pages.select_next()
+    pub fn render_detail (&self, area: Area) -> Option<Stacked> {
+        if self.1.open && let Some((_,page)) = self.1.pages.get() {
+            Some(Stacked::x(|column|{
+                column((1, 0));
+                column(Border(InsetTall, Stacked::y(|row|{
+                    row(Stacked::x(|column|{
+                        column(1);
+                        column(self.render_field("Pattern name", &page.pattern.name));
+                        column(self.render_field("Level",        &page.pattern.level));
+                    }));
+                    row(Stacked::x(|column|{
+                        column(1);
+                        column(self.render_field("BPM",          &page.pattern.bpm));
+                        column(self.render_field("Length",       &page.pattern.length));
+                        column(self.render_field("Beats",        &page.pattern.beats));
+                    }));
+                })));
+            }))
         } else {
-            false
+            None
         }
-    ));
+    }
 
-    //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        //return self.0.render(term, area);
-        //return Layout::Item(
-            //Sizing::Range(self.min_size(), self.max()), &self.0
-        //).render(term, area);
-        //let Area(Point(x, y), Size(w, h)) = area;
-        //let Self { offset, .. } = *self;
-        //let Theme { bg, fg, hi } = THEME;
-        //term.queue(SetBackgroundColor(bg))?
-            //.queue(SetForegroundColor(fg))?
-            //.queue(SetAttribute(Attribute::Bold))?
-            //.queue(MoveTo(x, y))?
-            //.queue(Print(format!("{:>3}  {:<16}  {:<5} {:>3}  {:>3}  {:>3}  {:>3}",
-                //"#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
-            //)))?
-            //.queue(SetAttribute(Attribute::Reset))?
-            //.queue(SetBackgroundColor(bg))?;
-        //let height = 36;
-        //for index in 0..0+height {
-            //let index_offset = index + self.offset;
-            //let focused = self.selected == index_offset;
-            //let text = if let Some(pattern) = self.patterns.get(index_offset as usize) {
-                //format!("{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
-                    //index + self.offset + 1,
-                    //pattern.name.trim(),
-                    //pattern.bpm,
-                    //pattern.length,
-                    //pattern.beats,
-                    //pattern.key,
-                    //pattern.scale,
-                //)
-            //} else {
-                //"".into()
-            //};
-            ////Label { theme: THEME, focused, text }
-                ////.render(term, &Space::new(x, y + 2 + index as u16, 10, 1))?;
-        //}
-        ////Scrollbar { theme: THEME, offset, length: self.patterns.len() }
-            ////.render(term, &Space::new(x + 55, y + 2, 0, height as u16))?;
-        //Ok(())
-    //}
+    pub fn render_field (&self, label: &str, value: impl Display) -> Stacked {
+        Stacked::x(|column|{
+            column(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
+            column(Border(InsetTall, value.to_string()));
+        })
+    }
 }
 
 #[derive(Debug, Default)]
@@ -289,12 +285,6 @@ impl Electribe2PatternUI {
 }
 
 impl Widget for Electribe2PatternUI {
-    impl_render!(self, out, area => {
-        Border(InsetTall, Stacked::x(|column|{
-            column(Stacked::y(|row|{row(());row(&self.name);row(&self.level);}));
-            column(Stacked::y(|row|{row(());row(&self.bpm);row(&self.length);row(&self.beats)}));
-        })).render(out, area)
-    });
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return Ok(())
         //return Layout::Item(Sizing::Min, &DebugBox { bg: Color::AnsiValue(100) })
