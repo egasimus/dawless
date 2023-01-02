@@ -270,61 +270,34 @@ pub struct Inset(
     pub Unit
 );
 
-impl Inset {
-    fn render (layers: &Self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Area(Point(x, y), Size(w, h)) = area;
-        if w == 0 || h == 0 { return Ok(()) }
-        let bg = Color::AnsiValue(235);
-        let fill = Filled(bg);
-        fill.render(term, Area(Point(x, y), Size(w, h)))?;
-        let top_edge    = "▇".repeat((w - 1) as usize);
-        let bottom_edge = "▁".repeat((w - 1) as usize);
-        let left_edge   = "▊";
-        let right_edge  = "▎";
-        term.queue(ResetColor)?
-            .queue(SetBackgroundColor(Color::AnsiValue(16)))?
-            .queue(SetForegroundColor(bg))?
-            .queue(MoveTo(x, y))?
-            .queue(Print(&top_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-        }
-        term.queue(SetBackgroundColor(bg))?
-            .queue(SetForegroundColor(Color::AnsiValue(240)))?
-            .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-        for y in y..y+h {
-            term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
-        }
-        Ok(())
-    }
-}
-
 impl<'a> TUI for Inset {
     tui! {
-        render (self, term, area) {
-            let Area(Point(x, y), Size(w, h)) = area;
-            if w == 0 || h == 0 { return Ok(()) }
-            let bg = Color::AnsiValue(235);
-            Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
-            let top_edge    = "▇".repeat((w - 1) as usize);
-            let bottom_edge = "▁".repeat((w - 1) as usize);
-            let left_edge   = "▊";
-            let right_edge  = "▎";
-            term.queue(ResetColor)?
-                .queue(SetBackgroundColor(Color::AnsiValue(16)))?
-                .queue(SetForegroundColor(bg))?
-                .queue(MoveTo(x, y))?
-                .queue(Print(&top_edge))?;
-            for y in y..y+h {
-                term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
-            }
-            term.queue(SetBackgroundColor(bg))?
-                .queue(SetForegroundColor(Color::AnsiValue(240)))?
-                .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
-            for y in y..y+h {
-                term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
-            }
-            Ok(())
+        layout (self, max) {
+            Ok(Layout::Fn(&|term, area|{
+                let Area(Point(x, y), Size(w, h)) = area;
+                if w == 0 || h == 0 { return Ok(()) }
+                let bg = Color::AnsiValue(235);
+                Filled(bg).render(term, Area(Point(x, y), Size(w, h)))?;
+                let top_edge    = "▇".repeat((w - 1) as usize);
+                let bottom_edge = "▁".repeat((w - 1) as usize);
+                let left_edge   = "▊";
+                let right_edge  = "▎";
+                term.queue(ResetColor)?
+                    .queue(SetBackgroundColor(Color::AnsiValue(16)))?
+                    .queue(SetForegroundColor(bg))?
+                    .queue(MoveTo(x, y))?
+                    .queue(Print(&top_edge))?;
+                for y in y..y+h {
+                    term.queue(MoveTo(x, y))?.queue(Print(&left_edge))?;
+                }
+                term.queue(SetBackgroundColor(bg))?
+                    .queue(SetForegroundColor(Color::AnsiValue(240)))?
+                    .queue(MoveTo(x+1, y+h-1))?.queue(Print(&bottom_edge))?;
+                for y in y..y+h {
+                    term.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
+                }
+                Ok(())
+            }))
         }
     }
 }

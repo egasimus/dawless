@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use thatsit::{*, crossterm::{
+    cursor::{MoveTo},
     event::{poll, read, Event, KeyEvent, KeyCode},
     terminal::{size},
-    style::{Color}
+    style::{Color, Print}
 }};
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
@@ -99,7 +100,13 @@ impl TUI for Component {
 impl TUI for Subcomponent {
     tui! {
         layout (self, max) {
-            Ok((&self.frame).into())
+            Ok(Layout::layers(|add|{
+                add(&self.frame);
+                add(Layout::Fn(&|term,area|{
+                    term.queue(MoveTo(area.x(), area.y()))?.queue(Print(&"test"))?;
+                    Ok(())
+                }));
+            }))
         }
     }
 }

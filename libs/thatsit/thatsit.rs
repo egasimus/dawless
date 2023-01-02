@@ -130,7 +130,7 @@ pub fn write_text (term: &mut dyn Write, x: Unit, y: Unit, text: &str) -> Result
 pub trait TUI {
     tui!(handle (self, _event) { Ok(false) });
     tui!(layout (self, _max) { Ok(Layout::empty()) });
-    tui!(render (self, _term, _area) { Ok(()) });
+    tui!(render (self, term, area) { self.layout(area.1)?.render(term, area) });
 }
 
 impl<T: TUI + ?Sized> TUI for &T {
@@ -143,7 +143,7 @@ impl<T: TUI + ?Sized> TUI for &T {
 impl TUI for Box<dyn TUI> {
     tui!(handle (self, event) { (*self).deref_mut().handle(event) });
     tui!(layout (self, max) { (**self).layout(max) });
-    tui!(render (self, term, area) { (*self).render(term, area) });
+    tui!(render (self, term, area) { (**self).render(term, area) });
 }
 
 /// Optional widgets can be hidden by setting them to `None`
@@ -166,6 +166,14 @@ impl<T: TUI> TUI for Rc<RefCell<T>> {
     tui!(handle (self, event) { self.borrow_mut().handle(event) });
     tui!(layout (self, max) { unsafe { self.try_borrow_unguarded() }.unwrap().layout(max) });
     tui!(render (self, term, area) { unsafe { self.try_borrow_unguarded() }.unwrap().render(term, area) });
+}
+
+impl TUI for dyn Fn(&mut dyn Write, Area)->Result<()> {
+    tui! {
+        layout (self, _max) { Ok(Layout::Fn(self)) }
+        render (self, term, area) { (self)(term, area) }
+        handle (self, _event) { Ok(false) }
+    }
 }
 
 /// Where an unspecified widget is used, the blank one is provided.
@@ -197,6 +205,7 @@ pub type LayoutFn<'l> = &'l dyn Fn(&'l [Layout<'l>], &mut dyn Write, Area)->Resu
 pub enum Layout<'l> {
     Many(Size, LayoutFn<'l>, Vec<Layout<'l>>),
     Ref(&'l dyn TUI),
+    Fn(&'l dyn Fn(&mut dyn Write, Area)->Result<()>),
     None
 }
 
@@ -255,6 +264,7 @@ impl<'l> Layout<'l> {
         match self {
             Self::Many(_, render, items) => render(items.as_slice(), term, area),
             Self::Ref(item) => item.render(term, area),
+            Self::Fn(render) => render(term, area),
             Self::None => Ok(())
         }
     }
