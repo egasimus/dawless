@@ -465,7 +465,7 @@ dependencies = [
 name = "laterna"
 version = "0.1.0"
 dependencies = [
- "crossterm",
+ "thatsit",
 ]
 
 [[package]]

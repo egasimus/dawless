@@ -307,26 +307,6 @@ impl Widget for Electribe2PatternUI {
             }));
         }).render(out, area)
     });
-        //for index in 0..17 {
-            //term.queue(MoveTo(x + 1, y + 12 + index))?
-                //.queue(if let Some(part) = self.pattern.parts.get(index as usize) {
-                    //Print(format!("{:>4}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}  {:>3}",
-                        //index + 1,
-                        //part.sample,
-                        //part.pitch,
-                        //part.filter_type,
-                        //part.modulation_type,
-                        //part.ifx_on,
-                        //part.level,
-                        //part.pan,
-                        //part.mfx_on,
-                    //))
-                //} else {
-                    //Print("".into())
-                //})?;
-        //}
-        //Ok(())
-    //}
 }
 
 #[derive(Debug, Default)]
@@ -337,7 +317,7 @@ impl Electribe2PartUI {
         Self(part.clone())
     }
     pub fn field (
-        label: &str, label_width: Unit, value: impl Display, value_width: Unit
+        label: &str, value: impl Display
     ) -> Fix<Stacked> {
         Fix::XY((10, 4), Stacked::y(|add|{
             add(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
@@ -351,38 +331,42 @@ impl Electribe2PartUI {
 impl Widget for Electribe2PartUI {
 
     impl_render!(self, out, area => {
-        Stacked::y(|add|{
-            add(Stacked::x(|add|{
-                add(Self::field("Sample", 13, &self.0.sample, 20));
+        Stacked::x(|add|{
+            add(Stacked::y(|add|{
+                add(Stacked::x(|add|{
+                    add(Self::field("Sample", &self.0.sample));
+                    add(1);
+                    add(Self::field("Pitch", &self.0.pitch));
+                    add(1);
+                    add(Self::field("Osc", &self.0.pitch));
+                }));
                 add(1);
-                add(Self::field("Pitch", 6, &self.0.pitch, 8));
+                add(Stacked::x(|add|{
+                    add(Self::field("Filter", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Freq", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Res", &self.0.filter_type));
+                }));
                 add(1);
-                add(Self::field("Osc", 6, &self.0.pitch, 8));
+                add(Stacked::x(|add|{
+                    add(Self::field("Mod", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Speed", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Depth", &self.0.filter_type));
+                }));
+                add(1);
+                add(Stacked::x(|add|{
+                    add(Self::field("IFX", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Type", &self.0.filter_type));
+                    add(1);
+                    add(Self::field("Param", &self.0.filter_type));
+                }));
             }));
             add(1);
-            add(Stacked::x(|add|{
-                add(Self::field("Filter", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Freq", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Res", 6, &self.0.filter_type, 8));
-            }));
-            add(1);
-            add(Stacked::x(|add|{
-                add(Self::field("Mod", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Speed", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Depth", 6, &self.0.filter_type, 8));
-            }));
-            add(1);
-            add(Stacked::x(|add|{
-                add(Self::field("IFX", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Type", 6, &self.0.filter_type, 8));
-                add(1);
-                add(Self::field("Param", 6, &self.0.filter_type, 8));
-            }));
+            add(laterna::PianoRoll(vec![]));
         }).render(out, area)
     });
 
