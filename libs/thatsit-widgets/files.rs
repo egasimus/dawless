@@ -3,7 +3,6 @@ use std::{env::current_dir, fs::{metadata, read_dir}};
 use crossterm::{
     style::{SetAttribute, Attribute, SetBackgroundColor, SetForegroundColor, Print, Color},
     cursor::MoveTo,
-    event::Event
 };
 
 #[derive(Debug, Default)]
@@ -22,8 +21,8 @@ impl FileEntry {
     }
 }
 
-impl Render for FileEntry {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+impl Widget for FileEntry {
+    impl_render!(self, out, area => {
         let Area(x, y, ..) = area;
         let fg = Color::White;
         let hi = Color::Yellow;
@@ -32,9 +31,9 @@ impl Render for FileEntry {
             .queue(SetAttribute(if self.is_dir { Attribute::Bold } else { Attribute::Reset }))?
             .queue(SetBackgroundColor(Color::AnsiValue(235)))?
             .queue(SetForegroundColor(if self.focused { hi } else { fg }))?
-            .queue(MoveTo(x, y))?.queue(Print(label))?;
-        Ok(())
-    }
+            .queue(MoveTo(x, y))?.queue(Print(&label))?;
+        Ok((label.len() as Unit, 1))
+    });
 }
 
 #[derive(Debug, Default)]
@@ -59,12 +58,10 @@ impl<'a> Focus<Layout<'a>> for FileList<'a> {
     fn state_mut (&mut self) -> &mut FocusState<usize> { self.0.state_mut() }
 }
 
-impl<'a> Render for FileList<'a> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
-        Stacked::y(|row|{
-            for item in self.0.items().iter() { row(item) }
-        }).render(out, area)
-    }
+impl<'a> Widget for FileList<'a> {
+    impl_render!(self, out, area => Stacked::y(|row|{
+        for item in self.0.items().iter() { row(item) }
+    }).render(out, area));
 }
 
 pub fn list_current_directory () -> (Vec<FileEntry>, usize) {

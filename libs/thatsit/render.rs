@@ -10,75 +10,56 @@ impl<'a> Collect<'a> {
     }
 }
 
-impl<'a, T: Render + 'a> FnOnce<(T, )> for Collect<'a> {
+impl<'a, W: Widget + 'a> FnOnce<(W, )> for Collect<'a> {
     type Output = ();
-    extern "rust-call" fn call_once (mut self, args: (T,)) -> Self::Output {
+    extern "rust-call" fn call_once (mut self, args: (W,)) -> Self::Output {
         self.call_mut(args)
     }
 }
 
-impl<'a, T: Render + 'a> FnMut<(T, )> for Collect<'a> {
-    extern "rust-call" fn call_mut (&mut self, args: (T,)) -> Self::Output {
+impl<'a, W: Widget + 'a> FnMut<(W, )> for Collect<'a> {
+    extern "rust-call" fn call_mut (&mut self, args: (W,)) -> Self::Output {
         args.0.collect(self)
     }
 }
 
-/// Shorthand for implementing the `render` method of a `Render` trait.
-#[macro_export] macro_rules! impl_render {
-    ($self:ident, $out:ident, $area:ident => $body:expr) => {
-        fn render (&$self, $out: &mut dyn Write, $area: Area) -> Result<()> { $body }
-    }
-}
-
-pub trait Render {
-    impl_render!(self, _out, _area => Ok(()));
-    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
-        collect.0.push(Layout::Box(Box::new(self)));
-    }
-}
-
-impl std::fmt::Debug for dyn Render {
+impl std::fmt::Debug for dyn Widget {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "dyn[Render]")
+        write!(f, "dyn[Widget]")
     }
 }
 
-impl<T: Render> Render for &T {
-    impl_render!(self, out, area => (*self).render(out, area));
-    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
-        collect.0.push(Layout::Ref(self));
-    }
-}
-
-impl<'a> Render for Box<dyn Render + 'a> {
+impl<'a> Widget for Box<dyn Widget + 'a> {
     impl_render!(self, out, area => (**self).render(out, area));
     fn collect <'b> (self, collect: &mut Collect<'b>) where Self: 'b + Sized {
         collect.0.push(Layout::Box(self));
     }
 }
 
-impl<T: Render> Render for Option<T> {
+impl<W: Widget> Widget for Option<W> {
     impl_render!(self, out, area => match self {
         Some(item) => item.render(out, area),
-        None => Ok(())
+        None => Ok((0, 0))
     });
 }
 
-impl Render for () {}
+impl Widget for () {}
 
-impl Render for &str {
+impl Widget for &str {
     impl_render!(self, out, area => {
-        area.min(self.len() as Unit, 1)?;
+        let w = self.len() as Unit;
+        area.min(w, 1)?;
         out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
-        Ok(())
+        Ok((w, 1))
     });
 }
 
-impl Render for String {
+impl Widget for String {
     impl_render!(self, out, area => {
-        area.min(self.len() as Unit, 1)?;
+        let w = self.len() as Unit;
+        area.min(w, 1)?;
         out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
-        Ok(())
+        Ok((w, 1))
     });
 }
 

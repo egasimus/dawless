@@ -8,9 +8,9 @@ pub struct ScrollVertical {
     pub offset: usize
 }
 
-impl Render for ScrollVertical {
-    fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
-        let Area(x, y, _, h) = area;
+impl Widget for ScrollVertical {
+    impl_render!(self, _out, _area => {
+        //let Area(x, y, _, h) = area;
         //let layout = Layout::Item(Sizing::Fixed(Size(1, 1)), &Blank {});
         //let Self { theme: Theme { fg, hi, .. }, length, offset } = *self;
         //let h = h as usize;
@@ -21,8 +21,8 @@ impl Render for ScrollVertical {
                 //.queue(MoveTo(x, y + index as u16))?
                 //.queue(Print("▒"))?;
         //}
-        Ok(())
-    }
+        Ok((0, 0))
+    });
 }
 
 pub fn handle_scroll (length: usize, index: usize, height: usize, offset: usize) -> usize {

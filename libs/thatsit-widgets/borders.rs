@@ -2,12 +2,12 @@ use crate::{*, crossterm::{cursor::*,style::*}};
 
 /// A border around another widget
 #[derive(Copy, Clone, Default)]
-pub struct Border<T: BorderStyle, U: Render>(pub T, pub U);
+pub struct Border<T: BorderStyle, W: Widget>(pub T, pub W);
 
-impl<T: BorderStyle, U: Render> Render for Border<T, U> {
+impl<T: BorderStyle, W: Widget> Widget for Border<T, W> {
     impl_render!(self, out, area => {
         let Area(x, y, w, h) = area;
-        if w == 0 || h == 0 { return Ok(()) }
+        if w == 0 || h == 0 { return Ok((0, 0)) }
         let bg = Color::AnsiValue(235);
         //Filled(bg).layout(max)?.render(term, Area(Point(x, y), Size(w, h)))?;
         let top_edge    = "▇".repeat((w - 1) as usize);

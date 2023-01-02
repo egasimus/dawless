@@ -28,18 +28,18 @@ impl Area {
 }
 
 #[derive(Copy, Clone, Default)]
-pub struct Offset<T: Render>(Unit, Unit, T);
+pub struct Offset<W: Widget>(Unit, Unit, W);
 
-impl<T: Render> Render for Offset<T> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+impl<W: Widget> Widget for Offset<W> {
+    impl_render!(self, out, area => {
         out.queue(MoveTo(self.0, self.1))?;
         self.2.render(out, area)
-    }
+    });
 }
 
 pub enum Layout<'a> {
-    Box(Box<dyn Render + 'a>),
-    Ref(&'a dyn Render),
+    Box(Box<dyn Widget + 'a>),
+    Ref(&'a dyn Widget),
     None
 }
 
@@ -53,14 +53,14 @@ impl<'a> std::fmt::Debug for Layout<'a> {
     }
 }
 
-impl<'a> Render for Layout<'a> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+impl<'a> Widget for Layout<'a> {
+    impl_render!(self, out, area => {
         match self {
             Self::Box(item) => (*item).render(out, area),
             Self::Ref(item) => (*item).render(out, area),
-            Self::None => Ok(())
+            Self::None => Ok((0, 0))
         }
-    }
+    });
 }
 
 #[derive(Debug, Default)]
@@ -81,8 +81,8 @@ impl<'a> Stacked<'a> {
     }
 }
 
-impl<'a> Render for Stacked<'a> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+impl<'a> Widget for Stacked<'a> {
+    impl_render!(self, out, area => {
         match self.0 {
             Axis::X =>{
                 area.min(self.1.len() as Unit, 1)?;
@@ -103,8 +103,8 @@ impl<'a> Render for Stacked<'a> {
                 }
             }
         };
-        Ok(())
-    }
+        Ok((0, 0))
+    });
 }
 
 

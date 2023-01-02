@@ -156,13 +156,13 @@ impl<'a> Focus<Layout<'a>> for FocusStack<'a> {
     fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.1 }
 }
 
-impl<'a> Render for FocusStack<'a> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+impl<'a> Widget for FocusStack<'a> {
+    impl_render!(self, out, area => {
         if let Some(item) = self.get() {
             item.render(out, area)?;
         }
-        Ok(())
-    }
+        Ok((0, 0))
+    });
 }
 
 #[cfg(test)]

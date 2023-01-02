@@ -31,14 +31,14 @@ impl std::fmt::Debug for dyn TabsTheme {
 }
 
 #[derive(Debug)]
-pub struct TabsLeft<T: Render> {
+pub struct TabsLeft<T: Widget> {
     pub pages:   FocusList<(String, T)>,
     pub open:    bool,
     pub entered: bool,
     pub theme:   &'static dyn TabsTheme
 }
 
-impl<T: Render> Default for TabsLeft<T> {
+impl<T: Widget> Default for TabsLeft<T> {
     fn default () -> Self {
         Self {
             pages:   FocusList::new(vec![]),
@@ -49,8 +49,8 @@ impl<T: Render> Default for TabsLeft<T> {
     }
 }
 
-impl<T: Render> TabsLeft<T> {
-    /// Create a new selector with vertical tabs from a list of `(Button, Render)` pairs.
+impl<T: Widget> TabsLeft<T> {
+    /// Create a new selector with vertical tabs from a list of `(Button, Widget)` pairs.
     pub fn new (pages: Vec<(String, T)>) -> Self {
         let mut tabs = Self::default();
         tabs.pages.replace(pages);
@@ -91,7 +91,7 @@ impl<T: Render> TabsLeft<T> {
     }
 }
 
-impl<T: Render> Render for TabsLeft<T> {
+impl<T: Widget> Widget for TabsLeft<T> {
     impl_render!(self, out, area => {
         Stacked::x(|column|{
             column(Stacked::y(|row|{
@@ -106,7 +106,7 @@ impl<T: Render> Render for TabsLeft<T> {
     });
 }
 
-impl<T: Render + Handle> Handle for TabsLeft<T> {
+impl<T: Widget> Handle for TabsLeft<T> {
     fn handle (&mut self, event: &Event) -> Result<bool> {
         Ok(if self.entered {
             match self.pages.get_mut() {

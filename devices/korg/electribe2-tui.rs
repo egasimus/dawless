@@ -14,7 +14,7 @@ use thatsit::{*, crossterm::{
 use laterna;
 
 #[derive(Debug, Default)]
-pub struct Electribe2UI(TabsLeft<Box<dyn Render>>);
+pub struct Electribe2UI(TabsLeft<Box<dyn Widget>>);
 
 impl Electribe2UI {
     pub fn new () -> Self {
