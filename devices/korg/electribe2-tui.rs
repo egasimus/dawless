@@ -116,8 +116,8 @@ impl Widget for Electribe2PatternListUI {
 
     impl_render!(self, out, area => {
         Stacked::x(|column|{
-            column(self.render_list(area));
-            column(self.render_detail(area));
+            column(self.layout_list(area));
+            column(self.layout_detail());
         }).render(out, area)
     });
 
@@ -208,7 +208,7 @@ impl Electribe2PatternListUI {
     }
     //pub fn index (&self) -> usize { self.0.index() }
 
-    pub fn render_list (&self, area: Area) -> Stacked {
+    pub fn layout_list (&self, area: Area) -> Stacked {
         Stacked::y(|row|{
             row(Self::format_header(
                 "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
@@ -230,34 +230,42 @@ impl Electribe2PatternListUI {
         })
     }
 
-    pub fn render_detail (&self, area: Area) -> Option<Stacked> {
+    pub fn layout_detail (&self) -> Option<Border<InsetTall, Stacked>> {
         if self.1.open && let Some((_,page)) = self.1.pages.get() {
-            Some(Stacked::x(|column|{
-                column((1, 0));
-                column(Border(InsetTall, Stacked::y(|row|{
-                    row(Stacked::x(|column|{
-                        column(1);
-                        column(self.render_field("Pattern name", &page.pattern.name));
-                        column(self.render_field("Level",        &page.pattern.level));
+            Some(Border(InsetTall, Stacked::x(|add|{
+                add(1);
+                add(Stacked::y(|add|{
+                    add(Stacked::x(|add|{
+                        add(self.layout_field("Pattern name", 13, &page.pattern.name, 24));
+                        add(2);
+                        add(self.layout_field("Level",         6, &page.pattern.level, 5));
                     }));
-                    row(Stacked::x(|column|{
-                        column(1);
-                        column(self.render_field("BPM",          &page.pattern.bpm));
-                        column(self.render_field("Length",       &page.pattern.length));
-                        column(self.render_field("Beats",        &page.pattern.beats));
-                    }));
-                })));
-            }))
+                    add(1);
+                    add(Stacked::x(|add|{
+                        add(self.layout_field("BPM",    4, format!("{:>5.1}", page.pattern.bpm), 9));
+                        add(2);
+                        add(self.layout_field("Length", 7, &page.pattern.length, 10));
+                        add(2);
+                        add(self.layout_field("Beats",  6, &page.pattern.beats,  10));
+                    }))
+                }));
+            })))
         } else {
             None
         }
     }
 
-    pub fn render_field (&self, label: &str, value: impl Display) -> Stacked {
-        Stacked::x(|column|{
-            column(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
-            column(Border(InsetTall, value.to_string()));
-        })
+    pub fn layout_field (
+        &self, label: &str, label_width: Unit, value: impl Display, value_width: Unit
+    ) -> Fix<Stacked> {
+        Fix::XY((label_width + value_width, 3), Stacked::x(|add|{
+            add(Fix::X(label_width,
+                Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
+            ));
+            add(Fix::X(value_width, Border(InsetTall,
+                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
+            )));
+        }))
     }
 }
 

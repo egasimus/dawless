@@ -107,6 +107,100 @@ impl<'a> Widget for Layout<'a> {
     });
 }
 
+/// Set exact size
+#[derive(Debug)]
+pub enum Fix<W: Widget> {
+    X(Unit, W),
+    Y(Unit, W),
+    XY((Unit, Unit), W)
+}
+
+impl<W: Widget> Fix<W> {
+    pub fn get (&self) -> &W {
+        match self { Self::X(_, w) => w, Self::Y(_, w) => w, Self::XY(_, w) => w }
+    }
+    pub fn get_mut (&mut self) -> &mut W {
+        match self { Self::X(_, w)  => w, Self::Y(_, w)  => w, Self::XY(_, w) => w }
+    }
+    pub fn constrain (&self, area: Area) -> Area {
+        match self {
+            Self::X(width, _)            => Area(area.0, area.1, *width, area.3),
+            Self::Y(height, _)           => Area(area.0, area.1, area.2, *height),
+            Self::XY((width, height), _) => Area(area.0, area.1, *width, *height)
+        }
+    }
+}
+
+/// Set minimum size
+#[derive(Debug)]
+pub enum Min<W: Widget> {
+    X(Unit, W),
+    Y(Unit, W),
+    XY((Unit, Unit), W)
+}
+
+impl<W: Widget> Widget for Fix<W> {
+    impl_render!(self, out, area => {
+        let size = self.get().render(out, self.constrain(area))?;
+        Ok(match self {
+            Self::X(width, _)            => (*width, size.1),
+            Self::Y(height, _)           => (size.0, *height),
+            Self::XY((width, height), _) => (*width, *height),
+        })
+    });
+    impl_handle!(self, event => self.get_mut().handle(event));
+}
+
+impl<W: Widget> Min<W> {
+    pub fn get (&self) -> &W {
+        match self { Self::X(_, w)  => w, Self::Y(_, w)  => w, Self::XY(_, w) => w }
+    }
+    pub fn get_mut (&mut self) -> &mut W {
+        match self { Self::X(_, w)  => w, Self::Y(_, w)  => w, Self::XY(_, w) => w }
+    }
+    pub fn constrain (&self, area: Area) -> Area {
+        match self {
+            Self::X(min_width, _)  => Area(area.0, area.1, area.2.max(*min_width), area.3),
+            Self::Y(min_height, _) => Area(area.0, area.1, area.2, area.3.max(*min_height)),
+            Self::XY((min_width, min_height), _) => {
+                Area(area.0, area.1, area.2.max(*min_width), area.3.max(*min_height))
+            }
+        }
+    }
+}
+
+impl<W: Widget> Widget for Min<W> {
+    impl_render!(self, out, area => self.get().render(out, self.constrain(area)));
+    impl_handle!(self, event => self.get_mut().handle(event));
+}
+
+/// Set maximum size
+#[derive(Debug)]
+pub enum Max<W: Widget> { X(Unit, W), Y(Unit, W), XY((Unit, Unit), W) }
+
+impl<W: Widget> Max<W> {
+    pub fn get (&self) -> &W {
+        match self { Self::X(_, w)  => w, Self::Y(_, w)  => w, Self::XY(_, w) => w }
+    }
+    pub fn get_mut (&mut self) -> &mut W {
+        match self { Self::X(_, w)  => w, Self::Y(_, w)  => w, Self::XY(_, w) => w }
+    }
+    pub fn constrain (&self, area: Area) -> Area {
+        match self {
+            Self::X(max_width, _)  => Area(area.0, area.1, area.2.min(*max_width), area.3),
+            Self::Y(max_height, _) => Area(area.0, area.1, area.2, area.3.min(*max_height)),
+            Self::XY((max_width, max_height), _) => {
+                Area(area.0, area.1, area.2.min(*max_width), area.3.min(*max_height))
+            }
+        }
+    }
+}
+
+impl<W: Widget> Widget for Max<W> {
+    impl_render!(self, out, area => self.get().render(out, self.constrain(area)));
+    impl_handle!(self, event => self.get_mut().handle(event));
+}
+
 /// X (horizontally), Y (vertically), or Z (towards the user)
 #[derive(Debug, Default)]
 pub enum Axis { X, #[default] Y, Z }
