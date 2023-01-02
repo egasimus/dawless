@@ -8,11 +8,11 @@ static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
     run(&EXITED, &mut std::io::stdout(), App::new()
-        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2TUI::new()))
-        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonTUI::new()))
-        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLTUI::new()))
-        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000TUI::new()))
-        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLTUI::new())))
+        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2Render::new()))
+        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonRender::new()))
+        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLRender::new()))
+        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000Render::new()))
+        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLRender::new())))
 }
 
 /// The main app object, containing a menu of supported devices.
@@ -21,7 +21,7 @@ struct App {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
     /// A tabbed collection of supported devices.
-    devices: TabsLeft<Box<dyn TUI>>,
+    devices: TabsLeft<Box<dyn Render>>,
 }
 
 impl App {
@@ -29,13 +29,13 @@ impl App {
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app
-    fn page (mut self, label: &str, device: Box<dyn TUI>) -> Self {
+    fn page (mut self, label: &str, device: Box<dyn Render>) -> Self {
         self.devices.add(label.into(), device);
         self
     }
 }
 
-impl TUI for App {
+impl Render for App {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         Ok(Centered.around(Outset(1).around(self.devices.layout(max)?)))
     }

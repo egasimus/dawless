@@ -2,7 +2,7 @@ use thatsit::*;
 use thatsit_focus::*;
 
 pub struct S3000XLTUI {
-    menu: FocusColumn<Box<dyn TUI>>
+    menu: FocusColumn<Box<dyn Render>>
 }
 
 impl S3000XLTUI {
@@ -13,7 +13,7 @@ impl S3000XLTUI {
     }
 }
 
-impl TUI for S3000XLTUI {
+impl Render for S3000XLTUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }

@@ -2,7 +2,7 @@ use thatsit::*;
 use thatsit_focus::*;
 
 pub struct MPC2000TUI {
-    menu: FocusColumn<Box<dyn TUI>>
+    menu: FocusColumn<Box<dyn Render>>
 }
 
 impl MPC2000TUI {
@@ -13,7 +13,7 @@ impl MPC2000TUI {
     }
 }
 
-impl TUI for MPC2000TUI {
+impl Render for MPC2000TUI {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }

@@ -6,9 +6,9 @@ edition = "2021"
 [lib]
 path = "focus.rs"
 
-[[example]]
-name = "thatsit-focus-example"
-path = "examples/example-focus.rs"
+#[[example]]
+#name = "thatsit-focus-example"
+#path = "examples/example-focus.rs"
 
 [dependencies]
-thatsit = { path = "../thatsit" }
+thatsit = { path = "../thatsit2" }

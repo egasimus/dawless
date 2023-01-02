@@ -1,5 +1,5 @@
 [package]
-name = "thatsit2"
+name = "thatsit"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,4 +10,3 @@ path = "thatsit2.rs"
 crossterm = "0.25"
 better-panic = "0.3.0"
 opt-mod = { path = "../opt-mod" }
-

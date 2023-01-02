@@ -14,7 +14,7 @@ path = "examples/fs.rs"
 crossterm = "0.25"
 pathdiff  = "0.2"
 
-thatsit       = { path = "../thatsit" }
+thatsit       = { path = "../thatsit2" }
 thatsit-focus = { path = "../thatsit-focus" }
 
 [features]

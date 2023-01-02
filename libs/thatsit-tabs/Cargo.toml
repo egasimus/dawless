@@ -11,5 +11,5 @@ name = "thatsit-tabs-example"
 path = "examples/example-tabs.rs"
 
 [dependencies]
-thatsit = { path = "../thatsit" }
+thatsit = { path = "../thatsit2" }
 thatsit-focus = { path = "../thatsit-focus" }

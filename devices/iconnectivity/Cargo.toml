@@ -8,7 +8,7 @@ description = "Support for iConnectivity devices."
 path = "iconnectivity.rs"
 
 [dependencies]
-thatsit       = { optional = true, path = "../../libs/thatsit" }
+thatsit       = { optional = true, path = "../../libs/thatsit2" }
 thatsit-focus = { optional = true, path = "../../libs/thatsit-focus" }
 
 [features]

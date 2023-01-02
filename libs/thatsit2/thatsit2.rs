@@ -41,24 +41,24 @@ impl Area {
     }
 }
 
-pub struct Collect<'l>(pub Vec<Layout<'l>>);
+pub struct Collect<'a>(pub Vec<Layout<'a>>);
 
-impl<'l> Collect<'l> {
-    pub fn collect (collect: impl Fn(&mut Collect<'l>)) -> Self {
+impl<'a> Collect<'a> {
+    pub fn collect (collect: impl Fn(&mut Collect<'a>)) -> Self {
         let mut items = Self(vec![]);
         collect(&mut items);
         items
     }
 }
 
-impl<'l, T: Render + 'l> FnOnce<(T, )> for Collect<'l> {
+impl<'a, T: Render + 'a> FnOnce<(T, )> for Collect<'a> {
     type Output = ();
     extern "rust-call" fn call_once (mut self, args: (T,)) -> Self::Output {
         self.call_mut(args)
     }
 }
 
-impl<'l, T: Render + 'l> FnMut<(T, )> for Collect<'l> {
+impl<'a, T: Render + 'a> FnMut<(T, )> for Collect<'a> {
     extern "rust-call" fn call_mut (&mut self, args: (T,)) -> Self::Output {
         args.0.collect(self)
     }
@@ -68,7 +68,7 @@ pub trait Render {
     fn render (&self, _out: &mut dyn Write, _area: Area) -> Result<()> {
         Ok(())
     }
-    fn collect <'l> (self, collect: &mut Collect<'l>) where Self: 'l + Sized {
+    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
         collect.0.push(Layout::Box(Box::new(self)));
     }
 }
@@ -77,7 +77,7 @@ impl<T: Render> Render for &T {
     fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
         (*self).render(out, area)
     }
-    fn collect <'l> (self, collect: &mut Collect<'l>) where Self: 'l + Sized {
+    fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
         collect.0.push(Layout::Ref(self));
     }
 }
@@ -86,7 +86,7 @@ impl<'a> Render for Box<dyn Render + 'a> {
     fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
         (**self).render(out, area)
     }
-    fn collect <'l> (self, collect: &mut Collect<'l>) where Self: 'l + Sized {
+    fn collect <'b> (self, collect: &mut Collect<'b>) where Self: 'b + Sized {
         collect.0.push(Layout::Box(self));
     }
 }
@@ -107,7 +107,7 @@ impl Render for String {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Offset<T: Render>(u16, u16, T);
 
 impl<T: Render> Render for Offset<T> {
@@ -117,12 +117,12 @@ impl<T: Render> Render for Offset<T> {
     }
 }
 
-pub enum Layout<'l> {
-    Box(Box<dyn Render + 'l>),
-    Ref(&'l dyn Render)
+pub enum Layout<'a> {
+    Box(Box<dyn Render + 'a>),
+    Ref(&'a dyn Render)
 }
 
-impl<'l> Render for Layout<'l> {
+impl<'a> Render for Layout<'a> {
     fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
         match self {
             Self::Box(item) => (*item).render(out, area),
@@ -131,23 +131,25 @@ impl<'l> Render for Layout<'l> {
     }
 }
 
-pub enum Axis { X, Y, Z }
+#[derive(Default)]
+pub enum Axis { X, #[default] Y, Z }
 
-pub struct Stacked<'l>(Axis, Vec<Layout<'l>>);
+#[derive(Default)]
+pub struct Stacked<'a>(pub Axis, pub Vec<Layout<'a>>);
 
-impl<'l> Stacked<'l> {
-    pub fn x (items: impl Fn(&mut Collect<'l>)) -> Self {
+impl<'a> Stacked<'a> {
+    pub fn x (items: impl Fn(&mut Collect<'a>)) -> Self {
         Self(Axis::X, Collect::collect(items).0)
     }
-    pub fn y (items: impl Fn(&mut Collect<'l>)) -> Self {
+    pub fn y (items: impl Fn(&mut Collect<'a>)) -> Self {
         Self(Axis::Y, Collect::collect(items).0)
     }
-    pub fn z (items: impl Fn(&mut Collect<'l>)) -> Self {
+    pub fn z (items: impl Fn(&mut Collect<'a>)) -> Self {
         Self(Axis::Z, Collect::collect(items).0)
     }
 }
 
-impl<'l> Render for Stacked<'l> {
+impl<'a> Render for Stacked<'a> {
     fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
         match self.0 {
             Axis::X =>{
@@ -181,16 +183,16 @@ mod test {
     fn test_row_column () {
         let mut output = Vec::<u8>::new();
         let layout = Stacked::z(|layer|{
-            layer(Box::new(Stacked::x(|column|{
-                column(Box::new(String::from("C1")) as Box<dyn Render>);
-                column(Box::new(String::from("C2")) as Box<dyn Render>);
-                column(Box::new(String::from("C3")) as Box<dyn Render>);
-            })) as Box<dyn Render>);
-            layer(Box::new(Stacked::y(|row|{
-                row(Box::new(String::from("R1")) as Box<dyn Render>);
-                row(Box::new(String::from("R2")) as Box<dyn Render>);
-                row(Box::new(String::from("R3")) as Box<dyn Render>);
-            })) as Box<dyn Render>);
+            layer(Stacked::x(|column|{
+                column(String::from("C1"));
+                column(String::from("C2"));
+                column(String::from("C3"));
+            }));
+            layer(Stacked::y(|row|{
+                row(String::from("R1"));
+                row(String::from("R2"));
+                row(String::from("R3"));
+            }));
         });
         layout.render(&mut output, Area(10, 10, 20, 20));
     }

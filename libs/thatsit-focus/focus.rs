@@ -3,25 +3,21 @@
 use std::{io::Result, slice::Iter, slice::IterMut};
 use thatsit::{*, crossterm::event::Event};
 
-/// The focus state of an item
-#[derive(Debug, Default)]
-pub struct Focus<T>(
-    /// Whether this item is focused
-    bool,
-    /// Whether an item owned by this item is focused
-    Option<T>
-);
-
-pub trait FocusList<T> {
+/// The Focus API.
+pub trait Focus<T> {
     /// Get an immutable reference to the list of items
     fn items (&self) -> &Vec<T>;
     /// Get a mutable reference to the list of items
     fn items_mut (&mut self) -> &mut Vec<T>;
     /// Get an immutable reference to the focus state
-    fn state (&self) -> &Focus<usize>;
+    fn state (&self) -> &FocusState<usize>;
     /// Get a mutable reference to the focus state
-    fn state_mut (&mut self) -> &mut Focus<usize>;
+    fn state_mut (&mut self) -> &mut FocusState<usize>;
 
+    /// Add an item
+    fn push (&mut self, item: T) {
+        self.items_mut().push(item);
+    }
     /// Iterate over immutable references to the contained items
     fn iter (&self) -> Iter<T> {
         self.items().iter()
@@ -102,131 +98,77 @@ pub trait FocusList<T> {
     }
 }
 
+/// The focus state of an item
+#[derive(Debug, Default)]
+pub struct FocusState<T>(
+    /// Whether this item is focused
+    bool,
+    /// Whether an item owned by this item is focused
+    Option<T>
+);
+
 /// A list of sequentially selectable items
 #[derive(Debug)]
-pub struct FocusState<T> {
+pub struct FocusList<T> {
     /// The list of items
     items: Vec<T>,
     /// The focus state
-    pub state: Focus<usize>,
+    pub state: FocusState<usize>,
 }
 
-impl<T> Default for FocusState<T> {
+impl<T> Default for FocusList<T> {
     /// Create an empty focus list
-    fn default () -> Self { Self { items: vec![], state: Focus(false, None) } }
+    fn default () -> Self { Self { items: vec![], state: FocusState(false, None) } }
 }
 
-impl<T> FocusState<T> {
+impl<T> FocusList<T> {
     /// Create a new focus list, taking ownership of a collection of items
-    pub fn new (items: Vec<T>) -> Self { Self { items, state: Focus(false, None) } }
+    pub fn new (items: Vec<T>) -> Self { Self { items, ..Self::default() } }
 }
 
-impl<T> FocusList<T> for FocusState<T> {
+impl<T> Focus<T> for FocusList<T> {
     fn items (&self) -> &Vec<T> { &self.items }
     fn items_mut (&mut self) -> &mut Vec<T> { &mut self.items }
-    fn state (&self) -> &Focus<usize> { &self.state }
-    fn state_mut (&mut self) -> &mut Focus<usize> { &mut self.state }
+    fn state (&self) -> &FocusState<usize> { &self.state }
+    fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.state }
 }
 
-/// A vertical list of focusable items
-#[derive(Debug, Default)]
-pub struct FocusColumn<T: TUI> {
-    /// A focus list of the contained widgets
-    pub items:  FocusState<T>,
-    /// A scroll offset
-    pub offset: usize
-}
+#[derive(Default)]
+pub struct FocusStack<'a>(pub Stacked<'a>, pub FocusState<usize>);
 
-impl<T: TUI> FocusColumn<T> {
-    pub fn new (items: Vec<T>) -> Self { Self { items: FocusState::new(items), offset: 0 } }
-}
-
-impl<T: TUI> FocusList<T> for FocusColumn<T> {
-    fn items (&self) -> &Vec<T> { &self.items.items }
-    fn items_mut (&mut self) -> &mut Vec<T> { &mut self.items.items }
-    fn state (&self) -> &Focus<usize> { &self.items.state }
-    fn state_mut (&mut self) -> &mut Focus<usize> { &mut self.items.state }
-}
-
-impl<T: TUI> TUI for FocusColumn<T> {
-    tui! {
-        layout (self, max) {
-            Ok(Layout::rows(|add|{ for item in self.items.items.iter() { add(&*item); } }))
-        }
-        handle (self, event) {
-            Ok(match self.get_mut() {
-                Some(item) => item.handle(event),
-                None => Ok(false)
-            }? || match_key!((event) {
-                KeyCode::Up   => { self.select_prev() },
-                KeyCode::Down => { self.select_next() }
-            }))
-        }
+impl<'a> FocusStack<'a> {
+    pub fn new (stack: Stacked<'a>) -> Self {
+        Self(stack, FocusState::default())
+    }
+    pub fn x (items: impl Fn(&mut Collect<'a>)) -> Self {
+        Self(Stacked::x(items), FocusState::default())
+    }
+    pub fn y (items: impl Fn(&mut Collect<'a>)) -> Self {
+        Self(Stacked::y(items), FocusState::default())
+    }
+    pub fn z (items: impl Fn(&mut Collect<'a>)) -> Self {
+        Self(Stacked::z(items), FocusState::default())
     }
 }
 
-/// A horizontal list of focusable items
-#[derive(Debug, Default)]
-pub struct FocusRow<T: TUI> {
-    /// A focus list of the contained widgets
-    pub items: FocusState<T>,
-    /// A scroll offset
-    pub offset: usize
+impl<'a> Focus<Layout<'a>> for FocusStack<'a> {
+    fn items (&self) -> &Vec<Layout<'a>> { &self.0.1 }
+    fn items_mut (&mut self) -> &mut Vec<Layout<'a>> { &mut self.0.1 }
+    fn state (&self) -> &FocusState<usize> { &self.1 }
+    fn state_mut (&mut self) -> &mut FocusState<usize> { &mut self.1 }
 }
 
-impl<T: TUI> FocusList<T> for FocusRow<T> {
-    fn items (&self) -> &Vec<T> { &self.items.items }
-    fn items_mut (&mut self) -> &mut Vec<T> { &mut self.items.items }
-    fn state (&self) -> &Focus<usize> { &self.items.state }
-    fn state_mut (&mut self) -> &mut Focus<usize> { &mut self.items.state }
-}
+#[cfg(test)]
+mod test {
+    use crate::*;
 
-impl<T: TUI> FocusRow<T> {
-    pub fn new (items: Vec<T>) -> Self { Self { items: FocusState::new(items), offset: 0 } }
-}
-
-impl<T: TUI> TUI for FocusRow<T> {
-    tui! {
-        layout (self, max) {
-            Ok(Layout::columns(|add|{ for item in self.items.items.iter() { add(&*item); } }))
-        }
-        handle (self, event) {
-            Ok(match self.get_mut() {
-                Some(item) => item.handle(event),
-                None => Ok(false)
-            }? || match_key!((event) {
-                KeyCode::Up   => { self.select_prev() },
-                KeyCode::Down => { self.select_next() }
-            }))
-        }
-    }
-}
-
-/// A stack of focusable items, rendering one at a time
-#[derive(Debug, Default)]
-pub struct FocusStack<T: TUI>(pub FocusState<T>);
-
-impl<T: TUI> FocusList<T> for FocusStack<T> {
-    fn items (&self) -> &Vec<T> { &self.0.items }
-    fn items_mut (&mut self) -> &mut Vec<T> { &mut self.0.items }
-    fn state (&self) -> &Focus<usize> { &self.0.state }
-    fn state_mut (&mut self) -> &mut Focus<usize> { &mut self.0.state }
-}
-
-impl<T: TUI> FocusStack<T> {
-    pub fn new (items: Vec<T>) -> Self { Self(FocusState::new(items)) }
-}
-
-impl<T: TUI> TUI for FocusStack<T> {
-    tui! {
-        layout (self, max) {
-            match self.get() { Some(item) => item.layout(max), None => Ok(BLANK.into()) }
-        }
-        handle (self, event) {
-            match self.get_mut() {
-                Some(item) => item.handle(event),
-                None => Ok(false)
-            }
-        }
+    #[test]
+    fn test_focus_stack () {
+        let mut output = Vec::<u8>::new();
+        let layout = FocusStack::y(|item|{
+            item(String::from("Item1"));
+            item(String::from("Item1"));
+            item(String::from("Item1"));
+        });
     }
 }

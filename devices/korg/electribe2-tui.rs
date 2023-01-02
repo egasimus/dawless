@@ -16,38 +16,38 @@ use thatsit_tabs::*;
 use laterna;
 
 #[derive(Debug, Default)]
-pub struct Electribe2TUI(TabsLeft<Box<dyn TUI>>);
+pub struct Electribe2UI(TabsLeft<Box<dyn Render>>);
 
-impl Electribe2TUI {
+impl Electribe2UI {
     pub fn new () -> Self {
-        let mut selector = TabsLeft::<Box<dyn TUI>>::default();
-        selector.add("Edit patterns".into(), Box::new(Electribe2PatternsTUI::new()));
-        selector.add("Edit samples".into(),  Box::new(Electribe2SamplesTUI::new()));
+        let mut selector = TabsLeft::<Box<dyn Render>>::default();
+        selector.add("Edit patterns".into(), Box::new(Electribe2PatternsUI::new()));
+        selector.add("Edit samples".into(),  Box::new(Electribe2SamplesUI::new()));
         selector.pages.select_next();
         Self(selector)
     }
 }
 
-impl TUI for Electribe2TUI {
+impl Render for Electribe2UI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> { self.0.layout(max) }
     fn handle (&mut self, event: &Event) -> Result<bool> { self.0.handle(event) }
 }
 
 /// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
-pub struct Electribe2PatternsTUI {
+pub struct Electribe2PatternsUI {
     pub label:     Foreground<Text>,
     /// File explorer for selecting a pattern bank
     pub file_list: FileList,
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
     /// Selector for editing an individual pattern
-    pub patterns:  TabsLeft<Electribe2PatternTUI>,
+    pub patterns:  TabsLeft<Electribe2PatternUI>,
     /// FIXME: Scroll offset. Need to implement generic scrollable
     pub offset:    usize,
 }
 
-impl Electribe2PatternsTUI {
+impl Electribe2PatternsUI {
     const SELECT_PATTERN_BANK: &'static str = " Select pattern bank: ";
     pub fn new () -> Self {
         let mut file_list = FileList::default();
@@ -76,12 +76,12 @@ impl Electribe2PatternsTUI {
                 pattern.beats,
                 pattern.key,
                 pattern.scale,
-            ), Electribe2PatternTUI::new(pattern)))
+            ), Electribe2PatternUI::new(pattern)))
             .collect::<Vec<_>>());
     }
 }
 
-impl TUI for Electribe2PatternsTUI {
+impl Render for Electribe2PatternsUI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let Self { offset, bank, .. } = self;
         Ok(Inset(0).around(if let Some(bank) = &bank {
@@ -132,14 +132,14 @@ impl TUI for Electribe2PatternsTUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternList(FocusColumn<Electribe2PatternTUI>);
+pub struct Electribe2PatternList(FocusColumn<Electribe2PatternUI>);
 
 impl Electribe2PatternList {
     pub fn len (&self) -> usize { self.0.len() }
     //pub fn index (&self) -> usize { self.0.index() }
 }
 
-impl TUI for Electribe2PatternList {
+impl Render for Electribe2PatternList {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         self.0.layout(max)
     }
@@ -187,7 +187,7 @@ impl TUI for Electribe2PatternList {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternTUI {
+pub struct Electribe2PatternUI {
     pattern: Electribe2Pattern,
     name:    Text,
     level:   Text,
@@ -196,7 +196,7 @@ pub struct Electribe2PatternTUI {
     beats:   Text,
 }
 
-impl Electribe2PatternTUI {
+impl Electribe2PatternUI {
     fn new (pattern: &Electribe2Pattern) -> Self {
         Self {
             pattern: pattern.clone(),
@@ -209,7 +209,7 @@ impl Electribe2PatternTUI {
     }
 }
 
-impl TUI for Electribe2PatternTUI {
+impl Render for Electribe2PatternUI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         Ok(Inset(2).around(col(|add|{
             add(row(|add|{add(SPACE);add(&self.name);add(&self.level);}));
@@ -270,7 +270,7 @@ impl TUI for Electribe2PatternTUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2SamplesTUI {
+pub struct Electribe2SamplesUI {
     pub focused: bool,
     pub file_list: FileList,
     pub bank: Option<Electribe2SampleBank>,
@@ -278,7 +278,7 @@ pub struct Electribe2SamplesTUI {
     pub sample: Spacer
 }
 
-impl TUI for Electribe2SamplesTUI {
+impl Render for Electribe2SamplesUI {
     fn layout <'a> (&'a self, max: Size) -> Result<Thunk<'a>> {
         let Self { focused, .. } = *self;
         Ok(Inset(1).around(if self.bank.is_some() {
@@ -289,7 +289,7 @@ impl TUI for Electribe2SamplesTUI {
     }
 }
 
-impl Electribe2SamplesTUI {
+impl Electribe2SamplesUI {
     pub fn new () -> Self { let mut new = Self::default(); new.update(); return new }
     fn update (&mut self) {
         let (entries, _) = list_current_directory();
