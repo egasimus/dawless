@@ -197,7 +197,7 @@ impl Electribe2PatternListUI {
                 pattern.beats,
                 pattern.key,
                 pattern.scale,
-            ), Electribe2PatternUI(pattern.clone()))).collect::<Vec<_>>());
+            ), Electribe2PatternUI::new(pattern))).collect::<Vec<_>>());
         self.1.pages.select_next();
     }
 
@@ -236,9 +236,20 @@ impl Electribe2PatternListUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternUI(pub Electribe2Pattern);
+pub struct Electribe2PatternUI(pub Electribe2Pattern, TabsLeft<Electribe2PartUI>);
 
 impl Electribe2PatternUI {
+    pub fn new (
+        pattern: &Electribe2Pattern
+    ) -> Self {
+        let mut parts = TabsLeft::<Electribe2PartUI>::default();
+        for (index, part) in pattern.parts.iter().enumerate() {
+            parts.add(format!("Track {}", index + 1), Electribe2PartUI::new(part));
+        }
+        parts.pages.select_next();
+        parts.open();
+        Self(pattern.clone(), parts)
+    }
     pub fn field (
         label: &str, label_width: Unit, value: impl Display, value_width: Unit
     ) -> Fix<Stacked> {
@@ -291,7 +302,8 @@ impl Widget for Electribe2PatternUI {
                     add(2);
                     add(Self::field("Alt 15/16", 10, &self.0.alt_15_16, 10));
                 }));
-                add(1);
+                add(3);
+                add(&self.1);
             }));
         }).render(out, area)
     });
@@ -315,6 +327,65 @@ impl Widget for Electribe2PatternUI {
         //}
         //Ok(())
     //}
+}
+
+#[derive(Debug, Default)]
+pub struct Electribe2PartUI(pub Electribe2Part);
+
+impl Electribe2PartUI {
+    pub fn new (part: &Electribe2Part) -> Self {
+        Self(part.clone())
+    }
+    pub fn field (
+        label: &str, label_width: Unit, value: impl Display, value_width: Unit
+    ) -> Fix<Stacked> {
+        Fix::XY((10, 4), Stacked::y(|add|{
+            add(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
+            add(Border(InsetTall,
+                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
+            ));
+        }))
+    }
+}
+
+impl Widget for Electribe2PartUI {
+
+    impl_render!(self, out, area => {
+        Stacked::y(|add|{
+            add(Stacked::x(|add|{
+                add(Self::field("Sample", 13, &self.0.sample, 20));
+                add(1);
+                add(Self::field("Pitch", 6, &self.0.pitch, 8));
+                add(1);
+                add(Self::field("Osc", 6, &self.0.pitch, 8));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("Filter", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Freq", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Res", 6, &self.0.filter_type, 8));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("Mod", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Speed", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Depth", 6, &self.0.filter_type, 8));
+            }));
+            add(1);
+            add(Stacked::x(|add|{
+                add(Self::field("IFX", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Type", 6, &self.0.filter_type, 8));
+                add(1);
+                add(Self::field("Param", 6, &self.0.filter_type, 8));
+            }));
+        }).render(out, area)
+    });
+
 }
 
 #[derive(Debug, Default)]
