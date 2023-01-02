@@ -44,18 +44,18 @@ pub struct FileList<'a>(pub FocusStack<'a>);
 impl<'a> FileList<'a> {
     pub fn update (&mut self) -> &mut Self {
         let (entries, _) = list_current_directory();
-        self.replace(entries);
+        self.replace(entries.into_iter().map(|entry|Layout::Box(Box::new(entry))).collect());
         self.select(0);
         self
     }
-    pub fn selected (&self) -> &FileEntry {
+    pub fn selected (&self) -> &Layout<'a> {
         self.get().unwrap()
     }
 }
 
-impl<'a> Focus<FileEntry> for FileList<'a> {
-    fn items (&self) -> &Vec<FileEntry> { self.0.items() }
-    fn items_mut (&mut self) -> &mut Vec<FileEntry> { self.0.items_mut() }
+impl<'a> Focus<Layout<'a>> for FileList<'a> {
+    fn items (&self) -> &Vec<Layout<'a>> { self.0.items() }
+    fn items_mut (&mut self) -> &mut Vec<Layout<'a>> { self.0.items_mut() }
     fn state (&self) -> &FocusState<usize> { &self.0.state() }
     fn state_mut (&mut self) -> &mut FocusState<usize> { self.0.state_mut() }
 }

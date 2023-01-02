@@ -13,11 +13,11 @@ pub(crate) fn cli (command: &Triton) {
 }
 
 #[derive(Default)]
-pub struct TritonTUI {
-    menu: FocusColumn<Box<dyn TUI>>
+pub struct TritonUI<'a> {
+    menu: FocusStack<'a>
 }
 
-impl TritonTUI {
+impl<'a> TritonUI<'a> {
     pub fn new () -> Self {
         let mut menu = FocusColumn::default();
         //menu.add("Edit program".into(), ())
@@ -29,7 +29,7 @@ impl TritonTUI {
     }
 }
 
-impl TUI for TritonTUI {
+impl<'a> Render for TritonUI<'a> {
     fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         self.menu.render(term, area)
     }
