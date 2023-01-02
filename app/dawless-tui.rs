@@ -31,6 +31,7 @@ impl App {
     /// Add a device page to the app
     fn page (mut self, label: &str, device: Box<dyn Widget>) -> Self {
         self.devices.add(label.into(), device);
+        self.devices.pages.select(0);
         self
     }
 }

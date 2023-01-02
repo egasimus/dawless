@@ -65,6 +65,7 @@ pub trait Focus<T> {
     /// Set the selected item
     fn select (&mut self, index: usize) -> bool {
         if self.items().get(index).is_some() {
+            self.unselect();
             self.state_mut().1 = Some(index);
             true
         } else {
@@ -73,7 +74,6 @@ pub trait Focus<T> {
     }
     /// Select the next item
     fn select_next (&mut self) -> bool {
-        self.unselect();
         if let Some(index) = self.state().1 {
             self.select(if index >= self.items().len() - 1 { 0 } else { index + 1 })
         } else {
@@ -82,7 +82,6 @@ pub trait Focus<T> {
     }
     /// Select the previous item
     fn select_prev (&mut self) -> bool {
-        self.unselect();
         if let Some(index) = self.state().1 {
             self.select(if index == 0 { self.items().len() - 1 } else { index - 1 })
         } else {
