@@ -37,38 +37,49 @@ pub trait Render {
     }
 }
 
-impl<T: Render> Render for &T {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
-        (*self).render(out, area)
+impl std::fmt::Debug for dyn Render {
+    fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dyn[Render]")
     }
+}
+
+impl<T: Render> Render for &T {
+    impl_render!(self, out, area => (*self).render(out, area));
     fn collect <'a> (self, collect: &mut Collect<'a>) where Self: 'a + Sized {
         collect.0.push(Layout::Ref(self));
     }
 }
 
 impl<'a> Render for Box<dyn Render + 'a> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
-        (**self).render(out, area)
-    }
+    impl_render!(self, out, area => (**self).render(out, area));
     fn collect <'b> (self, collect: &mut Collect<'b>) where Self: 'b + Sized {
         collect.0.push(Layout::Box(self));
     }
 }
 
+impl<T: Render> Render for Option<T> {
+    impl_render!(self, out, area => match self {
+        Some(item) => item.render(out, area),
+        None => Ok(())
+    });
+}
+
+impl Render for () {}
+
 impl Render for &str {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+    impl_render!(self, out, area => {
         area.min(self.len() as Unit, 1)?;
         out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
         Ok(())
-    }
+    });
 }
 
 impl Render for String {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+    impl_render!(self, out, area => {
         area.min(self.len() as Unit, 1)?;
         out.queue(MoveTo(area.0, area.1))?.queue(Print(&self))?;
         Ok(())
-    }
+    });
 }
 
 /// Compare render output against an expected value.

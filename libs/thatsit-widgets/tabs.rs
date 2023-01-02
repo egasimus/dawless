@@ -30,7 +30,6 @@ impl std::fmt::Debug for dyn TabsTheme {
     }
 }
 
-
 #[derive(Debug)]
 pub struct TabsLeft<T: Render> {
     pub pages:   FocusList<(String, T)>,
@@ -93,7 +92,7 @@ impl<T: Render> TabsLeft<T> {
 }
 
 impl<T: Render> Render for TabsLeft<T> {
-    fn render (&self, out: &mut dyn Write, area: Area) -> Result<()> {
+    impl_render!(self, out, area => {
         Stacked::x(|column|{
             column(Stacked::y(|row|{
                 for (label, _) in self.pages.iter() {
@@ -104,7 +103,7 @@ impl<T: Render> Render for TabsLeft<T> {
                 column(page);
             }
         }).render(out, area)
-    }
+    });
 }
 
 impl<T: Render + Handle> Handle for TabsLeft<T> {

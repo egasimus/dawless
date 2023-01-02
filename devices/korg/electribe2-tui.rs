@@ -37,7 +37,7 @@ impl Handle for Electribe2UI {
 /// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
 pub struct Electribe2PatternsUI<'a> {
-    pub label:     Foreground<Text>,
+    pub label:     String,
     /// File explorer for selecting a pattern bank
     pub file_list: FileList<'a>,
     /// The currently selected pattern bank
@@ -54,7 +54,7 @@ impl<'a> Electribe2PatternsUI<'a> {
         let mut file_list = FileList::default();
         file_list.update();
         Self {
-            label: Text(Self::SELECT_PATTERN_BANK.into()).fg(Color::White),
+            label: Self::SELECT_PATTERN_BANK.into(),
             bank: None,
             patterns: TabsLeft::default(),
             offset: 0,
@@ -85,11 +85,15 @@ impl<'a> Electribe2PatternsUI<'a> {
 impl<'a> Render for Electribe2PatternsUI<'a> {
     impl_render!(self, out, area => {
         let Self { offset, bank, .. } = self;
-        Ok(Inset(0).around(if let Some(bank) = &bank {
-            (&self.patterns).into()
+        if let Some(bank) = &bank {
+            Border(InsetTall, self.patterns).render(out, area)
         } else {
-            pad(Size(1, 1), col(|add|{ add(&self.label); add(SPACE); add(&self.file_list); }))
-        }))
+            Border(InsetTall, Stacked::y(|row|{
+                row(&self.label);
+                row(());
+                row(&self.file_list);
+            })).render(out, area)
+        }
     });
 }
 
@@ -213,10 +217,10 @@ impl Electribe2PatternUI {
 
 impl Render for Electribe2PatternUI {
     impl_render!(self, out, area => {
-        Ok(Inset(2).around(col(|add|{
-            add(row(|add|{add(SPACE);add(&self.name);add(&self.level);}));
-            add(row(|add|{add(SPACE);add(&self.bpm);add(&self.length);add(&self.beats)}));
-        })))
+        Border(InsetTall, Stacked::x(|column|{
+            column(Stacked::y(|row|{row(());row(&self.name);row(&self.level);}));
+            column(Stacked::y(|row|{row(());row(&self.bpm);row(&self.length);row(&self.beats)}));
+        })).render(out, area)
     });
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return Ok(())
@@ -276,18 +280,21 @@ pub struct Electribe2SamplesUI<'a> {
     pub focused: bool,
     pub file_list: FileList<'a>,
     pub bank: Option<Electribe2SampleBank>,
-    pub sample_list: Spacer,//List<String>,
-    pub sample: Spacer
+    pub sample_list: (),//List<String>,
+    pub sample: ()
 }
 
 impl<'a> Render for Electribe2SamplesUI<'a> {
     impl_render!(self, out, area => {
         let Self { focused, .. } = *self;
-        Ok(Inset(1).around(if self.bank.is_some() {
-            col(|add| { add(&self.sample_list); add(&self.sample); })
-        } else {
-            col(|add| { add(&self.file_list); })
-        }))
+        Border(InsetTall, Stacked::y(|row|{
+            if self.bank.is_some() {
+                row(&self.sample_list);
+                row(&self.sample);
+            } else {
+                row(&self.file_list);
+            }
+        })).render(out, area)
     });
 }
 

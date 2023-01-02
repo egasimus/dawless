@@ -2,7 +2,7 @@ use crate::{*, crossterm::{cursor::*,style::*}};
 
 /// A border around another widget
 #[derive(Copy, Clone, Default)]
-pub struct Border<T: BorderStyle, U: Render>(T, U);
+pub struct Border<T: BorderStyle, U: Render>(pub T, pub U);
 
 impl<T: BorderStyle, U: Render> Render for Border<T, U> {
     impl_render!(self, out, area => {
