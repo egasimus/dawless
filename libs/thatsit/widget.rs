@@ -40,6 +40,7 @@ impl<W: Widget> Widget for &W {
     }
 }
 
+/// Widgets work the same when boxed.
 impl<'a> Widget for Box<dyn Widget + 'a> {
     impl_render!(self, out, area => (**self).render(out, area));
     impl_handle!(self, event => (**self).handle(event));
@@ -48,8 +49,20 @@ impl<'a> Widget for Box<dyn Widget + 'a> {
     }
 }
 
+/// The null type is a valid widget which shows nothing and does nothing.
 impl Widget for () {}
 
+/// The number type is a valid widget representing an empty X*Y square.
+impl Widget for Unit {
+    impl_render!(self, _out, _area => Ok((*self, *self)));
+}
+
+/// A pair of numbers represents a rectangular spacer.
+impl Widget for (Unit, Unit) {
+    impl_render!(self, _out, _area => Ok((self.0, self.1)));
+}
+
+/// Widgets can be optional. Note that hiding widgets by setting them to None erases their state.
 impl<W: Widget> Widget for Option<W> {
     impl_render!(self, out, area => match self {
         Some(item) => item.render(out, area),
@@ -57,6 +70,7 @@ impl<W: Widget> Widget for Option<W> {
     });
 }
 
+/// String slices are rendered to the screen.
 impl Widget for &str {
     impl_render!(self, out, area => {
         let size = (self.len() as Unit, 1);
@@ -65,6 +79,7 @@ impl Widget for &str {
     });
 }
 
+/// Strings are rendered to the screen.
 impl Widget for String {
     impl_render!(self, out, area => {
         let size = (self.len() as Unit, 1);
@@ -73,9 +88,10 @@ impl Widget for String {
     });
 }
 
-pub type StyleFn<W> = dyn Fn(W) -> StyledContent<W>;
-
+/// Wrapper for integration with `crossterm::StyledContent`.
 pub struct Styled<'a, W: Widget + Stylize + Display>(pub &'a StyleFn<W>, pub W);
+
+pub type StyleFn<W> = dyn Fn(W) -> StyledContent<W>;
 
 impl<'a, W: Widget + Stylize + Display + Clone> Widget for Styled<'a, W> {
     impl_render!(self, out, area => {
@@ -103,7 +119,8 @@ impl<D: Display> Widget for StyledContent<D> {
     }
 }
 
-/// A widget with an associated action.
+/// A widget with an associated action triggered on Enter or Space.
+/// Combine this with a background and a border to get a button.
 pub struct Link<T: Fn(&Self)->Result<bool>, U: Widget>(T, U);
 
 impl<T: Fn(&Self)->Result<bool>, U: Widget> Widget for Link<T, U> {

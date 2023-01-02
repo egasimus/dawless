@@ -107,6 +107,7 @@ impl<T: Widget> Widget for TabsLeft<T> {
                 }
             }));
             if self.open && let Some((_,page)) = self.pages.get() {
+                column((1, 0));
                 column(page);
             }
         }).render(out, area)

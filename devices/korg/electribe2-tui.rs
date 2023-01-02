@@ -87,11 +87,12 @@ impl<'a> Widget for Electribe2PatternsUI<'a> {
         if let Some(bank) = &bank {
             Border(InsetTall, &self.patterns).render(out, area)
         } else {
-            Border(InsetTall, Stacked::y(|row|{
+            Stacked::y(|row|{
                 row(&self.label);
-                row(());
-                row(&self.file_list);
-            })).render(out, area)
+                row(Border(InsetTall, Stacked::y(|row|{
+                    row(&self.file_list);
+                })));
+            }).render(out, area)
         }
     });
     impl_handle!(self, event => {
