@@ -28,7 +28,9 @@ impl Electribe2UI {
 
 impl Widget for Electribe2UI {
     impl_render!(self, out, area => self.0.render(out, area));
-    impl_handle!(self, event => self.0.handle(event));
+    impl_handle!(self, event => {
+        self.0.handle(event)
+    });
 }
 
 /// UI for editing a Korg Electribe 2 pattern bank

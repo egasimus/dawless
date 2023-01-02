@@ -92,15 +92,17 @@ impl<T: Widget> TabsLeft<T> {
 }
 
 impl<T: Widget> Widget for TabsLeft<T> {
+
     impl_render!(self, out, area => {
         let selected = self.pages.selected();
         Stacked::x(|column|{
             column(Stacked::y(|row|{
                 for (index, (label, _)) in self.pages.iter().enumerate() {
+                    let label = label.clone();
                     if let Some(selected) = selected && selected == index {
-                        row(Styled(&|s: String|s.with(Color::Yellow).bold(), label.clone()));
+                        row(Styled(&|s: String|s.with(Color::Yellow).bold(), label));
                     } else {
-                        row(label.clone().with(Color::White));
+                        row(Styled(&|s: String|s.with(Color::White), label));
                     }
                 }
             }));
@@ -109,6 +111,7 @@ impl<T: Widget> Widget for TabsLeft<T> {
             }
         }).render(out, area)
     });
+
     impl_handle!(self, event => {
         Ok(if self.entered {
             match self.pages.get_mut() {
@@ -128,4 +131,5 @@ impl<T: Widget> Widget for TabsLeft<T> {
             })
         })
     });
+
 }

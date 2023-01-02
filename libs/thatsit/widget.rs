@@ -42,6 +42,7 @@ impl<W: Widget> Widget for &W {
 
 impl<'a> Widget for Box<dyn Widget + 'a> {
     impl_render!(self, out, area => (**self).render(out, area));
+    impl_handle!(self, event => (**self).handle(event));
     fn collect <'b> (self, collect: &mut Collect<'b>) where Self: 'b + Sized {
         collect.0.push(Layout::Box(self));
     }
@@ -71,9 +72,6 @@ impl Widget for String {
         Ok(size)
     });
 }
-
-use std::fmt::Display;
-use crossterm::style::{Stylize, StyledContent};
 
 pub type StyleFn<W> = dyn Fn(W) -> StyledContent<W>;
 
