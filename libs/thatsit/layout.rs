@@ -8,7 +8,6 @@ pub type Unit = u16;
 pub struct Area(pub Unit, pub Unit, pub Unit, pub Unit);
 
 impl Area {
-
     /// Return an error if this area is larger than the minimum needed size
     pub fn min (&self, (min_w, min_h): (Unit, Unit)) -> Result<&Self> {
         if self.w() < min_w || self.h() < min_h {
@@ -38,6 +37,10 @@ impl Area {
     #[inline]
     pub fn h (&self) -> Unit {
         self.3
+    }
+    #[inline]
+    pub fn size (&self) -> (Unit, Unit) {
+        (self.w(), self.h())
     }
 }
 

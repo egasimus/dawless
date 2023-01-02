@@ -1,6 +1,6 @@
 use crate::electribe2::*;
 use crate::*;
-use std::{rc::Rc, cell::RefCell};
+use std::{fmt::Display, slice::Iter};
 use thatsit::{*, crossterm::{
     QueueableCommand,
     event::{Event, KeyEvent, KeyCode, KeyModifiers, KeyEventKind, KeyEventState},
@@ -36,91 +36,56 @@ impl Widget for Electribe2UI {
 /// UI for editing a Korg Electribe 2 pattern bank
 #[derive(Debug)]
 pub struct Electribe2PatternsUI {
-    pub label:     String,
     /// File explorer for selecting a pattern bank
     pub file_list: FileList,
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
-    /// Selector for editing an individual pattern
-    pub patterns:  TabsLeft<Electribe2PatternUI>,
-    /// FIXME: Scroll offset. Need to implement generic scrollable
-    pub offset:    usize,
+    /// Selector for editing individual patterns
+    pub patterns:  Electribe2PatternListUI,
 }
 
 impl Electribe2PatternsUI {
-    const SELECT_PATTERN_BANK: &'static str = " Select pattern bank: ";
     pub fn new () -> Self {
         let mut file_list = FileList::default();
         file_list.update();
         Self {
-            label: Self::SELECT_PATTERN_BANK.into(),
             bank: None,
-            patterns: TabsLeft::default(),
-            offset: 0,
+            patterns: Electribe2PatternListUI::default(),
             file_list,
         }
     }
-    pub fn update (&mut self) { self.file_list.update(); }
+    pub fn update (&mut self) {
+        self.file_list.update();
+    }
     pub fn import (&mut self, bank: &std::path::Path) {
         let data = crate::read(bank);
         let bank = Electribe2PatternBank::read(&data);
         self.bank = Some(bank);
-        self.patterns.pages.replace(
-            self.bank.as_ref().unwrap().patterns.iter().enumerate()
-            .map(|(index,pattern)|(format!(
-                "{:>3}  {:<16} {:>5.1}   {:>3}    {:>3}    {:>3}   {:>3}",
-                index + self.offset + 1,
-                pattern.name.trim(),
-                pattern.bpm,
-                pattern.length,
-                pattern.beats,
-                pattern.key,
-                pattern.scale,
-            ), Electribe2PatternUI::new(pattern)))
-            .collect::<Vec<_>>());
+        self.patterns.replace(self.bank.as_ref().unwrap());
     }
 }
 
 impl Widget for Electribe2PatternsUI {
+
     impl_render!(self, out, area => {
-        let Self { offset, bank, .. } = self;
-        if let Some(bank) = &bank {
-            Border(InsetTall, &self.patterns).render(out, area)
+        if self.bank.is_some() {
+            Stacked::y(|row|{
+                row(" Patterns in this file:");
+                row(Border(InsetTall, &self.patterns));
+            })
         } else {
             Stacked::y(|row|{
-                row(&self.label);
+                row(" Select pattern bank:");
                 row(Border(InsetTall, Stacked::y(|row|{
                     row(&self.file_list);
                 })));
-            }).render(out, area)
-        }
+            })
+        }.render(out, area)
     });
+
     impl_handle!(self, event => {
-        Ok(if let Some(bank) = &self.bank {
-            if *event == key!(Ctrl-Up) {
-                if let Some(index) = self.patterns.pages.selected() {
-                    if index > 0 {
-                        //self.patterns.tabs.items.items.swap(index, index-1);
-                        self.patterns.pages.items_mut().swap(index, index-1);
-                    }
-                }
-                true
-            } else if *event == key!(Ctrl-Down) {
-                if let Some(index) = self.patterns.pages.selected() {
-                    if index < self.patterns.len() - 1 {
-                        //self.patterns.tabs.items.items.swap(index, index+1);
-                        self.patterns.pages.items_mut().swap(index, index+1);
-                    }
-                }
-                true
-            } else if self.patterns.handle(event)? {
-                //let len     = self.patterns.len();
-                //let index   = self.patterns.index();
-                //self.offset = handle_scroll(len, index, 36, self.offset);
-                true
-            } else {
-                false
-            }
+        Ok(if self.bank.is_some() {
+            self.patterns.handle(event)?
         } else {
             self.file_list.handle(event)? || if_key!(event => Enter => {
                 if let Some(FileEntry { path, is_dir, .. }) = self.file_list.selected() {
@@ -140,15 +105,123 @@ impl Widget for Electribe2PatternsUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternList<'a>(FocusStack<'a>);
+pub struct Electribe2PatternListUI(
+    /// Scroll offset
+    usize,
+    /// Collection of pattern editors
+    TabsLeft<Electribe2PatternUI>
+);
 
-impl<'a> Electribe2PatternList<'a> {
-    pub fn len (&self) -> usize { self.0.len() }
+impl Electribe2PatternListUI {
+
+    pub fn format_header (
+        index:  impl Display,
+        name:   impl Display,
+        bpm:    impl Display,
+        length: impl Display,
+        beats:  impl Display,
+        key:    impl Display,
+        scale:  impl Display
+    ) -> String {
+        format!(
+            "{:>3} │ {:<16} │ {:>5} │ {:>6} │ {:>5} │ {:>3} │ {:>5} │",
+            index,
+            name,
+            bpm,
+            length,
+            beats,
+            key,
+            scale,
+        )
+    }
+    #[inline]
+    pub fn len (&self) -> usize {
+        self.1.len()
+    }
+    pub fn replace (&mut self, bank: &Electribe2PatternBank) {
+        self.1.pages.replace(bank.patterns.iter().enumerate()
+            .map(|(index,pattern)|(Self::format_header(
+                index,
+                pattern.name.trim(),
+                pattern.bpm as u64,
+                pattern.length,
+                pattern.beats,
+                pattern.key,
+                pattern.scale,
+            ), Electribe2PatternUI::new(pattern))).collect::<Vec<_>>());
+        self.1.pages.select_next();
+    }
+    #[inline]
+    pub fn selected (&self) -> Option<usize> {
+        self.1.pages.selected()
+    }
+    #[inline]
+    pub fn iter (&self) -> Iter<(String, Electribe2PatternUI)> {
+        self.1.pages.iter()
+    }
+    pub fn swap_up (&mut self) -> bool {
+        if let Some(index) = self.selected() {
+            if index > 0 {
+                //self.patterns.tabs.items.items.swap(index, index-1);
+                self.1.pages.items_mut().swap(index, index-1);
+                return true
+            }
+        }
+        false
+    }
+    pub fn swap_down (&mut self) -> bool {
+        if let Some(index) = self.selected() {
+            if index < self.len() - 1 {
+                //self.patterns.tabs.items.items.swap(index, index+1);
+                self.1.pages.items_mut().swap(index, index+1);
+                return true
+            }
+        }
+        false
+    }
     //pub fn index (&self) -> usize { self.0.index() }
 }
 
-impl<'a> Widget for Electribe2PatternList<'a> {
-    impl_render!(self, out, area => self.0.render(out, area));
+impl Widget for Electribe2PatternListUI {
+
+    impl_render!(self, out, area => {
+        Stacked::x(|column|{
+            column(Stacked::y(|row|{
+                row(Self::format_header(
+                    "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
+                ).with(Color::White).bold());
+                for (index, (label, _)) in self.iter().enumerate().skip(self.0) {
+                    if index as Unit >= area.h() - 1 {
+                        break
+                    }
+                    if let Some(selected) = self.selected() && selected == index {
+                        row(Styled(&|s: String|s.with(Color::Yellow), label.clone()));
+                    } else {
+                        row(Styled(&|s: String|s.with(Color::White), label.clone()));
+                    }
+                }
+            }));
+            //if self.open && let Some((_,page)) = self.pages.get() {
+                //column((1, 0));
+                //column(page);
+            //}
+        }).render(out, area)
+    });
+
+    impl_handle!(self, event => Ok(
+        if *event == key!(Ctrl-Up) {
+            self.swap_up()
+        } else if *event == key!(Ctrl-Down) {
+            self.swap_down()
+        } else if *event == key!(Up) {
+            self.1.pages.select_prev()
+        } else if *event == key!(Down) {
+            self.1.pages.select_next()
+        } else {
+            false
+        }
+    ));
+
     //fn render (&self, term: &mut dyn Write, area: Area) -> Result<()> {
         //return self.0.render(term, area);
         //return Layout::Item(
