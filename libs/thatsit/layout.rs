@@ -6,37 +6,51 @@ pub type Unit = u16;
 pub struct Area(pub Unit, pub Unit, pub Unit, pub Unit);
 
 impl Area {
-    pub fn min (&self, w: Unit, h: Unit) -> Result<()> {
-        if self.2 < w || self.3 < h {
-            Err(Error::new(ErrorKind::Other, format!("no space ({:?} < {}x{})", self, w, h)))
+    /// Return an error if this area is larger than the minimum needed size
+    pub fn min (&self, (min_w, min_h): (Unit, Unit)) -> Result<&Self> {
+        if self.w() < min_w || self.h() < min_h {
+            Err(Error::new(
+                ErrorKind::Other, format!("no space ({:?} < {}x{})", self, min_w, min_h)
+            ))
         } else {
-            Ok(())
+            Ok(self)
         }
     }
+    /// Move the cursor to the upper left corner of the area
+    pub fn home <'a> (&'a self, out: &'a mut dyn Write) -> Result<&'a mut dyn Write> {
+        out.queue(MoveTo(self.x(), self.y()))
+    }
+    #[inline]
     pub fn x (&self) -> Unit {
         self.0
     }
+    #[inline]
     pub fn y (&self) -> Unit {
         self.1
     }
+    #[inline]
     pub fn w (&self) -> Unit {
         self.2
     }
+    #[inline]
     pub fn h (&self) -> Unit {
         self.3
     }
 }
 
+/// Render the contained Widget in a sub-Area starting some distance from
+/// the upper left corner of the Area that was passed.
 #[derive(Copy, Clone, Default)]
 pub struct Offset<W: Widget>(pub Unit, pub Unit, pub W);
 
 impl<W: Widget> Widget for Offset<W> {
     impl_render!(self, out, area => {
-        out.queue(MoveTo(self.0, self.1))?;
-        self.2.render(out, area)
+        let Area(x, y, w, h) = area;
+        self.2.render(out, Area(x + self.0, y + self.1, w - self.0, h - self.1))
     });
 }
 
+/// Callable struct that collects Layout-wrapped Widgets into itself.
 pub struct Collect<'a>(pub Vec<Layout<'a>>);
 
 impl<'a> Collect<'a> {
@@ -60,6 +74,7 @@ impl<'a, W: Widget + 'a> FnMut<(W, )> for Collect<'a> {
     }
 }
 
+/// Wrapper that allows owned and borrowed Widgets to be treated equally.
 pub enum Layout<'a> {
     Box(Box<dyn Widget + 'a>),
     Ref(&'a dyn Widget),
@@ -110,7 +125,7 @@ impl<'a> Widget for Stacked<'a> {
         let mut y = 0;
         match self.0 {
             Axis::X =>{
-                area.min(self.1.len() as Unit, 1)?;
+                area.min((self.1.len() as Unit, 1))?;
                 for item in self.1.iter() {
                     let (w, h) = Offset(x, 0, item).render(out, area)?;
                     x = x + w;
@@ -118,7 +133,7 @@ impl<'a> Widget for Stacked<'a> {
                 }
             },
             Axis::Y => {
-                area.min(1, self.1.len() as Unit)?;
+                area.min((1, self.1.len() as Unit))?;
                 for item in self.1.iter() {
                     let (w, h) = Offset(0, y, item).render(out, area)?;
                     x = x.max(w);
@@ -126,7 +141,7 @@ impl<'a> Widget for Stacked<'a> {
                 }
             },
             Axis::Z => {
-                area.min(1, 1 as Unit)?;
+                area.min((1, 1 as Unit))?;
                 for item in self.1.iter() {
                     let (w, h) = item.render(out, area)?;
                     x = x.max(w);

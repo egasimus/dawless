@@ -1,8 +1,12 @@
 #![feature(unboxed_closures, fn_traits)]
 
 pub use std::io::{Result, Error, ErrorKind, Write};
-pub use crossterm::{self, event::{KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}};
-pub use crossterm::QueueableCommand;
+pub use crossterm::{
+    self,
+    QueueableCommand,
+    style::Stylize,
+    event::{KeyEvent, KeyCode, KeyEventState, KeyEventKind, KeyModifiers}
+};
 pub(crate) use crossterm::{
     ExecutableCommand,
     style::{Print, Color, ResetColor, SetForegroundColor, /*SetBackgroundColor*/},

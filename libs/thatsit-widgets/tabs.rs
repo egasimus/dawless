@@ -93,10 +93,15 @@ impl<T: Widget> TabsLeft<T> {
 
 impl<T: Widget> Widget for TabsLeft<T> {
     impl_render!(self, out, area => {
+        let selected = self.pages.selected();
         Stacked::x(|column|{
             column(Stacked::y(|row|{
-                for (label, _) in self.pages.iter() {
-                    row(label);
+                for (index, (label, _)) in self.pages.iter().enumerate() {
+                    if let Some(selected) = selected && selected == index {
+                        row(label.clone().with(Color::Yellow).bold());
+                    } else {
+                        row(label.clone().with(Color::White));
+                    }
                 }
             }));
             if self.open && let Some((_,page)) = self.pages.get() {

@@ -28,7 +28,7 @@ impl<T: BorderStyle, W: Widget> Widget for Border<T, W> {
         for y in y..y+h {
             out.queue(MoveTo(x+w-1, y))?.queue(Print(&right_edge))?;
         }
-        self.1.render(out, area)
+        self.1.render(out, Area(x+1, y+1, w-2, h-2))
     });
 }
 

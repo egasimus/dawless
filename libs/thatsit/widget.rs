@@ -58,19 +58,25 @@ impl<W: Widget> Widget for Option<W> {
 
 impl Widget for &str {
     impl_render!(self, out, area => {
-        let w = self.len() as Unit;
-        area.min(w, 1)?;
-        out.queue(Print(&self))?;
-        Ok((w, 1))
+        let size = (self.len() as Unit, 1);
+        area.min(size)?.home(out)?.queue(Print(&self))?;
+        Ok(size)
     });
 }
 
 impl Widget for String {
     impl_render!(self, out, area => {
-        let w = self.len() as Unit;
-        area.min(w, 1)?;
-        out.queue(Print(&self))?;
-        Ok((w, 1))
+        let size = (self.len() as Unit, 1);
+        area.min(size)?.home(out)?.queue(Print(&self))?;
+        Ok(size)
+    });
+}
+
+impl<D: std::fmt::Display> Widget for crossterm::style::StyledContent<D> {
+    impl_render!(self, out, area => {
+        let size = (1, 1);
+        area.min(size)?.home(out)?.queue(Print(&self))?;
+        Ok((1, 1))
     });
 }
 
