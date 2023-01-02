@@ -14,7 +14,7 @@
         )?
         $(
             /// Render this widget by directly emitting draw commands
-            fn render ($self2, $term: &mut dyn Write, $area: Area) -> Result<()> $body2
+            fn render (&$self2, $term: &mut dyn Write, $area: Area) -> Result<()> $body2
         )?
         $(
             /// Handle an input event. Return whether the event was captured.

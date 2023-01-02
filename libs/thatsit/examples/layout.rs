@@ -6,32 +6,18 @@ use thatsit::{*, crossterm::{
 }};
 
 thread_local!(static APP: RefCell<App> = RefCell::new(App {
-    frame: bg(234),
+    frame: Inset(1),
     component1: Component {
-        frame: bg(235),
-        subcomponent1: Subcomponent { frame: bg(236), },
-        subcomponent2: Subcomponent { frame: bg(236), },
+        frame: Inset(1),
+        subcomponent1: Subcomponent { frame: Inset(1), },
+        subcomponent2: Subcomponent { frame: Inset(1), },
     },
     component2: Component {
-        frame: bg(235),
-        subcomponent1: Subcomponent { frame: bg(236), },
-        subcomponent2: Subcomponent { frame: bg(236), },
+        frame: Inset(1),
+        subcomponent1: Subcomponent { frame: Inset(1), },
+        subcomponent2: Subcomponent { frame: Inset(1), },
     },
 }));
-
-const fn bg (color: u8) -> Inset {
-    Inset {
-        theme: Theme { bg: Color::AnsiValue(color), ..THEME },
-        title: String::new(),
-        focused: false
-    }
-}
-
-const THEME: Theme = Theme {
-    bg: Color::AnsiValue(232),
-    fg: Color::White,
-    hi: Color::Yellow
-};
 
 #[derive(Default)]
 struct App {
@@ -53,22 +39,22 @@ struct Subcomponent {
 }
 
 fn main () -> Result<()> {
-    let mut term = std::io::stdout();
-    setup(&mut term, true)?;
+    let term = &mut std::io::stdout();
+    setup(term, true)?;
     loop {
         APP.with(|app| {
             let app = app.borrow();
             //let layout = app.layout();
-            let min_size = app.layout(Size::MAX).unwrap().min_size;
             let screen_size: Size = size().unwrap().into();
-            if let Err(e) = min_size.at_least(screen_size) {
-                write_error(&mut term, format!("{e}").as_str()).unwrap();
-            } else {
-                let size = screen_size.crop_to(min_size);
-                let xy = Point((screen_size.0 - size.0) / 2, (screen_size.1 - size.1) / 2);
-                let area = Area(xy, size);
-                app.render(&mut term, area).unwrap();
-                //println!("{out:?}");
+            match app.layout(screen_size) {
+                Ok(layout) => if let Err(error) = layout.render(
+                    term, Area(Point::MIN, screen_size)
+                ) {
+                    write_error(term, format!("{error}").as_str()).unwrap();
+                },
+                Err(error) => {
+                    write_error(term, format!("{error}").as_str()).unwrap();
+                }
             }
         });
         term.flush()?;
@@ -78,7 +64,7 @@ fn main () -> Result<()> {
             }
         }
     }
-    teardown(&mut term)?;
+    teardown(term)?;
     Ok(())
 }
 

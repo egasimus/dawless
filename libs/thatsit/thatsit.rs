@@ -133,14 +133,10 @@ pub trait TUI {
     tui!(render (self, _term, _area) { Ok(()) });
 }
 
-fn render_nil <T: TUI> (_: &T, term: &mut dyn Write, area: Area) -> Result<()> {
-    Ok(())
-}
-
 impl<T: TUI + ?Sized> TUI for &T {
     tui!(handle (self, _event) { unreachable!() });
     tui!(layout (self, max) { (*self).layout(max) });
-    tui!(render (self, term, area) { self.deref().render(term, area) });
+    tui!(render (self, term, area) { (*self).render(term, area) });
 }
 
 /// Box widgets to transfer ownership where you don't want to specify the type.
@@ -201,7 +197,6 @@ pub type LayoutFn<'l> = &'l dyn Fn(&'l [Layout<'l>], &mut dyn Write, Area)->Resu
 pub enum Layout<'l> {
     Many(Size, LayoutFn<'l>, Vec<Layout<'l>>),
     Ref(&'l dyn TUI),
-    Box(Box<dyn TUI>),
     None
 }
 
@@ -212,32 +207,54 @@ impl<'l> Layout<'l> {
     pub fn one (item: &'l dyn TUI) -> Self {
         Self::Ref(item)
     }
-    pub fn boxed <T: TUI> (item: T) -> Self {
-        Self::Box(Box::new(item))
-    }
     pub fn columns (define: impl Fn(&mut Collect<'l>)) -> Self {
         let mut items = Collect(vec![]);
         define(&mut items);
         let items = items.0;
-        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{
+            let mut y = area.0.y();
+            let max_y = area.0.y() + area.1.height();
+            for item in items.iter() {
+                let size = Size::MIN;//item.min_size();
+                let next_y = y + size.height();
+                if next_y > max_y {
+                    let msg = format!("need {} more rows", next_y - max_y);
+                    return Err(Error::new(ErrorKind::Other, msg))
+                }
+                item.render(term, Area(Point(area.0.x(), y), size))?;
+                y = y + size.height();
+            }
+            Ok(())
+        }, items)
     }
     pub fn rows (define: impl Fn(&mut Collect<'l>)) -> Self {
         let mut items = Collect(vec![]);
         define(&mut items);
         let items = items.0;
-        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{
+            let mut x = area.0.x();
+            for item in items.iter() {
+                let size = Size::MIN;//item.min_size();
+                let area = Area(Point(x, area.0.y()), size);
+                item.render(term, area)?;
+                x = x + size.width();
+            }
+            Ok(())
+        }, items)
     }
     pub fn layers (define: impl Fn(&mut Collect<'l>)) -> Self {
         let mut items = Collect(vec![]);
         define(&mut items);
         let items = items.0;
-        Self::Many(Size(1, items.len() as u16), &|items, term, area|{Ok(())}, items)
+        Self::Many(Size(1, items.len() as u16), &|items, term, area|{
+            for item in items.iter() { item.render(term, area)?; }
+            Ok(())
+        }, items)
     }
     pub fn render (&'l self, term: &mut dyn Write, area: Area) -> Result<()> {
         match self {
             Self::Many(_, render, items) => render(items.as_slice(), term, area),
             Self::Ref(item) => item.render(term, area),
-            Self::Box(item) => item.render(term, area),
             Self::None => Ok(())
         }
     }
