@@ -52,9 +52,10 @@ impl Widget for Electribe2PatternsUI {
                         let max_height = area.h() - 4; // TODO determine automatically by Stacked
                                                        // by providing shrunken Area
 
+                        self.patterns.scroll.size.set(max_height as usize);
                         let offset = self.patterns.scroll.offset;
                         for (index, (label, _)) in self.iter().enumerate().skip(offset) {
-                            if index as Unit >= max_height {
+                            if index as Unit >= max_height + offset as Unit {
                                 break
                             }
                             if let Some(selected) = self.selected() && selected == index {
@@ -141,16 +142,18 @@ impl Electribe2PatternsUI {
 
     /// Load a pattern bank
     pub fn load_bank (&mut self, bank: Electribe2PatternBank) {
-        self.patterns.pages.replace(bank.patterns.iter().enumerate()
+        let new_pages = bank.patterns.iter().enumerate()
             .map(|(index,pattern)|(Self::format_header(
-                index,
+                index + 1,
                 pattern.name.trim(),
                 pattern.bpm as u64,
                 pattern.length,
                 pattern.beats,
                 pattern.key,
                 pattern.scale,
-            ), Electribe2PatternUI::new(pattern))).collect::<Vec<_>>());
+            ), Electribe2PatternUI::new(pattern))).collect::<Vec<_>>();
+        self.patterns.scroll.total = new_pages.len();
+        self.patterns.pages.replace(new_pages);
         self.patterns.pages.select_next();
         self.bank = Some(bank);
     }
@@ -166,7 +169,7 @@ impl Electribe2PatternsUI {
         scale:  impl Display
     ) -> String {
         format!(
-            "{:>3} │ {:<16} │ {:>5} │ {:>6} │ {:>5} │ {:>3} │ {:>5} │",
+            "{:>4} │ {:<16} │ {:>5} │ {:>6} │ {:>5} │ {:>3} │ {:>5} │",
             index, name, bpm, length, beats, key, scale,
         )
     }
@@ -204,15 +207,15 @@ impl Electribe2PatternsUI {
     }
 
     #[inline] pub fn selected (&self) -> Option<usize> {
-        self.patterns.pages.selected()
+        self.patterns.selected()
     }
 
     #[inline] pub fn select_prev (&mut self) -> bool {
-        self.patterns.pages.select_prev()
+        self.patterns.select_prev()
     }
 
     #[inline] pub fn select_next (&mut self) -> bool {
-        self.patterns.pages.select_next()
+        self.patterns.select_next()
     }
 
     #[inline] pub fn iter (&self) -> Iter<(String, Electribe2PatternUI)> {

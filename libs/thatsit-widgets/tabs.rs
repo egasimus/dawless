@@ -155,7 +155,6 @@ impl<T: Widget> Widget for Tabs<T> {
             TabSide::None => self.layout_page().render(out, area),
             TabSide::Left => Some(Stacked::x(|add|{
                 add(self.layout_tabs());
-                add(format!("{}/{}",self.scroll.offset,self.scroll.size.get()));
                 if let Some(page) = self.layout_page() { add(1); add(page); }
             })).render(out, area),
             TabSide::Right => Stacked::x(|add|{
