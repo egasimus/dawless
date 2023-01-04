@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::{io::Result, fmt::Debug, cell::Cell};
 use thatsit::{*, crossterm::{self, event::Event, style::Color}};
 
 pub struct DefaultTabsTheme;
@@ -24,37 +24,43 @@ pub trait TabsTheme {
     }
 }
 
-impl std::fmt::Debug for dyn TabsTheme {
+impl Debug for dyn TabsTheme {
     fn fmt (&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "dyn[TabsTheme]")
     }
 }
 
 #[derive(Debug)]
-pub struct TabsLeft<T: Widget> {
+pub enum TabSide { None, Top, Right, Bottom, Left }
+
+#[derive(Debug)]
+pub struct Tabs<T: Widget> {
+    pub side:    TabSide,
     pub pages:   FocusList<(String, T)>,
     pub open:    bool,
     pub entered: bool,
-    pub theme:   &'static dyn TabsTheme
+    pub theme:   &'static dyn TabsTheme,
+    pub scroll:  ScrollState
 }
 
-impl<T: Widget> Default for TabsLeft<T> {
+impl<T: Widget> Default for Tabs<T> {
     fn default () -> Self {
         Self {
+            side:    TabSide::Left,
             pages:   FocusList::new(vec![]),
             open:    false,
             entered: false,
-            theme:   &DefaultTabsTheme
+            theme:   &DefaultTabsTheme,
+            scroll:  ScrollState::default()
         }
     }
 }
 
-impl<T: Widget> TabsLeft<T> {
+impl<T: Widget> Tabs<T> {
     /// Create a new selector with vertical tabs from a list of `(Button, Widget)` pairs.
-    pub fn new (pages: Vec<(String, T)>) -> Self {
-        let mut tabs = Self::default();
-        tabs.pages.replace(pages);
-        tabs.pages.select_next();
+    pub fn new (side: TabSide, pages: Vec<(String, T)>) -> Self {
+        let mut tabs = Self { side, pages: FocusList::new(pages), ..Self::default() };
+        tabs.select_next();
         tabs
     }
     /// Add a tab/page pair.
@@ -65,14 +71,11 @@ impl<T: Widget> TabsLeft<T> {
     pub fn enter (&mut self) -> bool {
         self.open();
         self.entered = true;
-        //self.tabs.get_mut().map(|button|button.pressed = true);
-        //self.pages.0.index = self.tabs.items.index;
         true
     }
     /// Move the focus to the tabs
     pub fn exit (&mut self) -> bool {
         self.entered = false;
-        //self.tabs.get_mut().pressed = false;
         true
     }
     /// Show the active page
@@ -89,28 +92,86 @@ impl<T: Widget> TabsLeft<T> {
     pub fn len (&self) -> usize {
         self.pages.len()
     }
+    /// The index of the selected tab
+    pub fn selected (&self) -> Option<usize> {
+        self.pages.selected()
+    }
+
+    pub fn select_prev (&mut self) -> bool {
+        if self.pages.select_prev() {
+            self.scroll.to(self.pages.selected().unwrap());
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn select_next (&mut self) -> bool {
+        if self.pages.select_next() {
+            self.scroll.to(self.pages.selected().unwrap());
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn layout_tabs (&self) -> Option<Stacked> {
+        let selected = self.pages.selected();
+        let tabs = |add: &mut Collect|{
+            for (index, (label, _)) in self.pages.iter().enumerate().skip(self.scroll.offset) {
+                let label = label.clone();
+                if let Some(selected) = selected && selected == index {
+                    add(Styled(&|s: String|s.with(Color::Yellow).bold(), label));
+                } else {
+                    add(Styled(&|s: String|s.with(Color::White), label));
+                }
+                if index as Unit >= self.scroll.size.get() as u16 {
+                    break
+                }
+            }
+        };
+        match self.side {
+            TabSide::None   => None,
+            TabSide::Left   => Some(Stacked::y(tabs)),
+            TabSide::Right  => Some(Stacked::y(tabs)),
+            TabSide::Top    => Some(Stacked::x(tabs)),
+            TabSide::Bottom => Some(Stacked::x(tabs)),
+        }
+    }
+
+    pub fn layout_page (&self) -> Option<&T> {
+        match self.pages.get() {
+            Some((_, page)) => if self.open { Some(page) } else { None },
+            None => None
+        }
+    }
 }
 
-impl<T: Widget> Widget for TabsLeft<T> {
+impl<T: Widget> Widget for Tabs<T> {
 
     impl_render!(self, out, area => {
-        let selected = self.pages.selected();
-        Stacked::x(|column|{
-            column(Stacked::y(|row|{
-                for (index, (label, _)) in self.pages.iter().enumerate() {
-                    let label = label.clone();
-                    if let Some(selected) = selected && selected == index {
-                        row(Styled(&|s: String|s.with(Color::Yellow).bold(), label));
-                    } else {
-                        row(Styled(&|s: String|s.with(Color::White), label));
-                    }
-                }
-            }));
-            if self.open && let Some((_,page)) = self.pages.get() {
-                column((1, 0));
-                column(page);
-            }
-        }).render(out, area)
+        self.scroll.size.set(area.h() as usize); // Record the height for scrolling
+        match self.side {
+            TabSide::None => self.layout_page().render(out, area),
+            TabSide::Left => Some(Stacked::x(|add|{
+                add(self.layout_tabs());
+                add(format!("{}/{}",self.scroll.offset,self.scroll.size.get()));
+                if let Some(page) = self.layout_page() { add(1); add(page); }
+            })).render(out, area),
+            TabSide::Right => Stacked::x(|add|{
+                if let Some(page) = self.layout_page() { add(page); add(1); }
+                add(self.layout_tabs());
+            }).render(out, area),
+            TabSide::Top => Stacked::y(|add|{
+                add(self.layout_tabs());
+                if let Some(page) = self.layout_page() { add(1); add(page); }
+            }).render(out, area),
+            TabSide::Bottom => Stacked::x(|add|{
+                if let Some(page) = self.layout_page() { add(page); add(1); }
+                add(self.layout_tabs());
+            }).render(out, area)
+        }
+
     });
 
     impl_handle!(self, event => {
@@ -125,8 +186,8 @@ impl<T: Widget> Widget for TabsLeft<T> {
             }
         } else {
             match_key!((event) {
-                KeyCode::Up    => { self.pages.select_prev() },
-                KeyCode::Down  => { self.pages.select_next() },
+                KeyCode::Up    => { self.select_prev() },
+                KeyCode::Down  => { self.select_next() },
                 KeyCode::Enter => { self.enter() },
                 KeyCode::Esc   => { self.close() }
             })

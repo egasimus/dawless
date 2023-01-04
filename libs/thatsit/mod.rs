@@ -1,5 +1,11 @@
 #![feature(unboxed_closures, fn_traits)]
 
+/// `thatsit` is a minimal GUI framework geared towards helping you build your custom task-specific
+/// widgets out of a set of composable UI behaviors. It currently targets terminal user interfaces
+/// (TUIs), building upon `crossterm`, which provides the basics: displaying styled and positioned
+/// text, as well as receiving user input. On top of this, it adds a simple layout system for
+/// positioning widgets relative to each other, taking into account the screen size.
+
 pub use std::io::{Result, Error, ErrorKind, Write};
 pub use crossterm::{
     self,
@@ -32,6 +38,7 @@ pub(crate) use std::{
 opt_mod::module_flat!(widget);
 opt_mod::module_flat!(layout);
 opt_mod::module_flat!(focus);
+opt_mod::module_flat!(scroll);
 opt_mod::module_flat!(utils);
 
 #[cfg(test)]

@@ -202,7 +202,7 @@ impl<W: Widget> Widget for Max<W> {
     impl_handle!(self, event => self.get_mut().handle(event));
 }
 
-/// X (horizontally), Y (vertically), or Z (towards the user)
+/// X (left to right), Y (top to bottom), or Z (back to front)
 #[derive(Debug, Default)]
 pub enum Axis { X, #[default] Y, Z }
 
@@ -245,7 +245,7 @@ impl<'a> Widget for Stacked<'a> {
             },
             Axis::Z => {
                 area.min((1, 1 as Unit))?; // FIXME size
-                for item in self.1.iter() {
+                for item in self.1.iter().rev() {
                     let (w, h) = item.render(out, area)?;
                     x = x.max(w);
                     y = y.max(h);

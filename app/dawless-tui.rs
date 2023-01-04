@@ -1,6 +1,6 @@
 use std::io::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
-use thatsit::{*, crossterm::{event::{Event, KeyEvent, KeyCode}}};
+use thatsit::{*, crossterm::{style::Color, event::{Event, KeyEvent, KeyCode}}};
 use thatsit_widgets::*;
 
 /// Exit flag. Setting this to true terminates the main loop.
@@ -21,11 +21,11 @@ struct App {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
     /// A tabbed collection of supported devices.
-    devices: TabsLeft<Box<dyn Widget>>,
+    devices: Tabs<Box<dyn Widget>>,
 }
 
 impl App {
-    fn new () -> Self { Self { exited: &EXITED, devices: TabsLeft::default() } }
+    fn new () -> Self { Self { exited: &EXITED, devices: Tabs::new(TabSide::Left, vec![]) } }
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app
@@ -38,7 +38,9 @@ impl App {
 
 impl Widget for App {
     impl_render!(self, out, area => {
-        Aligned(Align::Center, Border(InsetTall, &self.devices)).render(out, area)
+        Aligned(Align::Center, Border(InsetTall, Stacked::y(|add|{
+            add(&self.devices);
+        }))).render(out, area)
     });
     impl_handle!(self, event => {
         Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
