@@ -1,3 +1,6 @@
 [submodule "flashfloppy-images"]
 	path = data/flashfloppy-images
 	url = https://github.com/keirf/flashfloppy-images/
+[submodule "libs/thatsit-widgets"]
+	path = libs/thatsit-widgets
+	url = git@github.com:egasimus/thatsit-widgets.git
