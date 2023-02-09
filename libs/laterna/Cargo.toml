@@ -12,4 +12,4 @@ path = "laterna-cli.rs"
 path = "laterna.rs"
 
 [dependencies]
-thatsit = { path = "../thatsit" }
+thatsit = { git = "https://github.com/egasimus/thatsit" }

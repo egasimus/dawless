@@ -7,12 +7,13 @@ use thatsit_widgets::*;
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
-    run(&EXITED, &mut std::io::stdout(), App::new()
-        .page("Korg Electribe 2",    Box::new(dawless_korg::electribe2::Electribe2UI::new()))
-        .page("Korg Triton",         Box::new(dawless_korg::triton::TritonUI::new()))
-        .page("AKAI S3000XL",        Box::new(dawless_akai::S3000XLUI::new()))
-        .page("AKAI MPC2000",        Box::new(dawless_akai::MPC2000UI::new()))
-        .page("iConnectivity mioXL", Box::new(dawless_iconnectivity::MioXLUI::new())))
+    App::new()
+        .page(" Korg Electribe 2 ",    Box::new(dawless_korg::electribe2::Electribe2UI::new()))
+        .page(" Korg Triton ",         Box::new(dawless_korg::triton::TritonUI::new()))
+        .page(" AKAI S3000XL ",        Box::new(dawless_akai::S3000XLUI::new()))
+        .page(" AKAI MPC2000 ",        Box::new(dawless_akai::MPC2000UI::new()))
+        .page(" iConnectivity mioXL ", Box::new(dawless_iconnectivity::MioXLUI::new()))
+        .run(&EXITED, &mut std::io::stdout(), )
 }
 
 /// The main app object, containing a menu of supported devices.
@@ -38,7 +39,7 @@ impl App {
 
 impl Widget for App {
     impl_render!(self, out, area => {
-        Aligned(Align::Center, Border(InsetTall, Stacked::y(|add|{
+        Aligned(Align::Center, Border(Tall, Outset, Stacked::y(|add|{
             add(&self.devices);
         }))).render(out, area)
     });

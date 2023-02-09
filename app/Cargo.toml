@@ -15,7 +15,7 @@ dawless-iconnectivity = { path = "../devices/iconnectivity", features = ["tui"] 
 
 clap = { optional = true, version = "4.0.18", features = ["derive"] }
 
-thatsit = { optional = true, path = "../libs/thatsit" }
+thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
 thatsit-widgets = { optional = true, path = "../libs/thatsit-widgets" }
 
 [features]

@@ -43,7 +43,7 @@ impl Widget for Electribe2PatternsUI {
         if self.bank.is_some() {
             Stacked::y(|add|{
                 add(" Patterns in this file:");
-                add(Border(InsetTall, Stacked::x(|add|{
+                add(Border(Tall, Inset, Stacked::x(|add|{
                     add(Stacked::y(|add|{
                         add(Self::format_header(
                             "#", "Name", "BPM", "Length", "Beats", "Key", "Scale"
@@ -79,7 +79,7 @@ impl Widget for Electribe2PatternsUI {
         } else {
             Stacked::y(|add|{
                 add(" Select pattern bank:");
-                add(Border(InsetTall, Stacked::y(|add|{
+                add(Border(Tall, Inset, Stacked::y(|add|{
                     add(&self.file_list);
                 })));
             })
@@ -245,7 +245,7 @@ impl Electribe2PatternUI {
             add(Fix::X(width,
                 Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
             ));
-            add(Fix::X(width, Border(InsetTall,
+            add(Fix::X(width, Border(Tall, Inset,
                 Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
             )));
         }))
@@ -300,7 +300,7 @@ impl Electribe2PartUI {
                 add((2, 1));
                 add(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
             }));
-            add(Border(InsetTall,
+            add(Border(Tall, Inset,
                 Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
             ));
         }))
@@ -344,7 +344,7 @@ impl Electribe2PartUI {
 impl Widget for Electribe2PartUI {
 
     impl_render!(self, out, area => {
-        Border(InsetTall, Stacked::x(|add|{
+        Border(Tall, Inset, Stacked::x(|add|{
             add(self.layout_metadata());
             add(1);
             add(self.layout_piano_roll());
@@ -365,7 +365,7 @@ pub struct Electribe2SamplesUI {
 impl Widget for Electribe2SamplesUI {
     impl_render!(self, out, area => {
         let Self { focused, .. } = *self;
-        Border(InsetTall, Stacked::y(|row|{
+        Border(Tall, Inset, Stacked::y(|row|{
             if self.bank.is_some() {
                 row(&self.sample_list);
                 row(&self.sample);

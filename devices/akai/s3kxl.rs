@@ -272,7 +272,7 @@ pub struct FileHeader {
     pub start: BlockIndex,
 }
 
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum FileType {
     Deleted      = 0x00,
     OS           = 0x63,

@@ -2,7 +2,7 @@
 name = "dawless-korg"
 version = "0.1.0"
 edition = "2021"
-description = "Support for Korg Electribe and Korg Triton Rack data."
+description = "Support for data used by devices manufactured by Korg."
 
 [lib]
 path = "_korg.rs"
@@ -15,7 +15,7 @@ tabwriter = { optional = true, version = "1.2.1" }
 lazy_static = { optional = true, version = "1.4" }
 
 laterna = { optional = true, path = "../../libs/laterna" }
-thatsit = { optional = true, path = "../../libs/thatsit" }
+thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
 thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
 
 [features]

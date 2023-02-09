@@ -4,3 +4,6 @@
 [submodule "libs/thatsit-widgets"]
 	path = libs/thatsit-widgets
 	url = git@github.com:egasimus/thatsit-widgets.git
+[submodule "libs/thatsit"]
+	path = libs/thatsit
+	url = git@github.com:egasimus/thatsit.git
