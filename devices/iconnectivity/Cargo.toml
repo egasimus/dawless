@@ -9,8 +9,7 @@ path = "iconnectivity.rs"
 
 [dependencies]
 thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
-thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
 
 [features]
-tui = [ "thatsit", "thatsit-widgets" ]
+tui = [ "thatsit" ]
 cli = []

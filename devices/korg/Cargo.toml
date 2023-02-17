@@ -16,9 +16,9 @@ lazy_static = { optional = true, version = "1.4" }
 
 laterna = { optional = true, path = "../../libs/laterna" }
 thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
-thatsit-widgets = { optional = true, path = "../../libs/thatsit-widgets" }
+thatsit-proc = { path = "../../libs/thatsit-proc" }
 
 [features]
 default = [ "cli", "tui" ]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "lazy_static", "laterna", "thatsit", "thatsit-widgets" ]
+tui = [ "lazy_static", "laterna", "thatsit" ]

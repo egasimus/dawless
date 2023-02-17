@@ -1,11 +1,10 @@
-use thatsit::*;
-use thatsit_widgets::*;
+use thatsit::{*, layouts::*};
 
-pub struct MPC2000UI<'a> {
-    menu: FocusStack<'a>
+pub struct MPC2000UI<'a, T, U> {
+    menu: FocusStack<'a, T, U>
 }
 
-impl<'a> MPC2000UI<'a> {
+impl<'a, T, U> MPC2000UI<'a, T, U> {
     pub fn new () -> Self {
         let mut menu = FocusStack::default();
         //menu.add("Edit sample".into(), ());
@@ -13,6 +12,8 @@ impl<'a> MPC2000UI<'a> {
     }
 }
 
-impl<'a> Widget for MPC2000UI<'a> {
-    impl_render!(self, out, area => self.menu.render(out, area));
+impl<'a, T, U> Output<T, U> for MPC2000UI<'a, T, U> {
+    fn render (&self, engine: &mut T) -> Result<Option<U>> {
+        self.menu.render(engine)
+    }
 }

@@ -1,7 +1,7 @@
 use crate::electribe2::*;
 use crate::*;
 use std::{fmt::Display, slice::Iter};
-use thatsit::crossterm::{event::Event, style::Color};
+use thatsit::{*, crossterm::{event::Event, style::Color}};
 use laterna;
 
 /// UI for managing Korg Electribe 2 patterns and samples
@@ -249,6 +249,39 @@ impl Electribe2PatternUI {
                 Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
             )));
         }))
+    }
+}
+
+impl Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
+    fn render (&self, context: &mut TUI<W>) -> Result<Option<[u16;2]>> {
+        Stacked::x(|add|{
+            add(1);
+            add(Stacked::y(|add|{
+                add(Stacked::x(|add|{
+                    add(Self::field("Pattern name", 20, &self.0.name));
+                    add(Self::field("Level", 10, &self.0.level));
+                }));
+                add(Stacked::x(|add|{
+                    add(Self::field("BPM", 10, format!("{:>5.1}", self.0.bpm)));
+                    add(Self::field("Swing", 10, &self.0.swing));
+                    add(Self::field("Length", 10, &self.0.length));
+                    add(Self::field("Beats", 10, &self.0.beats));
+                }));
+                add(Stacked::x(|add|{
+                    add(Self::field("Key", 10, &self.0.key));
+                    add(Self::field("Scale", 10, &self.0.scale));
+                    add(Self::field("Chords", 10, &self.0.chord_set));
+                    add(Self::field("MFX", 10, &self.0.mfx_type));
+                }));
+                add(Stacked::x(|add|{
+                    add(Self::field("Gate arp", 10, &self.0.gate_arp));
+                    add(Self::field("Alt 13/14", 10, &self.0.alt_13_14));
+                    add(Self::field("Alt 15/16", 10, &self.0.alt_15_16));
+                }));
+                add(2);
+                add(&self.1);
+            }));
+        }).render(context)
     }
 }
 
