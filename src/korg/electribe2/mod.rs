@@ -1,5 +1,5 @@
-opt_mod::optional_module_flat!("cli": cli @ "electribe2-cli.rs");
-opt_mod::optional_module_flat!("tui": tui @ "electribe2-tui.rs");
+opt_mod::optional_module_flat!("cli": cli);
+opt_mod::optional_module_flat!("tui": tui);
 
 /// Pattern start tag
 const PTST: [u8; 4] = [80, 84, 83, 84];

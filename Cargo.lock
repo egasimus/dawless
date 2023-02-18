@@ -65,28 +65,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "binread"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16598dfc8e6578e9b597d9910ba2e73618385dc9f4b1d43dd92c349d6be6418f"
-dependencies = [
- "binread_derive",
- "rustversion",
-]
-
-[[package]]
-name = "binread_derive"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d9672209df1714ee804b1f4d4f68c8eb2a90b1f7a07acf472f88ce198ef1fed"
-dependencies = [
- "either",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,46 +428,11 @@ dependencies = [
 name = "dawless"
 version = "0.1.0"
 dependencies = [
- "clap",
- "dawless-akai",
- "dawless-iconnectivity",
- "dawless-korg",
- "opt-mod",
- "thatsit",
- "thatsit-proc",
-]
-
-[[package]]
-name = "dawless-akai"
-version = "0.1.0"
-dependencies = [
- "brailledump",
- "clap",
- "lazy_static",
- "opt-mod",
- "tabwriter",
- "thatsit",
-]
-
-[[package]]
-name = "dawless-iconnectivity"
-version = "0.1.0"
-dependencies = [
- "thatsit",
-]
-
-[[package]]
-name = "dawless-korg"
-version = "0.1.0"
-dependencies = [
  "brailledump",
  "clap",
  "laterna",
- "lazy_static",
  "opt-mod",
- "tabwriter",
  "thatsit",
- "thatsit-proc",
 ]
 
 [[package]]
@@ -823,14 +766,6 @@ name = "hermit-abi"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
-
-[[package]]
-name = "hfedisk"
-version = "0.1.0"
-dependencies = [
- "binread",
- "brailledump",
-]
 
 [[package]]
 name = "ident_case"
@@ -1815,15 +1750,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tabwriter"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36205cfc997faadcc4b0b87aaef3fbedafe20d38d4959a7ca6ff803564051111"
-dependencies = [
- "unicode-width",
-]
-
-[[package]]
 name = "take_mut"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1885,15 +1811,6 @@ dependencies = [
  "x11rb",
  "xcursor",
  "xkbcommon 0.4.1",
-]
-
-[[package]]
-name = "thatsit-proc"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2013,12 +1930,6 @@ name = "unicode-ident"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
-
-[[package]]
-name = "unicode-width"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
 
 [[package]]
 name = "vec_map"

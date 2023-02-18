@@ -1,18 +1,17 @@
 use std::io::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
-use thatsit::{*, crossterm::{style::Color, event::{Event, KeyEvent, KeyCode}}};
-use thatsit_widgets::*;
+use thatsit::{*, engines::tui::crossterm::{style::Color, event::{Event, KeyEvent, KeyCode}}};
 
 /// Exit flag. Setting this to true terminates the main loop.
 static EXITED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn main () -> Result<()> {
     App::new()
-        .page(" Korg Electribe 2 ",    Box::new(dawless_korg::electribe2::Electribe2UI::new()))
-        .page(" Korg Triton ",         Box::new(dawless_korg::triton::TritonUI::new()))
-        .page(" AKAI S3000XL ",        Box::new(dawless_akai::S3000XLUI::new()))
-        .page(" AKAI MPC2000 ",        Box::new(dawless_akai::MPC2000UI::new()))
-        .page(" iConnectivity mioXL ", Box::new(dawless_iconnectivity::MioXLUI::new()))
+        .page(" Korg Electribe 2 ",    Box::new(crate::korg::electribe2::Electribe2UI::new()))
+        .page(" Korg Triton ",         Box::new(crate::korg::triton::TritonUI::new()))
+        .page(" AKAI S3000XL ",        Box::new(crate::akai::S3000XLUI::new()))
+        .page(" AKAI MPC2000 ",        Box::new(crate::akai::MPC2000UI::new()))
+        .page(" iConnectivity mioXL ", Box::new(crate::iconnectivity::MioXLUI::new()))
         .run(&EXITED, &mut std::io::stdout(), )
 }
 

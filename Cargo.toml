@@ -1,17 +1,16 @@
-[workspace]
-members = [
-  # UI framework
-  "libs/thatsit-proc",
+[package]
+name = "dawless"
+version = "0.1.0"
+edition = "2021"
 
-  # Data formats
-  "libs/opt-mod",
-  "libs/brailledump",
-  "libs/hfedisk",
-  "libs/laterna",
+[dependencies]
+opt-mod = { path = "libs/opt-mod" }
+brailledump = { path = "libs/brailledump" }
+clap = { optional = true, version = "4.0.18", features = ["derive"] }
+thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
+laterna = { optional = true, path = "libs/laterna" }
 
-  # App modules
-  "app",
-  "devices/akai",
-  "devices/iconnectivity",
-  "devices/korg",
-]
+[features]
+default = ["cli", "tui"]
+cli = [ "clap", ]
+tui = [ "thatsit", "laterna" ]

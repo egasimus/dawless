@@ -1,5 +1,5 @@
-opt_mod::optional_module_flat!("cli": cli @ "s3kxl-cli.rs");
-opt_mod::optional_module_flat!("tui": tui @ "s3kxl-tui.rs");
+opt_mod::optional_module_flat!("cli": cli);
+opt_mod::optional_module_flat!("tui": tui);
 
 #[derive(PartialEq, Eq)]
 pub enum DeviceModel { S900, S2000, S3000 }

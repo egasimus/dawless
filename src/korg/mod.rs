@@ -1,7 +1,10 @@
 #![feature(let_chains)]
-opt_mod::optional_module_flat!("cli": cli @ "_korg-cli.rs");
-opt_mod::module!(electribe2);
-opt_mod::module!(triton);
+
+opt_mod::optional_module_flat!("cli": cli);
+
+pub mod electribe2;
+pub mod triton;
+
 pub(crate) use thatsit::*;
 pub(crate) use thatsit_widgets::*;
 
