@@ -102,7 +102,7 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternsUI {
 
             Rows::new()
                 .add(" Select pattern bank:")
-                .add(Border(Tall, Inset, Rows::new().add(&self.file_list)))
+                .add(Rows::new().border(Tall, Inset).add(&self.file_list))
 
         }.render(engine)
     }
@@ -272,9 +272,9 @@ impl Electribe2PatternUI {
             .add(Fixed::X(width,
                 Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
             ))
-            .add(Fixed::X(width, Border(Tall, Inset,
-                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
-            )))
+            .add(Fixed::X(width,
+                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string())).border(Tall, Inset)
+            ))
     }
 
 }
@@ -354,7 +354,7 @@ impl Electribe2PartUI {
         let green = |s: String|s.with(Color::Green);
         Fixed::XY((10, 3), Layers::new()
             .add(Columns::new().add((2, 1)).add(Styled(&white, label.to_string())))
-            .add(Border(Tall, Inset, Styled(&green, format!(" {}", value.to_string())))))
+            .add(Styled(&green, format!(" {}", value.to_string())).border(Tall, Inset)))
     }
 
     pub fn layout_metadata (&self) -> Rows {
@@ -393,11 +393,12 @@ impl Electribe2PartUI {
 impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PartUI {
 
     fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
-        Border(Tall, Inset, Columns::new()
+        Columns::new()
+            .border(Tall, Inset)
             .add(self.layout_metadata())
             .add(1)
             .add(self.layout_piano_roll())
-        ).render(engine)
+            .render(engine)
     }
 
 }
@@ -414,12 +415,13 @@ pub struct Electribe2SamplesUI {
 impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2SamplesUI {
 
     fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
-        let Self { focused, .. } = *self;
-        Border(Tall, Inset, if self.bank.is_some() {
+        if self.bank.is_some() {
             Rows::new().add(&self.sample_list).add(&self.sample)
         } else {
             Rows::new().add(&self.file_list)
-        }).render(engine)
+        }
+            .border(Tall, Inset)
+            .render(engine)
     }
 
 }

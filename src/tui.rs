@@ -1,11 +1,16 @@
-use std::io::Result;
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
-use thatsit::{*, engines::tui::crossterm::{style::Color, event::{Event, KeyEvent, KeyCode}}};
+use thatsit::{
+    *,
+    layouts::*,
+    engines::tui::{*, crossterm::{style::Color, event::{Event, KeyEvent, KeyCode}}},
+    widgets::tui::*
+};
 
 /// Exit flag. Setting this to true terminates the main loop.
 static EXITED: AtomicBool = AtomicBool::new(false);
 
-pub(crate) fn main () -> Result<()> {
+pub(crate) fn main () -> std::io::Result<()> {
     App::new()
         .page(" Korg Electribe 2 ",    Box::new(crate::korg::electribe2::Electribe2UI::new()))
         .page(" Korg Triton ",         Box::new(crate::korg::triton::TritonUI::new()))
@@ -36,18 +41,20 @@ impl App {
     }
 }
 
-impl Widget for App {
-    impl_render!(self, out, area => {
-        Aligned(Align::Center, Border(Tall, Outset, Stacked::y(|add|{
-            add(&self.devices);
-        }))).render(out, area)
-    });
-    impl_handle!(self, event => {
-        Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = event {
+impl<W: Write> Output<TUI<W>, [u16;2]> for App {
+    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16; 2]>> {
+        Aligned(Align::Center, Rows::new().border(Tall, Outset).add(&self.devices))
+            .render(engine)
+    }
+}
+
+impl<W: Write> Input<TUI<W>, bool> for App {
+    fn handle (&mut self, engine: &mut TUI<W>) -> Result<Option<bool>> {
+        Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = engine.event {
             self.exit();
             true
         } else {
-            self.devices.handle(event)?
+            self.devices.handle(engine.event)?
         })
-    });
+    }
 }

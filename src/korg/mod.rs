@@ -6,7 +6,6 @@ pub mod electribe2;
 pub mod triton;
 
 pub(crate) use thatsit::*;
-pub(crate) use thatsit_widgets::*;
 
 pub(crate) fn read (filename: &std::path::Path) -> Vec<u8> {
     use std::io::Read;
