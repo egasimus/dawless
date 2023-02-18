@@ -160,7 +160,7 @@ impl Electribe2PatternsUI {
 
     /// Import a pattern bank from a file
     pub fn import (&mut self, bank: &std::path::Path) {
-        self.load_bank(Electribe2PatternBank::read(&crate::read(bank)));
+        self.load_bank(Electribe2PatternBank::read(&super::super::read(bank)));
         self.patterns.open();
     }
 
@@ -271,7 +271,7 @@ impl Electribe2PatternUI {
             .add(Fixed::X(width, label.to_string().style(&|s: String|s.with(Color::White).bold())))
             .add(Fixed::X(width, format!(" {}", value.to_string())
                 .style(&|s: String|s.with(Color::Green))
-                .border(Tall, Inset)))
+                .border(Tall, Inset))))
     }
 
 }
@@ -301,7 +301,7 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
                     .add(Self::field("Alt 15/16",    10, &self.0.alt_15_16)))
                 .add(2)
                 .add(&self.1))
-        .render(context)
+            .render(context)
     }
 
 }
@@ -314,24 +314,24 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
             .add(Rows::new()
                 .add(Columns::new()
                     .add(Self::field("Pattern name", 20, &self.0.name))
-                    .add(Self::field("Level", 10, &self.0.level)))
+                    .add(Self::field("Level",        10, &self.0.level)))
                 .add(Columns::new()
-                    .add(Self::field("BPM", 10, format!("{:>5.1}", self.0.bpm)))
-                    .add(Self::field("Swing", 10, &self.0.swing))
-                    .add(Self::field("Length", 10, &self.0.length))
-                    .add(Self::field("Beats", 10, &self.0.beats)))
+                    .add(Self::field("BPM",          10, format!("{:>5.1}", self.0.bpm)))
+                    .add(Self::field("Swing",        10, &self.0.swing))
+                    .add(Self::field("Length",       10, &self.0.length))
+                    .add(Self::field("Beats",        10, &self.0.beats)))
                 .add(Columns::new()
-                    .add(Self::field("Key", 10, &self.0.key))
-                    .add(Self::field("Scale", 10, &self.0.scale))
-                    .add(Self::field("Chords", 10, &self.0.chord_set))
-                    .add(Self::field("MFX", 10, &self.0.mfx_type)))
+                    .add(Self::field("Key",          10, &self.0.key))
+                    .add(Self::field("Scale",        10, &self.0.scale))
+                    .add(Self::field("Chords",       10, &self.0.chord_set))
+                    .add(Self::field("MFX",          10, &self.0.mfx_type)))
                 .add(Columns::new()
-                    .add(Self::field("Gate arp", 10, &self.0.gate_arp))
-                    .add(Self::field("Alt 13/14", 10, &self.0.alt_13_14))
-                    .add(Self::field("Alt 15/16", 10, &self.0.alt_15_16)))
+                    .add(Self::field("Gate arp",     10, &self.0.gate_arp))
+                    .add(Self::field("Alt 13/14",    10, &self.0.alt_13_14))
+                    .add(Self::field("Alt 15/16",    10, &self.0.alt_15_16)))
                 .add(2)
                 .add(&self.1))
-            .render(out, area)
+            .render(engine)
     }
 
 }
@@ -358,23 +358,23 @@ impl Electribe2PartUI {
         Rows::new()
             .add(Columns::new()
                 .add(Self::field("Sample", &self.0.sample))
-                .add(Self::field("Pitch", &self.0.pitch))
-                .add(Self::field("Osc", &self.0.pitch)))
+                .add(Self::field("Pitch",  &self.0.pitch))
+                .add(Self::field("Osc",    &self.0.pitch)))
             .add(1)
             .add(Columns::new()
                 .add(Self::field("Filter", &self.0.filter_type))
-                .add(Self::field("Freq", &self.0.filter_type))
-                .add(Self::field("Res", &self.0.filter_type)))
+                .add(Self::field("Freq",   &self.0.filter_type))
+                .add(Self::field("Res",    &self.0.filter_type)))
             .add(1)
             .add(Columns::new()
-                .add(Self::field("Mod", &self.0.filter_type))
-                .add(Self::field("Speed", &self.0.filter_type))
-                .add(Self::field("Depth", &self.0.filter_type)))
+                .add(Self::field("Mod",    &self.0.filter_type))
+                .add(Self::field("Speed",  &self.0.filter_type))
+                .add(Self::field("Depth",  &self.0.filter_type)))
             .add(1)
             .add(Columns::new()
-                .add(Self::field("IFX", &self.0.filter_type))
-                .add(Self::field("Type", &self.0.filter_type))
-                .add(Self::field("Param", &self.0.filter_type)))
+                .add(Self::field("IFX",    &self.0.filter_type))
+                .add(Self::field("Type",   &self.0.filter_type))
+                .add(Self::field("Param",  &self.0.filter_type)))
     }
 
     pub fn layout_piano_roll (&self) -> laterna::PianoRoll {
