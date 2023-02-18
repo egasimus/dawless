@@ -466,55 +466,55 @@ pub fn write_blocks <const M: DeviceModel> (mut data: Vec<u8>, blocks: &Vec<Bloc
 pub struct Multi {}
 #[derive(Debug)]
 pub struct Program {
-    id:                   u8,       // 00      C       1       program header id
-    addr_kg1:             u16,      // 01-02   x2      n/a     1st keygroup address (internal)
-    name:                 String,   // 03-0e   a12             program name
-    midi_program:         u8,       // 0f      C       0       MIDI program number (0-127)
-    midi_channel:         u8,       // 10      C       0       MIDI channel (0-15, ff=omni)
-    polyphony:            u8,       // 11      C       31      polyphony (1-32; 1-16 in S1000)
-    priority:             u8,       // 12      C       1       priority (0=low, 1=normal, 2=high, 3=hold)
-    range_low:            u8,       // 13      C       24      play range low (24-127 = C0-G8)
-    range_hight:          u8,       // 14      C       127     play range high (24-127 = C0-G8)
-    octave:               u8,       // 15      C       0       play octave (keyboard) shift (+/-2)
-    output:               u8,       // 16      C       255     indivisual output (0-7, ff=off)
-    volume:               u8,       // 17      C       99      stereo level
-    pan:                  u8,       // 18      C       0       stereo pan
-    loudness:             u8,       // 19      C       80      loudness
-    vel_to_loudness:      u8,       // 1a      C       20      velocity > loud
-    key_to_loudness:      u8,       // 1b      C       0       key > loud
-    pressure_to_loudness: u8,       // 1c      C       0       pressure > loud
-    pan_lfo_rate:         u8,       // 1d      C       0       pan LFO rate
-    pan_depth:            u8,       // 1e      C       99      pan depth
-    pan_lfo_delay:        u8,       // 1f      C       0       pan LFO delay
-    key_to_pan:           u8,       // 20      C       0       key > pan position 
-    lfo_speed:            u8,       // 21      C       50      LFO speed
-    lfo_depth:            u8,       // 22      C       0       LFO fixed depth
-    lfo_delay:            u8,       // 23      C       0       LFO delay
-    mod_to_depth:         u8,       // 24      C       30      modwheel > depth
-    pressure_to_depth:    u8,       // 25      C       0       pressure > depth
-    velocity_to_depth:    u8,       // 26      C       0       velocity > depth
-    bend_to_pitch:        u8,       // 27      C       2       bendwheel > pitch
-    pressure_to_pitch:    u8,       // 28      C       0       pressure > pitch
-    keygroup_crossfade:   u8,       // 29      C       0       keygroup crossfade (0=off, 1=on)
-    number_of_keygroups:  u8,       // 2a      C               # of keygroups (1-99)
-    temp_program_number:  u8,       // 2b      C       n/a     temporary program number (internal)
-    temperament:          [u8; 12], // 2c-37   C12             key temperament
-    echo:                 u8,       // 38      C       0       echo output level (0=off, 1=on)
-    modwheel_pan_amount:  u8,       // 39      C       0       modwheel pan amount
-    retrigger:            u8,       // 3a      C       0       sample start coherence (0=off, 1=on)
-    lfo_desync:           u8,       // 3b      C       0       LFO de-sync (0=off, 1=on) (def. 0)
-    pitch_law:            u8,       // 3c      C       0       pitch law
-    voice_assign_algo:    u8,       // 3d      C       0       voice assign algorithm (0=oldest, 1=quietest)
-    pedal_to_loudness:    u8,       // 3e      C       10      soft pedal loudness reduction 
-    pedal_to_attack:      u8,       // 3f      C       10      soft pedal attack stretch
-    pedal_to_filter:      u8,       // 40      C       10      soft pedal filter close
-    tune_offset:          u16,      // 41-42   v       0       tune offset
-    key_to_lfo_rate:      u8,       // 43      C       0       key > LFO rate
-    key_to_lfo_depth:     u8,       // 44      C       0       key > LFO depth
-    key_to_lfo_delay:     u8,       // 45      C       0       key > LFO delay
-    voice_output_scale:   u8,       // 46      C       50      voice output scale 
-    stereo_output_scale:  u8,       // 47      C       0       stereo output scale
-    keygroup: Vec<Keygroup>
+    pub id:                   u8,       // 00      C       1       program header id
+    pub addr_kg1:             u16,      // 01-02   x2      n/a     1st keygroup address (internal)
+    pub name:                 String,   // 03-0e   a12             program name
+    pub midi_program:         u8,       // 0f      C       0       MIDI program number (0-127)
+    pub midi_channel:         u8,       // 10      C       0       MIDI channel (0-15, ff=omni)
+    pub polyphony:            u8,       // 11      C       31      polyphony (1-32; 1-16 in S1000)
+    pub priority:             u8,       // 12      C       1       priority (0=low, 1=normal, 2=high, 3=hold)
+    pub range_low:            u8,       // 13      C       24      play range low (24-127 = C0-G8)
+    pub range_hight:          u8,       // 14      C       127     play range high (24-127 = C0-G8)
+    pub octave:               u8,       // 15      C       0       play octave (keyboard) shift (+/-2)
+    pub output:               u8,       // 16      C       255     indivisual output (0-7, ff=off)
+    pub volume:               u8,       // 17      C       99      stereo level
+    pub pan:                  u8,       // 18      C       0       stereo pan
+    pub loudness:             u8,       // 19      C       80      loudness
+    pub vel_to_loudness:      u8,       // 1a      C       20      velocity > loud
+    pub key_to_loudness:      u8,       // 1b      C       0       key > loud
+    pub pressure_to_loudness: u8,       // 1c      C       0       pressure > loud
+    pub pan_lfo_rate:         u8,       // 1d      C       0       pan LFO rate
+    pub pan_depth:            u8,       // 1e      C       99      pan depth
+    pub pan_lfo_delay:        u8,       // 1f      C       0       pan LFO delay
+    pub key_to_pan:           u8,       // 20      C       0       key > pan position 
+    pub lfo_speed:            u8,       // 21      C       50      LFO speed
+    pub lfo_depth:            u8,       // 22      C       0       LFO fixed depth
+    pub lfo_delay:            u8,       // 23      C       0       LFO delay
+    pub mod_to_depth:         u8,       // 24      C       30      modwheel > depth
+    pub pressure_to_depth:    u8,       // 25      C       0       pressure > depth
+    pub velocity_to_depth:    u8,       // 26      C       0       velocity > depth
+    pub bend_to_pitch:        u8,       // 27      C       2       bendwheel > pitch
+    pub pressure_to_pitch:    u8,       // 28      C       0       pressure > pitch
+    pub keygroup_crossfade:   u8,       // 29      C       0       keygroup crossfade (0=off, 1=on)
+    pub number_of_keygroups:  u8,       // 2a      C               # of keygroups (1-99)
+    pub temp_program_number:  u8,       // 2b      C       n/a     temporary program number (internal)
+    pub temperament:          [u8; 12], // 2c-37   C12             key temperament
+    pub echo:                 u8,       // 38      C       0       echo output level (0=off, 1=on)
+    pub modwheel_pan_amount:  u8,       // 39      C       0       modwheel pan amount
+    pub retrigger:            u8,       // 3a      C       0       sample start coherence (0=off, 1=on)
+    pub lfo_desync:           u8,       // 3b      C       0       LFO de-sync (0=off, 1=on) (def. 0)
+    pub pitch_law:            u8,       // 3c      C       0       pitch law
+    pub voice_assign_algo:    u8,       // 3d      C       0       voice assign algorithm (0=oldest, 1=quietest)
+    pub pedal_to_loudness:    u8,       // 3e      C       10      soft pedal loudness reduction 
+    pub pedal_to_attack:      u8,       // 3f      C       10      soft pedal attack stretch
+    pub pedal_to_filter:      u8,       // 40      C       10      soft pedal filter close
+    pub tune_offset:          u16,      // 41-42   v       0       tune offset
+    pub key_to_lfo_rate:      u8,       // 43      C       0       key > LFO rate
+    pub key_to_lfo_depth:     u8,       // 44      C       0       key > LFO depth
+    pub key_to_lfo_delay:     u8,       // 45      C       0       key > LFO delay
+    pub voice_output_scale:   u8,       // 46      C       50      voice output scale 
+    pub stereo_output_scale:  u8,       // 47      C       0       stereo output scale
+    pub keygroup: Vec<Keygroup>
 }
 
 #[derive(Debug)]

@@ -10,7 +10,6 @@ path = "_akai.rs"
 [dependencies]
 opt-mod = { path = "../../libs/opt-mod" }
 brailledump = { optional = true, path = "../../libs/brailledump" }
-cursive = { optional = true, version = "0.20" }
 clap = { optional = true, version = "4.0.18", features = ["derive"] }
 tabwriter = { optional = true, version = "1.2.1" }
 lazy_static = { optional = true, version = "1.4" }
@@ -18,5 +17,6 @@ lazy_static = { optional = true, version = "1.4" }
 thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
 
 [features]
+default = [ "cli", "tui" ]
 cli = [ "brailledump", "clap", "tabwriter" ]
-tui = [ "cursive", "lazy_static", "thatsit" ]
+tui = [ "lazy_static", "thatsit" ]

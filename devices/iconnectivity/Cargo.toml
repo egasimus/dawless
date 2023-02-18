@@ -11,5 +11,6 @@ path = "iconnectivity.rs"
 thatsit = { optional = true, git = "https://github.com/egasimus/thatsit" }
 
 [features]
-tui = [ "thatsit" ]
+default = [ "cli", "tui" ]
 cli = []
+tui = [ "thatsit" ]
