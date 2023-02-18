@@ -1,6 +1,5 @@
-use crate::electribe2::*;
-use crate::*;
 use std::{io::Write, fmt::Display, slice::Iter};
+use super::*;
 use thatsit::{
     *,
     layouts::*,
@@ -80,11 +79,11 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternsUI {
                 if index as Unit >= max_height + offset as Unit {
                     break
                 }
-                if let Some(selected) = self.selected() && selected == index {
-                    patterns = patterns.add(Styled(&style1, label.clone()));
+                patterns = patterns.add(label.clone().style(&if self.selected() == Some(index) {
+                    style1
                 } else {
-                    patterns = patterns.add(Styled(&style2, label.clone()))
-                }
+                    style2
+                }));
             }
 
             Rows::new()
@@ -269,12 +268,10 @@ impl Electribe2PatternUI {
         label: &str, width: Unit, value: impl Display
     ) -> Fixed<Layers> {
         Fixed::Y(3, Layers::new()
-            .add(Fixed::X(width,
-                Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
-            ))
-            .add(Fixed::X(width,
-                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string())).border(Tall, Inset)
-            ))
+            .add(Fixed::X(width, label.to_string().style(&|s: String|s.with(Color::White).bold())))
+            .add(Fixed::X(width, format!(" {}", value.to_string())
+                .style(&|s: String|s.with(Color::Green))
+                .border(Tall, Inset)))
     }
 
 }
@@ -353,8 +350,8 @@ impl Electribe2PartUI {
         let white = |s: String|s.with(Color::White).bold();
         let green = |s: String|s.with(Color::Green);
         Fixed::XY((10, 3), Layers::new()
-            .add(Columns::new().add((2, 1)).add(Styled(&white, label.to_string())))
-            .add(Styled(&green, format!(" {}", value.to_string())).border(Tall, Inset)))
+            .add(Columns::new().add((2, 1)).add(label.to_string().style(&white)))
+            .add(format!(" {}", value.to_string()).style(&green).border(Tall, Inset)))
     }
 
     pub fn layout_metadata (&self) -> Rows {
