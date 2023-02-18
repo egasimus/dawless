@@ -1,7 +1,16 @@
 use crate::electribe2::*;
 use crate::*;
 use std::{io::Write, fmt::Display, slice::Iter};
-use thatsit::{*, layouts::*, engines::tui::{*, crossterm::{event::Event, style::Color}}};
+use thatsit::{
+    *,
+    layouts::*,
+    engines::tui::{
+        *,
+        crossterm::style::Color
+    },
+    widgets::tui::*
+};
+
 use laterna;
 
 /// UI for managing Korg Electribe 2 patterns and samples
@@ -80,13 +89,14 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternsUI {
 
             Rows::new()
                 .add(" Patterns in this file:")
-                .add(Border(Tall, Inset, Columns::new()
+                .add(Columns::new()
+                    .border(Tall, Inset)
                     .add(patterns)
                     .add(if self.patterns.open && let Some((_,page)) = self.patterns.pages.get() {
                         Some(page)
                     } else {
                         None
-                    })))
+                    }))
 
         } else {
 
