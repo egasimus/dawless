@@ -21,9 +21,16 @@ impl Electribe2UI {
     }
 }
 
-impl Widget for Electribe2UI {
-    impl_render!(self, out, area => self.0.render(out, area));
-    impl_handle!(self, event => self.0.handle(event));
+impl<W: Write> Input<TUI<W>, bool> for Electribe2UI {
+    fn handle (&self, engine: &mut TUI<W>) -> Result<Option<bool>> {
+        self.0.handle(engine)
+    }
+}
+
+impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2UI {
+    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
+        self.0.render(engine)
+    }
 }
 
 /// UI for editing a Korg Electribe 2 pattern bank
@@ -48,7 +55,7 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternsUI {
             let style2 = |s: String|s.with(Color::White);
 
             let max_height = engine.area.h() - 4;
-            // TODO make this determined automatically by Stacked by providing shrunken Area
+            // TODO make this determined automatically by Rows/Cols by providing shrunken Area
 
             self.patterns.scroll.size.set(max_height as usize);
 
@@ -235,6 +242,7 @@ impl Electribe2PatternsUI {
 pub struct Electribe2PatternUI(pub Electribe2Pattern, Tabs<Electribe2PartUI>);
 
 impl Electribe2PatternUI {
+
     pub fn new (
         pattern: &Electribe2Pattern
     ) -> Self {
@@ -246,84 +254,79 @@ impl Electribe2PatternUI {
         parts.open();
         Self(pattern.clone(), parts)
     }
+
     pub fn field (
         label: &str, width: Unit, value: impl Display
-    ) -> Fixed<Stacked> {
-        Fixed::Y(3, Layers(|add|{
-            add(Fixed::X(width,
+    ) -> Fixed<Layers> {
+        Fixed::Y(3, Layers::new()
+            .add(Fixed::X(width,
                 Styled(&|s: String|s.with(Color::White).bold(), label.to_string())
-            ));
-            add(Fixed::X(width, Border(Tall, Inset,
+            ))
+            .add(Fixed::X(width, Border(Tall, Inset,
                 Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
-            )));
-        }))
+            )))
     }
+
 }
 
-impl Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
+impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
+
     fn render (&self, context: &mut TUI<W>) -> Result<Option<[u16;2]>> {
-        Columns(|add|{
-            add(1);
-            add(Rows(|add|{
-                add(Columns(|add|{
-                    add(Self::field("Pattern name", 20, &self.0.name));
-                    add(Self::field("Level", 10, &self.0.level));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("BPM", 10, format!("{:>5.1}", self.0.bpm)));
-                    add(Self::field("Swing", 10, &self.0.swing));
-                    add(Self::field("Length", 10, &self.0.length));
-                    add(Self::field("Beats", 10, &self.0.beats));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("Key", 10, &self.0.key));
-                    add(Self::field("Scale", 10, &self.0.scale));
-                    add(Self::field("Chords", 10, &self.0.chord_set));
-                    add(Self::field("MFX", 10, &self.0.mfx_type));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("Gate arp", 10, &self.0.gate_arp));
-                    add(Self::field("Alt 13/14", 10, &self.0.alt_13_14));
-                    add(Self::field("Alt 15/16", 10, &self.0.alt_15_16));
-                }));
-                add(2);
-                add(&self.1);
-            }));
-        }).render(context)
+        Columns::new()
+            .add(1)
+            .add(Rows::new()
+                .add(Columns::new()
+                    .add(Self::field("Pattern name", 20, &self.0.name))
+                    .add(Self::field("Level",        10, &self.0.level)))
+                .add(Columns::new()
+                    .add(Self::field("BPM",          10, format!("{:>5.1}", self.0.bpm)))
+                    .add(Self::field("Swing",        10, &self.0.swing))
+                    .add(Self::field("Length",       10, &self.0.length))
+                    .add(Self::field("Beats",        10, &self.0.beats)))
+                .add(Columns::new()
+                    .add(Self::field("Key",          10, &self.0.key))
+                    .add(Self::field("Scale",        10, &self.0.scale))
+                    .add(Self::field("Chords",       10, &self.0.chord_set))
+                    .add(Self::field("MFX",          10, &self.0.mfx_type)))
+                .add(Columns::new()
+                    .add(Self::field("Gate arp",     10, &self.0.gate_arp))
+                    .add(Self::field("Alt 13/14",    10, &self.0.alt_13_14))
+                    .add(Self::field("Alt 15/16",    10, &self.0.alt_15_16)))
+                .add(2)
+                .add(&self.1))
+        .render(context)
     }
+
 }
 
-impl Widget for Electribe2PatternUI {
-    impl_render!(self, out, area => {
-        Columns(|add|{
-            add(1);
-            add(Rows(|add|{
-                add(Columns(|add|{
-                    add(Self::field("Pattern name", 20, &self.0.name));
-                    add(Self::field("Level", 10, &self.0.level));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("BPM", 10, format!("{:>5.1}", self.0.bpm)));
-                    add(Self::field("Swing", 10, &self.0.swing));
-                    add(Self::field("Length", 10, &self.0.length));
-                    add(Self::field("Beats", 10, &self.0.beats));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("Key", 10, &self.0.key));
-                    add(Self::field("Scale", 10, &self.0.scale));
-                    add(Self::field("Chords", 10, &self.0.chord_set));
-                    add(Self::field("MFX", 10, &self.0.mfx_type));
-                }));
-                add(Columns(|add|{
-                    add(Self::field("Gate arp", 10, &self.0.gate_arp));
-                    add(Self::field("Alt 13/14", 10, &self.0.alt_13_14));
-                    add(Self::field("Alt 15/16", 10, &self.0.alt_15_16));
-                }));
-                add(2);
-                add(&self.1);
-            }));
-        }).render(out, area)
-    });
+impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
+
+    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
+        Columns::new()
+            .add(1)
+            .add(Rows::new()
+                .add(Columns::new()
+                    .add(Self::field("Pattern name", 20, &self.0.name))
+                    .add(Self::field("Level", 10, &self.0.level)))
+                .add(Columns::new()
+                    .add(Self::field("BPM", 10, format!("{:>5.1}", self.0.bpm)))
+                    .add(Self::field("Swing", 10, &self.0.swing))
+                    .add(Self::field("Length", 10, &self.0.length))
+                    .add(Self::field("Beats", 10, &self.0.beats)))
+                .add(Columns::new()
+                    .add(Self::field("Key", 10, &self.0.key))
+                    .add(Self::field("Scale", 10, &self.0.scale))
+                    .add(Self::field("Chords", 10, &self.0.chord_set))
+                    .add(Self::field("MFX", 10, &self.0.mfx_type)))
+                .add(Columns::new()
+                    .add(Self::field("Gate arp", 10, &self.0.gate_arp))
+                    .add(Self::field("Alt 13/14", 10, &self.0.alt_13_14))
+                    .add(Self::field("Alt 15/16", 10, &self.0.alt_15_16)))
+                .add(2)
+                .add(&self.1))
+            .render(out, area)
+    }
+
 }
 
 #[derive(Debug, Default)]
@@ -333,46 +336,40 @@ impl Electribe2PartUI {
     pub fn new (part: &Electribe2Part) -> Self {
         Self(part.clone())
     }
+
     pub fn field (
         label: &str, value: impl Display
-    ) -> Fixed<Stacked> {
-        Fixed::XY((10, 3), Layers(|add|{
-            add(Columns(|add|{
-                add((2, 1));
-                add(Styled(&|s: String|s.with(Color::White).bold(), label.to_string()));
-            }));
-            add(Border(Tall, Inset,
-                Styled(&|s: String|s.with(Color::Green), format!(" {}", value.to_string()))
-            ));
-        }))
+    ) -> Fixed<Layers> {
+        let white = |s: String|s.with(Color::White).bold();
+        let green = |s: String|s.with(Color::Green);
+        Fixed::XY((10, 3), Layers::new()
+            .add(Columns::new().add((2, 1)).add(Styled(&white, label.to_string())))
+            .add(Border(Tall, Inset, Styled(&green, format!(" {}", value.to_string())))))
     }
-    pub fn layout_metadata (&self) -> Stacked {
-        Rows(|add|{
-            add(Columns(|add|{
-                add(Self::field("Sample", &self.0.sample));
-                add(Self::field("Pitch", &self.0.pitch));
-                add(Self::field("Osc", &self.0.pitch));
-            }));
-            add(1);
-            add(Columns(|add|{
-                add(Self::field("Filter", &self.0.filter_type));
-                add(Self::field("Freq", &self.0.filter_type));
-                add(Self::field("Res", &self.0.filter_type));
-            }));
-            add(1);
-            add(Columns(|add|{
-                add(Self::field("Mod", &self.0.filter_type));
-                add(Self::field("Speed", &self.0.filter_type));
-                add(Self::field("Depth", &self.0.filter_type));
-            }));
-            add(1);
-            add(Columns(|add|{
-                add(Self::field("IFX", &self.0.filter_type));
-                add(Self::field("Type", &self.0.filter_type));
-                add(Self::field("Param", &self.0.filter_type));
-            }));
-        })
+
+    pub fn layout_metadata (&self) -> Rows {
+        Rows::new()
+            .add(Columns::new()
+                .add(Self::field("Sample", &self.0.sample))
+                .add(Self::field("Pitch", &self.0.pitch))
+                .add(Self::field("Osc", &self.0.pitch)))
+            .add(1)
+            .add(Columns::new()
+                .add(Self::field("Filter", &self.0.filter_type))
+                .add(Self::field("Freq", &self.0.filter_type))
+                .add(Self::field("Res", &self.0.filter_type)))
+            .add(1)
+            .add(Columns::new()
+                .add(Self::field("Mod", &self.0.filter_type))
+                .add(Self::field("Speed", &self.0.filter_type))
+                .add(Self::field("Depth", &self.0.filter_type)))
+            .add(1)
+            .add(Columns::new()
+                .add(Self::field("IFX", &self.0.filter_type))
+                .add(Self::field("Type", &self.0.filter_type))
+                .add(Self::field("Param", &self.0.filter_type)))
     }
+
     pub fn layout_piano_roll (&self) -> laterna::PianoRoll {
         let mut events = vec![];
         for (index, step) in self.0.steps.iter().enumerate() {
@@ -380,17 +377,18 @@ impl Electribe2PartUI {
         }
         laterna::PianoRoll(events)
     }
+
 }
 
-impl Widget for Electribe2PartUI {
+impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PartUI {
 
-    impl_render!(self, out, area => {
-        Border(Tall, Inset, Columns(|add|{
-            add(self.layout_metadata());
-            add(1);
-            add(self.layout_piano_roll());
-        })).render(out, area)
-    });
+    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
+        Border(Tall, Inset, Columns::new()
+            .add(self.layout_metadata())
+            .add(1)
+            .add(self.layout_piano_roll())
+        ).render(engine)
+    }
 
 }
 
@@ -403,18 +401,17 @@ pub struct Electribe2SamplesUI {
     pub sample: ()
 }
 
-impl Widget for Electribe2SamplesUI {
-    impl_render!(self, out, area => {
+impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2SamplesUI {
+
+    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
         let Self { focused, .. } = *self;
-        Border(Tall, Inset, Rows(|row|{
-            if self.bank.is_some() {
-                row(&self.sample_list);
-                row(&self.sample);
-            } else {
-                row(&self.file_list);
-            }
-        })).render(out, area)
-    });
+        Border(Tall, Inset, if self.bank.is_some() {
+            Rows::new().add(&self.sample_list).add(&self.sample)
+        } else {
+            Rows::new().add(&self.file_list)
+        }).render(engine)
+    }
+
 }
 
 impl Electribe2SamplesUI {
