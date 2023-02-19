@@ -13,15 +13,14 @@ use thatsit::{
 use laterna;
 
 /// UI for managing Korg Electribe 2 patterns and samples
-#[derive(Debug, Default)]
-pub struct Electribe2UI(
+pub struct Electribe2UI<E, I, O>(
     /// Tabs containing the editors for pattern banks and sample banks.
-    Tabs<Box<dyn Widget>>
+    Tabbed<Box<dyn Widget<E, I, O>>>
 );
 
-impl Electribe2UI {
+impl<E, I, O> Electribe2UI<E, I, O> {
     pub fn new () -> Self {
-        let mut selector = Tabs::<Box<dyn Widget>>::new(TabSide::Left, vec![]);
+        let mut selector = Tabbed::<Box<dyn Widget<E, I, O>>>::new(TabSide::Left, vec![]);
         selector.add("Edit patterns".into(), Box::new(Electribe2PatternsUI::new()));
         selector.add("Edit samples".into(),  Box::new(Electribe2SamplesUI::new()));
         selector.pages.select_next();
@@ -29,14 +28,14 @@ impl Electribe2UI {
     }
 }
 
-impl<W: Write> Input<TUI<W>, bool> for Electribe2UI {
-    fn handle (&self, engine: &mut TUI<W>) -> Result<Option<bool>> {
+impl<E, I, O> Input<E, I> for Electribe2UI<E, I, O> {
+    fn handle (&mut self, engine: &mut E) -> Result<Option<I>> {
         self.0.handle(engine)
     }
 }
 
-impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2UI {
-    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
+impl<E, I, O> Output<E, O> for Electribe2UI<E, I, O> {
+    fn render (&self, engine: &mut E) -> Result<Option<O>> {
         self.0.render(engine)
     }
 }
@@ -49,9 +48,8 @@ pub struct Electribe2PatternsUI {
     /// The currently selected pattern bank
     pub bank:      Option<Electribe2PatternBank>,
     /// Selector for editing individual patterns
-    pub patterns:  Tabs<Electribe2PatternUI>,
+    pub patterns:  Tabbed<Electribe2PatternUI>,
 }
-
 
 impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternsUI {
 
@@ -248,14 +246,14 @@ impl Electribe2PatternsUI {
 }
 
 #[derive(Debug, Default)]
-pub struct Electribe2PatternUI(pub Electribe2Pattern, Tabs<Electribe2PartUI>);
+pub struct Electribe2PatternUI(pub Electribe2Pattern, Tabbed<Electribe2PartUI>);
 
 impl Electribe2PatternUI {
 
     pub fn new (
         pattern: &Electribe2Pattern
     ) -> Self {
-        let mut parts = Tabs::<Electribe2PartUI>::new(TabSide::Left, vec![]);
+        let mut parts = Tabbed::<Electribe2PartUI>::new(TabSide::Left, vec![]);
         for (index, part) in pattern.parts.iter().enumerate() {
             parts.add(format!("Track {}", index + 1), Electribe2PartUI::new(part));
         }
@@ -264,9 +262,9 @@ impl Electribe2PatternUI {
         Self(pattern.clone(), parts)
     }
 
-    pub fn field (
-        label: &str, width: Unit, value: impl Display
-    ) -> Fixed<Layers> {
+    pub fn field <U, V> (
+        label: &str, width: U, value: impl Display
+    ) -> Fixed<U, V> {
         Fixed::Y(3, Layers::new()
             .add(Fixed::X(width, label.to_string().style(&|s: String|s.with(Color::White).bold())))
             .add(Fixed::X(width, format!(" {}", value.to_string())
@@ -306,36 +304,6 @@ impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
 
 }
 
-impl<W: Write> Output<TUI<W>, [u16;2]> for Electribe2PatternUI {
-
-    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16;2]>> {
-        Columns::new()
-            .add(1)
-            .add(Rows::new()
-                .add(Columns::new()
-                    .add(Self::field("Pattern name", 20, &self.0.name))
-                    .add(Self::field("Level",        10, &self.0.level)))
-                .add(Columns::new()
-                    .add(Self::field("BPM",          10, format!("{:>5.1}", self.0.bpm)))
-                    .add(Self::field("Swing",        10, &self.0.swing))
-                    .add(Self::field("Length",       10, &self.0.length))
-                    .add(Self::field("Beats",        10, &self.0.beats)))
-                .add(Columns::new()
-                    .add(Self::field("Key",          10, &self.0.key))
-                    .add(Self::field("Scale",        10, &self.0.scale))
-                    .add(Self::field("Chords",       10, &self.0.chord_set))
-                    .add(Self::field("MFX",          10, &self.0.mfx_type)))
-                .add(Columns::new()
-                    .add(Self::field("Gate arp",     10, &self.0.gate_arp))
-                    .add(Self::field("Alt 13/14",    10, &self.0.alt_13_14))
-                    .add(Self::field("Alt 15/16",    10, &self.0.alt_15_16)))
-                .add(2)
-                .add(&self.1))
-            .render(engine)
-    }
-
-}
-
 #[derive(Debug, Default)]
 pub struct Electribe2PartUI(pub Electribe2Part);
 
@@ -344,17 +312,21 @@ impl Electribe2PartUI {
         Self(part.clone())
     }
 
-    pub fn field (
+    pub fn field <T, U> (
         label: &str, value: impl Display
-    ) -> Fixed<Layers> {
+    ) -> Fixed<T, U> {
         let white = |s: String|s.with(Color::White).bold();
         let green = |s: String|s.with(Color::Green);
         Fixed::XY((10, 3), Layers::new()
-            .add(Columns::new().add((2, 1)).add(label.to_string().style(&white)))
-            .add(format!(" {}", value.to_string()).style(&green).border(Tall, Inset)))
+            .add(Columns::new()
+                .add((2, 1))
+                .add(label.to_string().style(&white)))
+            .add(format!(" {}", value.to_string())
+                .style(&green)
+                .border(Tall, Inset)))
     }
 
-    pub fn layout_metadata (&self) -> Rows {
+    pub fn layout_metadata <T, U> (&self) -> Rows<T, U> {
         Rows::new()
             .add(Columns::new()
                 .add(Self::field("Sample", &self.0.sample))

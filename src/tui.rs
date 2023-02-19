@@ -22,34 +22,33 @@ pub(crate) fn main () -> std::io::Result<()> {
 
 /// The main app object, containing a menu of supported devices.
 #[derive(Debug)]
-struct App {
+struct App<A, B, C> {
     /// A reference to the exit flag to end the main loop.
     exited:  &'static AtomicBool,
     /// A tabbed collection of supported devices.
-    devices: Tabs<Box<dyn Widget>>,
+    devices: Tabbed<Box<dyn Widget<A, B, C>>>,
 }
 
-impl App {
-    fn new () -> Self { Self { exited: &EXITED, devices: Tabs::new(TabSide::Left, vec![]) } }
+impl<A, B, C> App<A, B, C> {
+    fn new () -> Self { Self { exited: &EXITED, devices: Tabbed::new(TabSide::Left, vec![]) } }
     /// Set the exit flag, terminating the main loop before the next render.
     fn exit (&mut self) { self.exited.store(true, Ordering::Relaxed); }
     /// Add a device page to the app
-    fn page (mut self, label: &str, device: Box<dyn Widget>) -> Self {
+    fn page (mut self, label: &str, device: Box<dyn Widget<A, B, C>>) -> Self {
         self.devices.add(label.into(), device);
         self.devices.pages.select(0);
         self
     }
 }
 
-impl<W: Write> Output<TUI<W>, [u16;2]> for App {
-    fn render (&self, engine: &mut TUI<W>) -> Result<Option<[u16; 2]>> {
-        Aligned(Align::Center, Rows::new().border(Tall, Outset).add(&self.devices))
-            .render(engine)
+impl<E, I, O> Output<E, O> for App<E, I, O> {
+    fn render (&self, engine: &mut E) -> Result<Option<O>> {
+        Aligned(Align::Center, Rows::new().border(Tall, Outset).add(&self.devices)).render(engine)
     }
 }
 
-impl<W: Write> Input<TUI<W>, bool> for App {
-    fn handle (&mut self, engine: &mut TUI<W>) -> Result<Option<bool>> {
+impl<E, I, O> Input<E, I> for App<E, I, O> {
+    fn handle (&mut self, engine: &mut E) -> Result<Option<I>> {
         Ok(if let Event::Key(KeyEvent { code: KeyCode::Char('q'), .. }) = engine.event {
             self.exit();
             true

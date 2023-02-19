@@ -1792,7 +1792,7 @@ dependencies = [
 [[package]]
 name = "thatsit"
 version = "0.1.0"
-source = "git+https://github.com/egasimus/thatsit#c30ac4bdb69199f5a846ba919e5ee70ddbcce0fb"
+source = "git+https://github.com/egasimus/thatsit#c5d1076b1c003434f33545b0ea52cdca717f8829"
 dependencies = [
  "bitflags",
  "crossterm",
